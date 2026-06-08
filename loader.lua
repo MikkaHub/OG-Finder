@@ -3,6 +3,7 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
@@ -108,25 +109,25 @@ end
 
 -- ==================== UI ====================
 local toggleKey = Enum.KeyCode.V
-local listeningForKey = false
 
--- Color Palette (Pinkish Theme)
+-- Baby Pink Color Palette
 local Colors = {
-    Background = Color3.fromRGB(18, 14, 22),
-    CardBg = Color3.fromRGB(28, 20, 32),
-    CardBgHover = Color3.fromRGB(35, 26, 40),
-    PrimaryPink = Color3.fromRGB(255, 105, 180),
-    PrimaryPinkLight = Color3.fromRGB(255, 140, 200),
-    PrimaryPinkDark = Color3.fromRGB(200, 60, 130),
-    SecondaryPink = Color3.fromRGB(255, 182, 193),
-    Accent = Color3.fromRGB(255, 20, 147),
-    TextWhite = Color3.fromRGB(255, 240, 245),
-    TextMuted = Color3.fromRGB(180, 150, 170),
-    TextInactive = Color3.fromRGB(120, 90, 110),
-    ToggleOff = Color3.fromRGB(50, 40, 55),
+    Background = Color3.fromRGB(255, 245, 250),
+    CardBg = Color3.fromRGB(255, 235, 245),
+    CardBgHover = Color3.fromRGB(255, 225, 240),
+    BabyPink = Color3.fromRGB(255, 182, 193),
+    BabyPinkLight = Color3.fromRGB(255, 200, 215),
+    BabyPinkDark = Color3.fromRGB(255, 150, 170),
+    HotPink = Color3.fromRGB(255, 105, 180),
+    DeepPink = Color3.fromRGB(255, 20, 147),
+    White = Color3.fromRGB(255, 255, 255),
+    TextDark = Color3.fromRGB(80, 50, 65),
+    TextMuted = Color3.fromRGB(150, 110, 130),
+    TextLight = Color3.fromRGB(200, 160, 180),
+    ToggleOff = Color3.fromRGB(220, 200, 210),
     ToggleOn = Color3.fromRGB(255, 105, 180),
-    Glow = Color3.fromRGB(255, 20, 147),
-    Shadow = Color3.fromRGB(10, 5, 12)
+    Shadow = Color3.fromRGB(180, 140, 160),
+    Glow = Color3.fromRGB(255, 182, 193)
 }
 
 -- Root
@@ -137,10 +138,82 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = game.CoreGui
 
--- Main Frame (Larger, more premium)
+-- ==================== MINIMIZED TAB ====================
+local MinimizedTab = Instance.new("Frame")
+MinimizedTab.Name = "MinimizedTab"
+MinimizedTab.Size = UDim2.new(0, 60, 0, 60)
+MinimizedTab.Position = UDim2.new(0, 20, 0, 20)
+MinimizedTab.BackgroundColor3 = Colors.BabyPink
+MinimizedTab.BorderSizePixel = 0
+MinimizedTab.Visible = false
+MinimizedTab.Active = true
+MinimizedTab.Draggable = true
+MinimizedTab.Parent = ScreenGui
+
+local MinTabCorner = Instance.new("UICorner", MinimizedTab)
+MinTabCorner.CornerRadius = UDim.new(1, 0)
+
+local MinTabStroke = Instance.new("UIStroke", MinimizedTab)
+MinTabStroke.Color = Colors.HotPink
+MinTabStroke.Thickness = 3
+MinTabStroke.Transparency = 0.4
+
+local MinTabShadow = Instance.new("ImageLabel", MinimizedTab)
+MinTabShadow.Name = "Shadow"
+MinTabShadow.Size = UDim2.new(1, 20, 1, 20)
+MinTabShadow.Position = UDim2.new(0, -10, 0, -10)
+MinTabShadow.BackgroundTransparency = 1
+MinTabShadow.Image = "rbxassetid://131604521938076"
+MinTabShadow.ImageColor3 = Colors.Shadow
+MinTabShadow.ImageTransparency = 0.4
+MinTabShadow.ScaleType = Enum.ScaleType.Slice
+MinTabShadow.SliceCenter = Rect.new(50, 50, 50, 50)
+MinTabShadow.ZIndex = -1
+
+local MinTabIcon = Instance.new("ImageLabel", MinimizedTab)
+MinTabIcon.Name = "Icon"
+MinTabIcon.Size = UDim2.new(0, 40, 0, 40)
+MinTabIcon.Position = UDim2.new(0.5, -20, 0.5, -20)
+MinTabIcon.BackgroundTransparency = 1
+MinTabIcon.Image = "https://files.catbox.moe/etlu5v.png"
+MinTabIcon.ScaleType = Enum.ScaleType.Crop
+
+local MinTabIconCorner = Instance.new("UICorner", MinTabIcon)
+MinTabIconCorner.CornerRadius = UDim.new(1, 0)
+
+local MinTabHit = Instance.new("TextButton", MinimizedTab)
+MinTabHit.Name = "Hit"
+MinTabHit.Size = UDim2.new(1, 0, 1, 0)
+MinTabHit.BackgroundTransparency = 1
+MinTabHit.Text = ""
+
+-- Slide Text (appears when hovering minimized tab)
+local SlideText = Instance.new("TextLabel")
+SlideText.Name = "SlideText"
+SlideText.Size = UDim2.new(0, 140, 0, 30)
+SlideText.Position = UDim2.new(0, 70, 0.5, -15)
+SlideText.BackgroundColor3 = Colors.BabyPink
+SlideText.BackgroundTransparency = 0.1
+SlideText.Text = "Mikka Hub Lagger"
+SlideText.TextColor3 = Colors.TextDark
+SlideText.TextSize = 13
+SlideText.Font = Enum.Font.GothamBold
+SlideText.TextXAlignment = Enum.TextXAlignment.Center
+SlideText.Visible = false
+SlideText.Parent = MinimizedTab
+
+local SlideTextCorner = Instance.new("UICorner", SlideText)
+SlideTextCorner.CornerRadius = UDim.new(0, 8)
+
+local SlideTextStroke = Instance.new("UIStroke", SlideText)
+SlideTextStroke.Color = Colors.HotPink
+SlideTextStroke.Thickness = 1.5
+SlideTextStroke.Transparency = 0.3
+
+-- ==================== MAIN GUI ====================
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.Size = UDim2.new(0, 280, 0, 340)
+Main.Size = UDim2.new(0, 340, 0, 420)
 Main.Position = UDim2.new(0, 20, 0, 20)
 Main.BackgroundColor3 = Colors.Background
 Main.BorderSizePixel = 0
@@ -148,407 +221,702 @@ Main.Active = true
 Main.Draggable = true
 Main.Parent = ScreenGui
 
--- Main Corner
 local MainCorner = Instance.new("UICorner", Main)
-MainCorner.CornerRadius = UDim.new(0, 18)
-
--- Main Stroke (Border)
-local MainStroke = Instance.new("UIStroke", Main)
-MainStroke.Color = Color3.fromRGB(60, 45, 70)
-MainStroke.Thickness = 1.5
-MainStroke.Transparency = 0.6
+MainCorner.CornerRadius = UDim.new(0, 24)
 
 -- Main Shadow
-local Shadow = Instance.new("ImageLabel")
-Shadow.Name = "Shadow"
-Shadow.Size = UDim2.new(1, 40, 1, 40)
-Shadow.Position = UDim2.new(0, -20, 0, -20)
-Shadow.BackgroundTransparency = 1
-Shadow.Image = "rbxassetid://131604521938076" -- Soft shadow
-Shadow.ImageColor3 = Colors.Shadow
-Shadow.ImageTransparency = 0.3
-Shadow.ScaleType = Enum.ScaleType.Slice
-Shadow.SliceCenter = Rect.new(50, 50, 50, 50)
-Shadow.ZIndex = -1
-Shadow.Parent = Main
+local MainShadow = Instance.new("ImageLabel", Main)
+MainShadow.Name = "Shadow"
+MainShadow.Size = UDim2.new(1, 50, 1, 50)
+MainShadow.Position = UDim2.new(0, -25, 0, -25)
+MainShadow.BackgroundTransparency = 1
+MainShadow.Image = "rbxassetid://131604521938076"
+MainShadow.ImageColor3 = Colors.Shadow
+MainShadow.ImageTransparency = 0.25
+MainShadow.ScaleType = Enum.ScaleType.Slice
+MainShadow.SliceCenter = Rect.new(50, 50, 50, 50)
+MainShadow.ZIndex = -1
 
--- Glow Effect (Behind main)
-local Glow = Instance.new("Frame")
-Glow.Name = "Glow"
-Glow.Size = UDim2.new(1, 20, 1, 20)
-Glow.Position = UDim2.new(0, -10, 0, -10)
-Glow.BackgroundColor3 = Colors.Glow
-Glow.BackgroundTransparency = 0.95
-Glow.BorderSizePixel = 0
-Glow.ZIndex = -2
-Glow.Parent = Main
+-- Outer Glow Ring
+local GlowRing = Instance.new("Frame", Main)
+GlowRing.Name = "GlowRing"
+GlowRing.Size = UDim2.new(1, 30, 1, 30)
+GlowRing.Position = UDim2.new(0, -15, 0, -15)
+GlowRing.BackgroundColor3 = Colors.Glow
+GlowRing.BackgroundTransparency = 0.92
+GlowRing.BorderSizePixel = 0
+GlowRing.ZIndex = -2
 
-local GlowCorner = Instance.new("UICorner", Glow)
-GlowCorner.CornerRadius = UDim.new(0, 24)
+local GlowRingCorner = Instance.new("UICorner", GlowRing)
+GlowRingCorner.CornerRadius = UDim.new(0, 30)
 
--- Top Bar / Header
-local Header = Instance.new("Frame")
-Header.Name = "Header"
-Header.Size = UDim2.new(1, 0, 0, 70)
-Header.Position = UDim2.new(0, 0, 0, 0)
-Header.BackgroundColor3 = Colors.CardBg
-Header.BorderSizePixel = 0
-Header.Parent = Main
+-- Top Gradient Bar
+local TopBar = Instance.new("Frame", Main)
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 90)
+TopBar.Position = UDim2.new(0, 0, 0, 0)
+TopBar.BackgroundColor3 = Colors.BabyPink
+TopBar.BorderSizePixel = 0
 
-local HeaderCorner = Instance.new("UICorner", Header)
-HeaderCorner.CornerRadius = UDim.new(0, 18)
+local TopBarCorner = Instance.new("UICorner", TopBar)
+TopBarCorner.CornerRadius = UDim.new(0, 24)
 
--- Bottom fade for header
-local HeaderBottom = Instance.new("Frame")
-HeaderBottom.Size = UDim2.new(1, 0, 0, 20)
-HeaderBottom.Position = UDim2.new(0, 0, 1, -10)
-HeaderBottom.BackgroundColor3 = Colors.CardBg
-HeaderBottom.BorderSizePixel = 0
-HeaderBottom.Parent = Header
+-- Gradient overlay on top bar
+local TopBarGradient = Instance.new("UIGradient", TopBar)
+TopBarGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Colors.BabyPink),
+    ColorSequenceKeypoint.new(1, Colors.BabyPinkLight)
+})
+TopBarGradient.Rotation = 45
 
--- Logo Image
-local Logo = Instance.new("ImageLabel")
+-- Bottom extension for rounded look
+local TopBarBottom = Instance.new("Frame", TopBar)
+TopBarBottom.Size = UDim2.new(1, 0, 0, 30)
+TopBarBottom.Position = UDim2.new(0, 0, 1, -15)
+TopBarBottom.BackgroundColor3 = Colors.BabyPink
+TopBarBottom.BorderSizePixel = 0
+TopBarBottom.ZIndex = 0
+
+-- Logo (Circular with ring)
+local LogoContainer = Instance.new("Frame", TopBar)
+LogoContainer.Name = "LogoContainer"
+LogoContainer.Size = UDim2.new(0, 56, 0, 56)
+LogoContainer.Position = UDim2.new(0, 20, 0, 17)
+LogoContainer.BackgroundColor3 = Colors.White
+LogoContainer.BorderSizePixel = 0
+
+local LogoContainerCorner = Instance.new("UICorner", LogoContainer)
+LogoContainerCorner.CornerRadius = UDim.new(1, 0)
+
+local LogoRing = Instance.new("UIStroke", LogoContainer)
+LogoRing.Color = Colors.HotPink
+LogoRing.Thickness = 3
+LogoRing.Transparency = 0.2
+
+local Logo = Instance.new("ImageLabel", LogoContainer)
 Logo.Name = "Logo"
 Logo.Size = UDim2.new(0, 48, 0, 48)
-Logo.Position = UDim2.new(0, 16, 0, 11)
+Logo.Position = UDim2.new(0.5, -24, 0.5, -24)
 Logo.BackgroundTransparency = 1
 Logo.Image = "https://files.catbox.moe/etlu5v.png"
 Logo.ScaleType = Enum.ScaleType.Crop
-Logo.Parent = Header
 
 local LogoCorner = Instance.new("UICorner", Logo)
 LogoCorner.CornerRadius = UDim.new(1, 0)
 
-local LogoStroke = Instance.new("UIStroke", Logo)
-LogoStroke.Color = Colors.PrimaryPink
-LogoStroke.Thickness = 2
-LogoStroke.Transparency = 0.3
+-- Title Group
+local TitleGroup = Instance.new("Frame", TopBar)
+TitleGroup.Name = "TitleGroup"
+TitleGroup.Size = UDim2.new(1, -100, 0, 60)
+TitleGroup.Position = UDim2.new(0, 88, 0, 15)
+TitleGroup.BackgroundTransparency = 1
 
 -- Title: "MIKKA HUB"
-local Title = Instance.new("TextLabel")
+local Title = Instance.new("TextLabel", TitleGroup)
 Title.Name = "Title"
-Title.Size = UDim2.new(1, -80, 0, 28)
-Title.Position = UDim2.new(0, 72, 0, 10)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "MIKKA HUB"
-Title.TextColor3 = Colors.TextWhite
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
+Title.TextColor3 = Colors.TextDark
+Title.TextSize = 22
+Title.Font = Enum.Font.GothamBlack
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Header
 
 -- Subtitle: "Lagger"
-local Subtitle = Instance.new("TextLabel")
+local Subtitle = Instance.new("TextLabel", TitleGroup)
 Subtitle.Name = "Subtitle"
-Subtitle.Size = UDim2.new(1, -80, 0, 18)
-Subtitle.Position = UDim2.new(0, 72, 0, 38)
+Subtitle.Size = UDim2.new(1, 0, 0, 20)
+Subtitle.Position = UDim2.new(0, 0, 0, 30)
 Subtitle.BackgroundTransparency = 1
 Subtitle.Text = "Lagger"
-Subtitle.TextColor3 = Colors.PrimaryPink
-Subtitle.TextSize = 13
+Subtitle.TextColor3 = Colors.HotPink
+Subtitle.TextSize = 14
 Subtitle.Font = Enum.Font.GothamMedium
 Subtitle.TextXAlignment = Enum.TextXAlignment.Left
-Subtitle.Parent = Header
 
--- Divider Line
-local Divider = Instance.new("Frame")
-Divider.Name = "Divider"
-Divider.Size = UDim2.new(1, -32, 0, 1)
-Divider.Position = UDim2.new(0, 16, 0, 70)
-Divider.BackgroundColor3 = Color3.fromRGB(60, 45, 70)
-Divider.BackgroundTransparency = 0.5
-Divider.BorderSizePixel = 0
-Divider.Parent = Main
+-- Close Button (X)
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Name = "CloseBtn"
+CloseBtn.Size = UDim2.new(0, 36, 0, 36)
+CloseBtn.Position = UDim2.new(1, -46, 0, 12)
+CloseBtn.BackgroundColor3 = Colors.CardBg
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Text = "×"
+CloseBtn.TextColor3 = Colors.TextDark
+CloseBtn.TextSize = 24
+CloseBtn.Font = Enum.Font.GothamBlack
+CloseBtn.AutoButtonColor = false
+
+local CloseBtnCorner = Instance.new("UICorner", CloseBtn)
+CloseBtnCorner.CornerRadius = UDim.new(1, 0)
+
+local CloseBtnStroke = Instance.new("UIStroke", CloseBtn)
+CloseBtnStroke.Color = Colors.BabyPinkDark
+CloseBtnStroke.Thickness = 1.5
+CloseBtnStroke.Transparency = 0.5
+
+-- Minimize Button (-)
+local MinBtn = Instance.new("TextButton", TopBar)
+MinBtn.Name = "MinBtn"
+MinBtn.Size = UDim2.new(0, 36, 0, 36)
+MinBtn.Position = UDim2.new(1, -88, 0, 12)
+MinBtn.BackgroundColor3 = Colors.CardBg
+MinBtn.BorderSizePixel = 0
+MinBtn.Text = "−"
+MinBtn.TextColor3 = Colors.TextDark
+MinBtn.TextSize = 22
+MinBtn.Font = Enum.Font.GothamBlack
+MinBtn.AutoButtonColor = false
+
+local MinBtnCorner = Instance.new("UICorner", MinBtn)
+MinBtnCorner.CornerRadius = UDim.new(1, 0)
+
+local MinBtnStroke = Instance.new("UIStroke", MinBtn)
+MinBtnStroke.Color = Colors.BabyPinkDark
+MinBtnStroke.Thickness = 1.5
+MinBtnStroke.Transparency = 0.5
 
 -- Content Area
-local Content = Instance.new("Frame")
+local Content = Instance.new("Frame", Main)
 Content.Name = "Content"
-Content.Size = UDim2.new(1, 0, 1, -71)
-Content.Position = UDim2.new(0, 0, 0, 71)
+Content.Size = UDim2.new(1, 0, 1, -100)
+Content.Position = UDim2.new(0, 0, 0, 90)
 Content.BackgroundTransparency = 1
-Content.Parent = Main
 
--- Status Card
-local StatusCard = Instance.new("Frame")
-StatusCard.Name = "StatusCard"
-StatusCard.Size = UDim2.new(1, -28, 0, 80)
-StatusCard.Position = UDim2.new(0, 14, 0, 14)
-StatusCard.BackgroundColor3 = Colors.CardBg
-StatusCard.BorderSizePixel = 0
-StatusCard.Parent = Content
+-- Status Panel (Large Card)
+local StatusPanel = Instance.new("Frame", Content)
+StatusPanel.Name = "StatusPanel"
+StatusPanel.Size = UDim2.new(1, -32, 0, 110)
+StatusPanel.Position = UDim2.new(0, 16, 0, 16)
+StatusPanel.BackgroundColor3 = Colors.CardBg
+StatusPanel.BorderSizePixel = 0
 
-local StatusCardCorner = Instance.new("UICorner", StatusCard)
-StatusCardCorner.CornerRadius = UDim.new(0, 14)
+local StatusPanelCorner = Instance.new("UICorner", StatusPanel)
+StatusPanelCorner.CornerRadius = UDim.new(0, 18)
 
-local StatusCardStroke = Instance.new("UIStroke", StatusCard)
-StatusCardStroke.Color = Color3.fromRGB(50, 38, 58)
-StatusCardStroke.Thickness = 1
-StatusCardStroke.Transparency = 0.7
+local StatusPanelStroke = Instance.new("UIStroke", StatusPanel)
+StatusPanelStroke.Color = Colors.BabyPink
+StatusPanelStroke.Thickness = 2
+StatusPanelStroke.Transparency = 0.6
 
--- Status Label
-local StatusLabel = Instance.new("TextLabel")
+-- Status Icon (Circle)
+local StatusIcon = Instance.new("Frame", StatusPanel)
+StatusIcon.Name = "StatusIcon"
+StatusIcon.Size = UDim2.new(0, 50, 0, 50)
+StatusIcon.Position = UDim2.new(0, 20, 0.5, -25)
+StatusIcon.BackgroundColor3 = Colors.ToggleOff
+StatusIcon.BorderSizePixel = 0
+
+local StatusIconCorner = Instance.new("UICorner", StatusIcon)
+StatusIconCorner.CornerRadius = UDim.new(1, 0)
+
+local StatusIconStroke = Instance.new("UIStroke", StatusIcon)
+StatusIconStroke.Color = Colors.BabyPinkDark
+StatusIconStroke.Thickness = 2
+StatusIconStroke.Transparency = 0.4
+
+-- Status Icon Inner
+local StatusIconInner = Instance.new("Frame", StatusIcon)
+StatusIconInner.Size = UDim2.new(0, 24, 0, 24)
+StatusIconInner.Position = UDim2.new(0.5, -12, 0.5, -12)
+StatusIconInner.BackgroundColor3 = Colors.TextLight
+StatusIconInner.BorderSizePixel = 0
+
+local StatusIconInnerCorner = Instance.new("UICorner", StatusIconInner)
+StatusIconInnerCorner.CornerRadius = UDim.new(1, 0)
+
+-- Status Text Group
+local StatusTextGroup = Instance.new("Frame", StatusPanel)
+StatusTextGroup.Size = UDim2.new(1, -100, 1, 0)
+StatusTextGroup.Position = UDim2.new(0, 85, 0, 0)
+StatusTextGroup.BackgroundTransparency = 1
+
+local StatusLabel = Instance.new("TextLabel", StatusTextGroup)
 StatusLabel.Name = "StatusLabel"
-StatusLabel.Size = UDim2.new(1, -20, 0, 22)
-StatusLabel.Position = UDim2.new(0, 10, 0, 12)
+StatusLabel.Size = UDim2.new(1, 0, 0, 28)
+StatusLabel.Position = UDim2.new(0, 0, 0, 22)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "INACTIVE"
-StatusLabel.TextColor3 = Colors.TextInactive
-StatusLabel.TextSize = 14
-StatusLabel.Font = Enum.Font.GothamBold
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
-StatusLabel.Parent = StatusCard
+StatusLabel.TextColor3 = Colors.TextMuted
+StatusLabel.TextSize = 18
+StatusLabel.Font = Enum.Font.GothamBlack
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Status Description
-local StatusDesc = Instance.new("TextLabel")
+local StatusDesc = Instance.new("TextLabel", StatusTextGroup)
 StatusDesc.Name = "StatusDesc"
-StatusDesc.Size = UDim2.new(1, -20, 0, 16)
-StatusDesc.Position = UDim2.new(0, 10, 0, 38)
+StatusDesc.Size = UDim2.new(1, 0, 0, 18)
+StatusDesc.Position = UDim2.new(0, 0, 0, 52)
 StatusDesc.BackgroundTransparency = 1
-StatusDesc.Text = "Click toggle to start lagging"
-StatusDesc.TextColor3 = Colors.TextMuted
-StatusDesc.TextSize = 11
+StatusDesc.Text = "Ready to lag"
+StatusDesc.TextColor3 = Colors.TextLight
+StatusDesc.TextSize = 12
 StatusDesc.Font = Enum.Font.Gotham
-StatusDesc.TextXAlignment = Enum.TextXAlignment.Center
-StatusDesc.Parent = StatusCard
-
--- Animated Status Dot
-local StatusDot = Instance.new("Frame")
-StatusDot.Name = "StatusDot"
-StatusDot.Size = UDim2.new(0, 8, 0, 8)
-StatusDot.Position = UDim2.new(0.5, -4, 0, 60)
-StatusDot.BackgroundColor3 = Colors.TextInactive
-StatusDot.BorderSizePixel = 0
-StatusDot.Parent = StatusCard
-
-local StatusDotCorner = Instance.new("UICorner", StatusDot)
-StatusDotCorner.CornerRadius = UDim.new(1, 0)
+StatusDesc.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Toggle Section
-local ToggleSection = Instance.new("Frame")
+local ToggleSection = Instance.new("Frame", Content)
 ToggleSection.Name = "ToggleSection"
-ToggleSection.Size = UDim2.new(1, -28, 0, 60)
-ToggleSection.Position = UDim2.new(0, 14, 0, 106)
-ToggleSection.BackgroundTransparency = 1
-ToggleSection.Parent = Content
+ToggleSection.Size = UDim2.new(1, -32, 0, 70)
+ToggleSection.Position = UDim2.new(0, 16, 0, 142)
+ToggleSection.BackgroundColor3 = Colors.CardBg
+ToggleSection.BorderSizePixel = 0
 
--- Toggle Label
-local ToggleLabel = Instance.new("TextLabel")
+local ToggleSectionCorner = Instance.new("UICorner", ToggleSection)
+ToggleSectionCorner.CornerRadius = UDim.new(0, 18)
+
+local ToggleSectionStroke = Instance.new("UIStroke", ToggleSection)
+ToggleSectionStroke.Color = Colors.BabyPink
+ToggleSectionStroke.Thickness = 2
+ToggleSectionStroke.Transparency = 0.6
+
+local ToggleLabel = Instance.new("TextLabel", ToggleSection)
 ToggleLabel.Size = UDim2.new(0.5, 0, 1, 0)
-ToggleLabel.Position = UDim2.new(0, 0, 0, 0)
+ToggleLabel.Position = UDim2.new(0, 20, 0, 0)
 ToggleLabel.BackgroundTransparency = 1
 ToggleLabel.Text = "Enable Lagger"
-ToggleLabel.TextColor3 = Colors.TextWhite
-ToggleLabel.TextSize = 14
-ToggleLabel.Font = Enum.Font.GothamMedium
+ToggleLabel.TextColor3 = Colors.TextDark
+ToggleLabel.TextSize = 15
+ToggleLabel.Font = Enum.Font.GothamBold
 ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-ToggleLabel.Parent = ToggleSection
 
--- Toggle Switch Container
-local ToggleSwitch = Instance.new("Frame")
+-- Toggle Switch
+local ToggleSwitch = Instance.new("Frame", ToggleSection)
 ToggleSwitch.Name = "ToggleSwitch"
-ToggleSwitch.Size = UDim2.new(0, 52, 0, 28)
-ToggleSwitch.Position = UDim2.new(1, -52, 0.5, -14)
+ToggleSwitch.Size = UDim2.new(0, 56, 0, 30)
+ToggleSwitch.Position = UDim2.new(1, -76, 0.5, -15)
 ToggleSwitch.BackgroundColor3 = Colors.ToggleOff
 ToggleSwitch.BorderSizePixel = 0
-ToggleSwitch.Parent = ToggleSection
 
 local ToggleSwitchCorner = Instance.new("UICorner", ToggleSwitch)
 ToggleSwitchCorner.CornerRadius = UDim.new(1, 0)
 
--- Toggle Knob
-local ToggleKnob = Instance.new("Frame")
+local ToggleKnob = Instance.new("Frame", ToggleSwitch)
 ToggleKnob.Name = "ToggleKnob"
-ToggleKnob.Size = UDim2.new(0, 22, 0, 22)
-ToggleKnob.Position = UDim2.new(0, 3, 0.5, -11)
-ToggleKnob.BackgroundColor3 = Color3.fromRGB(100, 80, 110)
+ToggleKnob.Size = UDim2.new(0, 24, 0, 24)
+ToggleKnob.Position = UDim2.new(0, 3, 0.5, -12)
+ToggleKnob.BackgroundColor3 = Colors.White
 ToggleKnob.BorderSizePixel = 0
-ToggleKnob.Parent = ToggleSwitch
 
 local ToggleKnobCorner = Instance.new("UICorner", ToggleKnob)
 ToggleKnobCorner.CornerRadius = UDim.new(1, 0)
 
--- Toggle Hit Area
-local ToggleHit = Instance.new("TextButton")
+local ToggleKnobShadow = Instance.new("UIStroke", ToggleKnob)
+ToggleKnobShadow.Color = Colors.Shadow
+ToggleKnobShadow.Thickness = 1
+ToggleKnobShadow.Transparency = 0.3
+
+local ToggleHit = Instance.new("TextButton", ToggleSwitch)
 ToggleHit.Name = "ToggleHit"
 ToggleHit.Size = UDim2.new(1, 0, 1, 0)
 ToggleHit.BackgroundTransparency = 1
 ToggleHit.Text = ""
-ToggleHit.Parent = ToggleSwitch
 
 -- Keybind Section
-local KeybindSection = Instance.new("Frame")
+local KeybindSection = Instance.new("Frame", Content)
 KeybindSection.Name = "KeybindSection"
-KeybindSection.Size = UDim2.new(1, -28, 0, 60)
-KeybindSection.Position = UDim2.new(0, 14, 0, 176)
+KeybindSection.Size = UDim2.new(1, -32, 0, 70)
+KeybindSection.Position = UDim2.new(0, 16, 0, 224)
 KeybindSection.BackgroundColor3 = Colors.CardBg
 KeybindSection.BorderSizePixel = 0
-KeybindSection.Parent = Content
 
 local KeybindCorner = Instance.new("UICorner", KeybindSection)
-KeybindCorner.CornerRadius = UDim.new(0, 14)
+KeybindCorner.CornerRadius = UDim.new(0, 18)
 
 local KeybindStroke = Instance.new("UIStroke", KeybindSection)
-KeybindStroke.Color = Color3.fromRGB(50, 38, 58)
-KeybindStroke.Thickness = 1
-KeybindStroke.Transparency = 0.7
+KeybindStroke.Color = Colors.BabyPink
+KeybindStroke.Thickness = 2
+KeybindStroke.Transparency = 0.6
 
-local KeybindLabel = Instance.new("TextLabel")
+local KeybindLabel = Instance.new("TextLabel", KeybindSection)
 KeybindLabel.Size = UDim2.new(0.5, 0, 1, 0)
-KeybindLabel.Position = UDim2.new(0, 14, 0, 0)
+KeybindLabel.Position = UDim2.new(0, 20, 0, 0)
 KeybindLabel.BackgroundTransparency = 1
 KeybindLabel.Text = "Toggle Keybind"
-KeybindLabel.TextColor3 = Colors.TextWhite
-KeybindLabel.TextSize = 14
-KeybindLabel.Font = Enum.Font.GothamMedium
+KeybindLabel.TextColor3 = Colors.TextDark
+KeybindLabel.TextSize = 15
+KeybindLabel.Font = Enum.Font.GothamBold
 KeybindLabel.TextXAlignment = Enum.TextXAlignment.Left
-KeybindLabel.Parent = KeybindSection
 
-local KeybindValue = Instance.new("TextLabel")
-KeybindValue.Name = "KeybindValue"
-KeybindValue.Size = UDim2.new(0, 50, 0, 28)
-KeybindValue.Position = UDim2.new(1, -64, 0.5, -14)
-KeybindValue.BackgroundColor3 = Colors.Background
-KeybindValue.BorderSizePixel = 0
+local KeybindBadge = Instance.new("Frame", KeybindSection)
+KeybindBadge.Size = UDim2.new(0, 50, 0, 32)
+KeybindBadge.Position = UDim2.new(1, -70, 0.5, -16)
+KeybindBadge.BackgroundColor3 = Colors.BabyPink
+KeybindBadge.BorderSizePixel = 0
+
+local KeybindBadgeCorner = Instance.new("UICorner", KeybindBadge)
+KeybindBadgeCorner.CornerRadius = UDim.new(0, 10)
+
+local KeybindBadgeStroke = Instance.new("UIStroke", KeybindBadge)
+KeybindBadgeStroke.Color = Colors.HotPink
+KeybindBadgeStroke.Thickness = 2
+KeybindBadgeStroke.Transparency = 0.3
+
+local KeybindValue = Instance.new("TextLabel", KeybindBadge)
+KeybindValue.Size = UDim2.new(1, 0, 1, 0)
+KeybindValue.BackgroundTransparency = 1
 KeybindValue.Text = "V"
-KeybindValue.TextColor3 = Colors.PrimaryPink
-KeybindValue.TextSize = 13
-KeybindValue.Font = Enum.Font.GothamBold
+KeybindValue.TextColor3 = Colors.TextDark
+KeybindValue.TextSize = 16
+KeybindValue.Font = Enum.Font.GothamBlack
 KeybindValue.TextXAlignment = Enum.TextXAlignment.Center
-KeybindValue.Parent = KeybindSection
 
-local KeybindValueCorner = Instance.new("UICorner", KeybindValue)
-KeybindValueCorner.CornerRadius = UDim.new(0, 8)
-
-local KeybindValueStroke = Instance.new("UIStroke", KeybindValue)
-KeybindValueStroke.Color = Colors.PrimaryPink
-KeybindValueStroke.Thickness = 1.5
-KeybindValueStroke.Transparency = 0.5
-
--- Footer / Info
-local Footer = Instance.new("Frame")
+-- Footer Info
+local Footer = Instance.new("Frame", Content)
 Footer.Name = "Footer"
-Footer.Size = UDim2.new(1, -28, 0, 30)
-Footer.Position = UDim2.new(0, 14, 1, -44)
+Footer.Size = UDim2.new(1, -32, 0, 40)
+Footer.Position = UDim2.new(0, 16, 1, -56)
 Footer.BackgroundTransparency = 1
-Footer.Parent = Content
 
-local FooterText = Instance.new("TextLabel")
-FooterText.Size = UDim2.new(1, 0, 1, 0)
+local FooterLine = Instance.new("Frame", Footer)
+FooterLine.Size = UDim2.new(1, 0, 0, 1)
+FooterLine.Position = UDim2.new(0, 0, 0, 0)
+FooterLine.BackgroundColor3 = Colors.BabyPink
+FooterLine.BackgroundTransparency = 0.7
+FooterLine.BorderSizePixel = 0
+
+local FooterText = Instance.new("TextLabel", Footer)
+FooterText.Size = UDim2.new(1, 0, 0, 30)
+FooterText.Position = UDim2.new(0, 0, 0, 8)
 FooterText.BackgroundTransparency = 1
-FooterText.Text = "Press [V] to toggle lagger"
-FooterText.TextColor3 = Colors.TextMuted
+FooterText.Text = "Press [V] to toggle  |  v1.4"
+FooterText.TextColor3 = Colors.TextLight
 FooterText.TextSize = 11
 FooterText.Font = Enum.Font.Gotham
 FooterText.TextXAlignment = Enum.TextXAlignment.Center
-FooterText.Parent = Footer
 
--- Particle Effects (Decorative)
-local Particles = Instance.new("Frame")
-Particles.Name = "Particles"
-Particles.Size = UDim2.new(1, 0, 1, 0)
-Particles.BackgroundTransparency = 1
-Particles.Parent = Main
+-- ==================== ANIMATIONS ====================
 
--- Create floating particles
-for i = 1, 6 do
-    local particle = Instance.new("Frame")
-    particle.Size = UDim2.new(0, math.random(2, 4), 0, math.random(2, 4))
-    particle.Position = UDim2.new(math.random(), 0, math.random(), 0)
-    particle.BackgroundColor3 = Colors.PrimaryPink
-    particle.BackgroundTransparency = 0.8
-    particle.BorderSizePixel = 0
-    particle.Parent = Particles
-
-    local pCorner = Instance.new("UICorner", particle)
-    pCorner.CornerRadius = UDim.new(1, 0)
-
-    -- Animate particle
-    task.spawn(function()
-        while true do
-            local tw = TweenInfo.new(math.random(3, 6), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-            TweenService:Create(particle, tw, {
-                Position = UDim2.new(math.random(), 0, math.random(), 0),
-                BackgroundTransparency = math.random(0.7, 0.95)
-            }):Play()
-            task.wait(math.random(3, 6))
-        end
-    end)
-end
-
--- ==================== ANIMATIONS & INTERACTIVITY ====================
-
--- Intro Animation
+-- Intro: Scale from center
 Main.Size = UDim2.new(0, 0, 0, 0)
-Main.Position = UDim2.new(0, 20 + 140, 0, 20 + 170)
+Main.Position = UDim2.new(0, 20 + 170, 0, 20 + 210)
 Main.BackgroundTransparency = 1
+Main.Visible = true
 
-TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 280, 0, 340),
+TweenService:Create(Main, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 340, 0, 420),
     Position = UDim2.new(0, 20, 0, 20),
     BackgroundTransparency = 0
 }):Play()
 
--- Fade in elements
-for _, child in pairs(Main:GetDescendants()) do
-    if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") or child:IsA("Frame") then
-        if child ~= Main and child ~= Glow and child ~= Shadow then
-            child.BackgroundTransparency = child.BackgroundTransparency + 0.3
-            if child:IsA("TextLabel") or child:IsA("TextButton") then
-                child.TextTransparency = 1
-            end
-            if child:IsA("ImageLabel") then
-                child.ImageTransparency = 1
-            end
+-- Staggered fade-in for all children
+local function fadeInChildren(parent, delayOffset)
+    for _, child in pairs(parent:GetDescendants()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") or child:IsA("Frame") then
+            if child ~= Main and child ~= GlowRing and child ~= MainShadow and child ~= TopBarBottom then
+                local origBg = child.BackgroundTransparency
+                local origText = child:IsA("TextLabel") and child.TextTransparency or 0
+                local origImage = child:IsA("ImageLabel") and child.ImageTransparency or 0
 
-            task.delay(0.3 + (math.random() * 0.4), function()
-                TweenService:Create(child, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
-                    BackgroundTransparency = child.BackgroundTransparency - 0.3
-                }):Play()
+                child.BackgroundTransparency = 1
                 if child:IsA("TextLabel") or child:IsA("TextButton") then
-                    TweenService:Create(child, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
-                        TextTransparency = 0
-                    }):Play()
+                    child.TextTransparency = 1
                 end
                 if child:IsA("ImageLabel") then
-                    TweenService:Create(child, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
-                        ImageTransparency = 0
-                    }):Play()
+                    child.ImageTransparency = 1
                 end
-            end)
+
+                task.delay(delayOffset + (math.random() * 0.5), function()
+                    TweenService:Create(child, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+                        BackgroundTransparency = origBg
+                    }):Play()
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        TweenService:Create(child, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+                            TextTransparency = origText
+                        }):Play()
+                    end
+                    if child:IsA("ImageLabel") then
+                        TweenService:Create(child, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+                            ImageTransparency = origImage
+                        }):Play()
+                    end
+                end)
+            end
         end
     end
 end
 
+fadeInChildren(Main, 0.3)
+
 -- Hover effects for cards
 local function addHoverEffect(frame, stroke)
     frame.MouseEnter:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+        TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
             BackgroundColor3 = Colors.CardBgHover
         }):Play()
         if stroke then
-            TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-                Color = Colors.PrimaryPink,
-                Transparency = 0.4
+            TweenService:Create(stroke, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+                Color = Colors.HotPink,
+                Transparency = 0.3
             }):Play()
         end
     end)
     frame.MouseLeave:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+        TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
             BackgroundColor3 = Colors.CardBg
         }):Play()
         if stroke then
-            TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-                Color = Color3.fromRGB(50, 38, 58),
-                Transparency = 0.7
+            TweenService:Create(stroke, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+                Color = Colors.BabyPink,
+                Transparency = 0.6
             }):Play()
         end
     end)
 end
 
-addHoverEffect(StatusCard, StatusCardStroke)
+addHoverEffect(StatusPanel, StatusPanelStroke)
+addHoverEffect(ToggleSection, ToggleSectionStroke)
 addHoverEffect(KeybindSection, KeybindStroke)
 
--- Pulse animation for status dot when active
+-- Logo hover: scale + ring pulse
+LogoContainer.MouseEnter:Connect(function()
+    TweenService:Create(LogoContainer, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 62, 0, 62),
+        Position = UDim2.new(0, 17, 0, 14)
+    }):Play()
+    TweenService:Create(LogoRing, TweenInfo.new(0.3), {
+        Transparency = 0,
+        Thickness = 4
+    }):Play()
+end)
+
+LogoContainer.MouseLeave:Connect(function()
+    TweenService:Create(LogoContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(0, 56, 0, 56),
+        Position = UDim2.new(0, 20, 0, 17)
+    }):Play()
+    TweenService:Create(LogoRing, TweenInfo.new(0.3), {
+        Transparency = 0.2,
+        Thickness = 3
+    }):Play()
+end)
+
+-- Close button hover
+CloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(255, 100, 100),
+        TextColor3 = Colors.White
+    }):Play()
+    TweenService:Create(CloseBtnStroke, TweenInfo.new(0.2), {
+        Color = Color3.fromRGB(255, 80, 80),
+        Transparency = 0
+    }):Play()
+end)
+
+CloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Colors.CardBg,
+        TextColor3 = Colors.TextDark
+    }):Play()
+    TweenService:Create(CloseBtnStroke, TweenInfo.new(0.2), {
+        Color = Colors.BabyPinkDark,
+        Transparency = 0.5
+    }):Play()
+end)
+
+-- Minimize button hover
+MinBtn.MouseEnter:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Colors.BabyPinkLight,
+        TextColor3 = Colors.HotPink
+    }):Play()
+    TweenService:Create(MinBtnStroke, TweenInfo.new(0.2), {
+        Color = Colors.HotPink,
+        Transparency = 0.2
+    }):Play()
+end)
+
+MinBtn.MouseLeave:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Colors.CardBg,
+        TextColor3 = Colors.TextDark
+    }):Play()
+    TweenService:Create(MinBtnStroke, TweenInfo.new(0.2), {
+        Color = Colors.BabyPinkDark,
+        Transparency = 0.5
+    }):Play()
+end)
+
+-- Minimized Tab hover: show slide text
+MinimizedTab.MouseEnter:Connect(function()
+    SlideText.Visible = true
+    SlideText.Position = UDim2.new(0, 50, 0.5, -15)
+    SlideText.BackgroundTransparency = 1
+    SlideText.TextTransparency = 1
+
+    TweenService:Create(SlideText, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Position = UDim2.new(0, 70, 0.5, -15),
+        BackgroundTransparency = 0.1,
+        TextTransparency = 0
+    }):Play()
+
+    TweenService:Create(MinTabStroke, TweenInfo.new(0.3), {
+        Transparency = 0.1,
+        Thickness = 4
+    }):Play()
+end)
+
+MinimizedTab.MouseLeave:Connect(function()
+    TweenService:Create(SlideText, TweenInfo.new(0.2), {
+        Position = UDim2.new(0, 50, 0.5, -15),
+        BackgroundTransparency = 1,
+        TextTransparency = 1
+    }):Play()
+    task.wait(0.2)
+    SlideText.Visible = false
+
+    TweenService:Create(MinTabStroke, TweenInfo.new(0.3), {
+        Transparency = 0.4,
+        Thickness = 3
+    }):Play()
+end)
+
+-- Minimized Tab hover: icon pulse
+MinimizedTab.MouseEnter:Connect(function()
+    TweenService:Create(MinTabIcon, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 44, 0, 44),
+        Position = UDim2.new(0.5, -22, 0.5, -22)
+    }):Play()
+end)
+
+MinimizedTab.MouseLeave:Connect(function()
+    TweenService:Create(MinTabIcon, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(0, 40, 0, 40),
+        Position = UDim2.new(0.5, -20, 0.5, -20)
+    }):Play()
+end)
+
+-- ==================== OPEN / CLOSE / MINIMIZE ====================
+
+local isOpen = true
+local isMinimized = false
+
+local function closeGUI()
+    isOpen = false
+    -- Shrink and fade out
+    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0, Main.Position.X.Offset + 170, 0, Main.Position.Y.Offset + 210),
+        BackgroundTransparency = 1
+    }):Play()
+
+    for _, child in pairs(Main:GetDescendants()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") then
+            TweenService:Create(child, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        end
+        if child:IsA("ImageLabel") then
+            TweenService:Create(child, TweenInfo.new(0.2), {ImageTransparency = 1}):Play()
+        end
+        if child:IsA("Frame") and child ~= Main and child ~= GlowRing and child ~= MainShadow then
+            TweenService:Create(child, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        end
+    end
+
+    task.wait(0.4)
+    Main.Visible = false
+
+    -- Show minimized tab
+    MinimizedTab.Visible = true
+    MinimizedTab.Size = UDim2.new(0, 0, 0, 0)
+    MinimizedTab.Position = UDim2.new(0, Main.Position.X.Offset + 30, 0, Main.Position.Y.Offset + 30)
+
+    TweenService:Create(MinimizedTab, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 60, 0, 60),
+        Position = UDim2.new(0, Main.Position.X.Offset, 0, Main.Position.Y.Offset)
+    }):Play()
+end
+
+local function openGUI()
+    isOpen = true
+    Main.Visible = true
+
+    -- Hide minimized tab
+    TweenService:Create(MinimizedTab, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0, MinimizedTab.Position.X.Offset + 30, 0, MinimizedTab.Position.Y.Offset + 30)
+    }):Play()
+
+    task.wait(0.3)
+    MinimizedTab.Visible = false
+
+    -- Pop in main
+    Main.Size = UDim2.new(0, 0, 0, 0)
+    Main.Position = UDim2.new(0, Main.Position.X.Offset + 170, 0, Main.Position.Y.Offset + 210)
+    Main.BackgroundTransparency = 1
+
+    TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 340, 0, 420),
+        Position = UDim2.new(0, Main.Position.X.Offset - 170, 0, Main.Position.Y.Offset - 210),
+        BackgroundTransparency = 0
+    }):Play()
+
+    -- Fade children back in
+    fadeInChildren(Main, 0.2)
+end
+
+local function minimizeGUI()
+    isMinimized = true
+    -- Slide down and shrink
+    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 340, 0, 90),
+        Position = UDim2.new(0, Main.Position.X.Offset, 0, Main.Position.Y.Offset + 330)
+    }):Play()
+
+    -- Hide content
+    for _, child in pairs(Content:GetDescendants()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") then
+            TweenService:Create(child, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        end
+        if child:IsA("Frame") then
+            TweenService:Create(child, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        end
+    end
+
+    task.wait(0.4)
+    Content.Visible = false
+end
+
+local function restoreGUI()
+    isMinimized = false
+    Content.Visible = true
+
+    TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 340, 0, 420),
+        Position = UDim2.new(0, Main.Position.X.Offset, 0, Main.Position.Y.Offset - 330)
+    }):Play()
+
+    -- Fade content back
+    for _, child in pairs(Content:GetDescendants()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") then
+            TweenService:Create(child, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+        end
+        if child:IsA("Frame") then
+            local target = child.BackgroundTransparency - 0.3
+            if target < 0 then target = 0 end
+            TweenService:Create(child, TweenInfo.new(0.4), {BackgroundTransparency = target}):Play()
+        end
+    end
+end
+
+-- Button connections
+CloseBtn.MouseButton1Click:Connect(function()
+    closeGUI()
+end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    if isMinimized then
+        restoreGUI()
+    else
+        minimizeGUI()
+    end
+end)
+
+MinTabHit.MouseButton1Click:Connect(function()
+    openGUI()
+end)
+
+-- ==================== LAGGER TOGGLE ====================
+
 local pulseConnection = nil
 local function startPulse()
     if pulseConnection then pulseConnection:Disconnect() end
@@ -556,14 +924,14 @@ local function startPulse()
     local growing = true
     pulseConnection = RunService.Heartbeat:Connect(function()
         if growing then
-            scale = scale + 0.02
-            if scale >= 1.5 then growing = false end
+            scale = scale + 0.015
+            if scale >= 1.4 then growing = false end
         else
-            scale = scale - 0.02
+            scale = scale - 0.015
             if scale <= 1 then growing = true end
         end
-        StatusDot.Size = UDim2.new(0, 8 * scale, 0, 8 * scale)
-        StatusDot.Position = UDim2.new(0.5, -4 * scale, 0, 60 - 4 * (scale - 1))
+        StatusIconInner.Size = UDim2.new(0, 24 * scale, 0, 24 * scale)
+        StatusIconInner.Position = UDim2.new(0.5, -12 * scale, 0.5, -12 * scale)
     end)
 end
 
@@ -572,80 +940,89 @@ local function stopPulse()
         pulseConnection:Disconnect()
         pulseConnection = nil
     end
-    StatusDot.Size = UDim2.new(0, 8, 0, 8)
-    StatusDot.Position = UDim2.new(0.5, -4, 0, 60)
+    StatusIconInner.Size = UDim2.new(0, 24, 0, 24)
+    StatusIconInner.Position = UDim2.new(0.5, -12, 0.5, -12)
 end
 
--- Main Toggle Function
 local function setLagger(state)
         laggerEnabled = state
         local twFast = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local twSlow = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        local twBounce = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
         if laggerEnabled then
-            -- Toggle ON animations
+            -- Toggle ON
             TweenService:Create(ToggleSwitch, twFast, {BackgroundColor3 = Colors.ToggleOn}):Play()
-            TweenService:Create(ToggleKnob, twSlow, {
-                Position = UDim2.new(0, 27, 0.5, -11),
-                BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            TweenService:Create(ToggleKnob, twBounce, {
+                Position = UDim2.new(0, 29, 0.5, -12),
+                BackgroundColor3 = Colors.White
             }):Play()
 
             -- Status updates
             StatusLabel.Text = "ACTIVE"
-            StatusLabel.TextColor3 = Colors.PrimaryPink
-            StatusDesc.Text = "Lagger is running..."
-            StatusDesc.TextColor3 = Colors.SecondaryPink
-            StatusDot.BackgroundColor3 = Colors.PrimaryPink
+            StatusLabel.TextColor3 = Colors.HotPink
+            StatusDesc.Text = "Lagging in progress..."
+            StatusDesc.TextColor3 = Colors.BabyPinkDark
 
-            -- Glow effect
-            TweenService:Create(Glow, TweenInfo.new(0.5), {
+            -- Icon changes
+            TweenService:Create(StatusIcon, TweenInfo.new(0.4), {
+                BackgroundColor3 = Colors.ToggleOn
+            }):Play()
+            TweenService:Create(StatusIconInner, TweenInfo.new(0.4), {
+                BackgroundColor3 = Colors.White
+            }):Play()
+            TweenService:Create(StatusIconStroke, TweenInfo.new(0.4), {
+                Color = Colors.HotPink,
+                Transparency = 0.1
+            }):Play()
+
+            -- Panel border
+            TweenService:Create(StatusPanelStroke, TweenInfo.new(0.4), {
+                Color = Colors.HotPink,
+                Transparency = 0.2
+            }):Play()
+
+            -- Glow ring
+            TweenService:Create(GlowRing, TweenInfo.new(0.5), {
                 BackgroundTransparency = 0.85
-            }):Play()
-
-            -- Border color change
-            TweenService:Create(MainStroke, TweenInfo.new(0.5), {
-                Color = Colors.PrimaryPink,
-                Transparency = 0.3
-            }):Play()
-
-            -- Card border
-            TweenService:Create(StatusCardStroke, TweenInfo.new(0.5), {
-                Color = Colors.PrimaryPink,
-                Transparency = 0.4
             }):Play()
 
             startPulse()
             startLagger()
         else
-            -- Toggle OFF animations
+            -- Toggle OFF
             TweenService:Create(ToggleSwitch, twFast, {BackgroundColor3 = Colors.ToggleOff}):Play()
-            TweenService:Create(ToggleKnob, twSlow, {
-                Position = UDim2.new(0, 3, 0.5, -11),
-                BackgroundColor3 = Color3.fromRGB(100, 80, 110)
+            TweenService:Create(ToggleKnob, twBounce, {
+                Position = UDim2.new(0, 3, 0.5, -12),
+                BackgroundColor3 = Colors.White
             }):Play()
 
             -- Status updates
             StatusLabel.Text = "INACTIVE"
-            StatusLabel.TextColor3 = Colors.TextInactive
-            StatusDesc.Text = "Click toggle to start lagging"
-            StatusDesc.TextColor3 = Colors.TextMuted
-            StatusDot.BackgroundColor3 = Colors.TextInactive
+            StatusLabel.TextColor3 = Colors.TextMuted
+            StatusDesc.Text = "Ready to lag"
+            StatusDesc.TextColor3 = Colors.TextLight
 
-            -- Glow fade
-            TweenService:Create(Glow, TweenInfo.new(0.5), {
-                BackgroundTransparency = 0.95
+            -- Icon reset
+            TweenService:Create(StatusIcon, TweenInfo.new(0.4), {
+                BackgroundColor3 = Colors.ToggleOff
+            }):Play()
+            TweenService:Create(StatusIconInner, TweenInfo.new(0.4), {
+                BackgroundColor3 = Colors.TextLight
+            }):Play()
+            TweenService:Create(StatusIconStroke, TweenInfo.new(0.4), {
+                Color = Colors.BabyPinkDark,
+                Transparency = 0.4
             }):Play()
 
-            -- Border reset
-            TweenService:Create(MainStroke, TweenInfo.new(0.5), {
-                Color = Color3.fromRGB(60, 45, 70),
+            -- Panel border reset
+            TweenService:Create(StatusPanelStroke, TweenInfo.new(0.4), {
+                Color = Colors.BabyPink,
                 Transparency = 0.6
             }):Play()
 
-            -- Card border reset
-            TweenService:Create(StatusCardStroke, TweenInfo.new(0.5), {
-                Color = Color3.fromRGB(50, 38, 58),
-                Transparency = 0.7
+            -- Glow ring fade
+            TweenService:Create(GlowRing, TweenInfo.new(0.5), {
+                BackgroundTransparency = 0.92
             }):Play()
 
             stopPulse()
@@ -665,40 +1042,19 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Logo hover effect
-Logo.MouseEnter:Connect(function()
-    TweenService:Create(Logo, TweenInfo.new(0.3), {
-        Size = UDim2.new(0, 52, 0, 52),
-        Position = UDim2.new(0, 14, 0, 9)
-    }):Play()
-    TweenService:Create(LogoStroke, TweenInfo.new(0.3), {
-        Transparency = 0
-    }):Play()
-end)
-
-Logo.MouseLeave:Connect(function()
-    TweenService:Create(Logo, TweenInfo.new(0.3), {
-        Size = UDim2.new(0, 48, 0, 48),
-        Position = UDim2.new(0, 16, 0, 11)
-    }):Play()
-    TweenService:Create(LogoStroke, TweenInfo.new(0.3), {
-        Transparency = 0.3
-    }):Play()
-end)
-
--- Subtle breathing animation for glow
+-- Breathing glow animation
 local breathing = true
 task.spawn(function()
     while breathing do
         if not laggerEnabled then
-            TweenService:Create(Glow, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                BackgroundTransparency = 0.92
+            TweenService:Create(GlowRing, TweenInfo.new(4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                BackgroundTransparency = 0.88
             }):Play()
-            task.wait(3)
-            TweenService:Create(Glow, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                BackgroundTransparency = 0.97
+            task.wait(4)
+            TweenService:Create(GlowRing, TweenInfo.new(4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                BackgroundTransparency = 0.95
             }):Play()
-            task.wait(3)
+            task.wait(4)
         else
             task.wait(1)
         end
