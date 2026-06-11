@@ -1,7 +1,7 @@
 ---- LEAKED AT https://discord.gg/BAjxpwGQB ----
 ---- CRYPTIC SOURCES LEAKED THIS JOIN NOW ----
 
--- casual gave the script and cryptic sources ofc deobfed it --
+- casual gave the script and cryptic sources ofc deobfed it --
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -9,64 +9,27 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
--- ===================== ANTI BAT LOGIC (HARD RESET) =====================
+-- ===================== ANTI BAT LOGIC =====================
 local antiBatActive = false
 local antiBatConn = nil
-local antiBatLastSafe = nil
 
 local function startAntiBat()
 	local char = LocalPlayer.Character
 	if not char then return end
-	local root = char:WaitForChild("HumanoidRootPart", 3)
+	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-	
 	if antiBatConn then antiBatConn:Disconnect() end
-	
-	antiBatLastSafe = root.CFrame
-	
 	antiBatConn = RunService.Heartbeat:Connect(function()
 		if not root or not root.Parent then return end
-		
-		-- Read velocity (fallback to legacy .Velocity)
-		local vel = root.AssemblyLinearVelocity or root.Velocity
-		local horiz = Vector3.new(vel.X, 0, vel.Z).Magnitude
-		
-		-- Detect bat knockback
-		local isFlung = (horiz > 50) or (math.abs(vel.Y) > 70) or (vel.Magnitude > 90)
-		
-		if isFlung then
-			-- INSTANT KILL: Zero everything
-			root.AssemblyLinearVelocity = Vector3.zero
-			root.AssemblyAngularVelocity = Vector3.zero
-			root.Velocity = Vector3.zero
-			root.RotVelocity = Vector3.zero
-			
-			-- HARD SNAP back to safety
-			root.CFrame = antiBatLastSafe
-			
-			-- Double-tap to beat server replication lag
-			task.delay(0.05, function()
-				if root and root.Parent then
-					root.AssemblyLinearVelocity = Vector3.zero
-					root.Velocity = Vector3.zero
-					root.CFrame = antiBatLastSafe
-				end
-			end)
-		else
-			-- Update safe spot only when stable
-			if vel.Magnitude < 40 then
-				antiBatLastSafe = root.CFrame
-			end
-		end
+		local orig = root.Velocity
+		root.Velocity = Vector3.new(1000, root.Velocity.Y, 1000)
+		RunService.RenderStepped:Wait()
+		root.Velocity = orig
 	end)
 end
 
 local function stopAntiBat()
-	if antiBatConn then 
-		antiBatConn:Disconnect() 
-		antiBatConn = nil 
-	end
-	antiBatLastSafe = nil
+	if antiBatConn then antiBatConn:Disconnect() antiBatConn = nil end
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
