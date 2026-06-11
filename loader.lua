@@ -9,7 +9,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
--- ===================== ANTI BAT LOGIC (FIXED) =====================
+-- ===================== ANTI BAT LOGIC (HARD RESET) =====================
 local antiBatActive = false
 local antiBatConn = nil
 local antiBatLastSafe = nil
@@ -17,37 +17,46 @@ local antiBatLastSafe = nil
 local function startAntiBat()
 	local char = LocalPlayer.Character
 	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
+	local root = char:WaitForChild("HumanoidRootPart", 3)
 	if not root then return end
 	
 	if antiBatConn then antiBatConn:Disconnect() end
 	
-	antiBatLastSafe = root.Position
+	antiBatLastSafe = root.CFrame
 	
 	antiBatConn = RunService.Heartbeat:Connect(function()
 		if not root or not root.Parent then return end
 		
-		-- Kill rotation fling immediately (silent)
-		root.AssemblyAngularVelocity = Vector3.zero
+		-- Read velocity (fallback to legacy .Velocity)
+		local vel = root.AssemblyLinearVelocity or root.Velocity
+		local horiz = Vector3.new(vel.X, 0, vel.Z).Magnitude
 		
-		local vel = root.AssemblyLinearVelocity
-		local horizSpeed = Vector3.new(vel.X, 0, vel.Z).Magnitude
+		-- Detect bat knockback
+		local isFlung = (horiz > 50) or (math.abs(vel.Y) > 70) or (vel.Magnitude > 90)
 		
-		-- Detect knockback: horizontal speed > 60 or falling too fast
-		if horizSpeed > 60 or vel.Y > 80 or vel.Y < -120 then
-			-- Soft counter: zero out external force, keep gravity
-			root.AssemblyLinearVelocity = Vector3.new(
-				vel.X * 0.15,  -- Dampen X fast but not instant
-				math.clamp(vel.Y, -50, 50),  -- Clamp Y (no skyrocketing/falling)
-				vel.Z * 0.15   -- Dampen Z fast but not instant
-			)
+		if isFlung then
+			-- INSTANT KILL: Zero everything
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+			root.Velocity = Vector3.zero
+			root.RotVelocity = Vector3.zero
 			
-			-- Pull back to last safe position gently
-			local pull = (antiBatLastSafe - root.Position) * 0.25
-			root.AssemblyLinearVelocity += pull
+			-- HARD SNAP back to safety
+			root.CFrame = antiBatLastSafe
+			
+			-- Double-tap to beat server replication lag
+			task.delay(0.05, function()
+				if root and root.Parent then
+					root.AssemblyLinearVelocity = Vector3.zero
+					root.Velocity = Vector3.zero
+					root.CFrame = antiBatLastSafe
+				end
+			end)
 		else
-			-- Normal movement, update safe position
-			antiBatLastSafe = root.Position
+			-- Update safe spot only when stable
+			if vel.Magnitude < 40 then
+				antiBatLastSafe = root.CFrame
+			end
 		end
 	end)
 end
