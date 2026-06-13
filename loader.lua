@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 --  GAG 2 - PET SPAWNER (Delta Executor)
---  Spawns pets that STAY VISIBLE and use their Animation part
+--  Pets STAY VISIBLE, don't fall, use Animation part, follow you
 --  Path: ReplicatedStorage.Assets.Pets
 -- ═══════════════════════════════════════════════════════════════
 
@@ -83,7 +83,7 @@ end
 local SpawnedPets = {}
 
 -- ═══════════════════════════════════════════════════════════════
---  DEEP CLONE - KEEPS PETS VISIBLE
+--  DEEP CLONE - ANCHORED SO THEY DON'T FALL
 -- ═══════════════════════════════════════════════════════════════
 
 local function ClonePet(petName)
@@ -103,31 +103,27 @@ local function ClonePet(petName)
         end
     end
 
-    -- Fix all parts - CRITICAL for visibility
+    -- ANCHOR ALL PARTS - prevents falling through map
     for _, part in ipairs(clone:GetDescendants()) do
         if part:IsA("BasePart") then
-            -- DON'T anchor - let them exist in world
-            part.Anchored = false
-            part.CanCollide = false
-            part.CanQuery = false -- prevents raycast issues
+            part.Anchored = true        -- ANCHORED = no physics, stays put
+            part.CanCollide = false     -- no collision
+            part.CanQuery = false       -- no raycast issues
             
-            -- Fix transparency
             if part.Transparency >= 1 then
                 part.Transparency = 0
             end
             
-            -- Ensure visible material
             if part.Material == Enum.Material.ForceField then
                 part.Material = Enum.Material.SmoothPlastic
             end
             
-            -- Size check - sometimes parts are size 0
             if part.Size.Magnitude < 0.01 then
                 part.Size = Vector3.new(1, 1, 1)
             end
         end
         
-        -- Fix Motor6D joints
+        -- Fix Motor6D
         if part:IsA("Motor6D") then
             local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
             local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
@@ -147,18 +143,18 @@ local function ClonePet(petName)
             end
         end
         
-        -- Fix decals/textures
+        -- Fix decals
         if part:IsA("Decal") or part:IsA("Texture") then
             part.Transparency = 0
         end
     end
 
-    -- IMPORTANT: Find the "Animation" part and set it up
+    -- Animation part setup
     local animPart = clone:FindFirstChild("Animation")
     if animPart and animPart:IsA("BasePart") then
-        animPart.Anchored = false
+        animPart.Anchored = true
         animPart.CanCollide = false
-        animPart.Transparency = 1 -- usually invisible animation controller part
+        animPart.Transparency = 1
     end
 
     clone:SetAttribute("IsPet", true)
@@ -172,11 +168,10 @@ end
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartAnimations(pet, petName)
-    -- GAG 2 pets have an "Animation" part with Animation objects inside
     local animPart = pet:FindFirstChild("Animation")
     
     if animPart then
-        -- Look for Animation objects inside the Animation part
+        -- Descendants of Animation part
         for _, desc in ipairs(animPart:GetDescendants()) do
             if desc:IsA("Animation") then
                 local animController = pet:FindFirstChildOfClass("AnimationController")
@@ -185,12 +180,12 @@ local function StartAnimations(pet, petName)
                     track.Looped = true
                     track.Priority = Enum.AnimationPriority.Action
                     track:Play()
-                    print("▶ Playing Animation part anim:", desc.Name, "ID:", desc.AnimationId)
+                    print("▶ Animation part anim:", desc.Name)
                 end
             end
         end
         
-        -- Also check direct children
+        -- Direct children
         for _, child in ipairs(animPart:GetChildren()) do
             if child:IsA("Animation") then
                 local animController = pet:FindFirstChildOfClass("AnimationController")
@@ -199,13 +194,13 @@ local function StartAnimations(pet, petName)
                     track.Looped = true
                     track.Priority = Enum.AnimationPriority.Action
                     track:Play()
-                    print("▶ Playing direct anim:", child.Name, "ID:", child.AnimationId)
+                    print("▶ Direct anim:", child.Name)
                 end
             end
         end
     end
 
-    -- Also search entire pet for Animation objects
+    -- Search entire pet for any Animation
     local foundAny = false
     for _, desc in ipairs(pet:GetDescendants()) do
         if desc:IsA("Animation") then
@@ -220,23 +215,22 @@ local function StartAnimations(pet, petName)
             track.Priority = Enum.AnimationPriority.Action
             track:Play()
             foundAny = true
-            print("▶ Playing pet anim:", desc.Name, "ID:", desc.AnimationId)
+            print("▶ Pet anim:", desc.Name)
         end
     end
 
-    -- Enable Animate script if present
     local animate = pet:FindFirstChild("Animate")
     if animate and animate:IsA("Script") then
         animate.Disabled = false
     end
     
     if not foundAny and not animPart then
-        warn("⚠ No animations found for", petName)
+        warn("⚠ No animations for", petName)
     end
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  FOLLOW SYSTEM
+--  FOLLOW SYSTEM - ANCHORED PETS MOVED WITH PIVOTTO
 -- ═══════════════════════════════════════════════════════════════
 
 local function FollowPlayer(pet, petName)
@@ -258,7 +252,7 @@ local function FollowPlayer(pet, petName)
         local currentHRP = char:FindFirstChild("HumanoidRootPart")
         if not currentHRP then return end
 
-        -- Find this pet's index for spreading
+        -- Find pet index for spread
         local petIndex = 0
         for i, p in ipairs(SpawnedPets) do
             if p.Model == pet then
@@ -273,18 +267,17 @@ local function FollowPlayer(pet, petName)
         
         local targetPos = targetCFrame.Position
 
-        -- Height based on flying or ground
         if isFlying then
             targetPos = targetPos + Vector3.new(0, CONFIG.FlyHeight, 0)
         else
             targetPos = targetPos + Vector3.new(0, CONFIG.HeightOffset, 0)
         end
 
-        -- Smooth follow
+        -- Smooth follow with lerp
         local currentCF = pet:GetPivot()
         local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
 
-        -- Face player direction
+        -- Face player
         local lookDir = currentHRP.CFrame.LookVector
         if lookDir.Magnitude < 0.001 then
             lookDir = Vector3.new(0, 0, -1)
@@ -292,15 +285,16 @@ local function FollowPlayer(pet, petName)
 
         local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
         
-        -- Fix Bee/Firefly upside down
+        -- Fix Bee upside down
         if petName == "Bee" or petName == "Firefly" then
             newCF = newCF * CFrame.Angles(0, math.pi, 0)
         end
 
+        -- PIVOT TO - works on anchored parts!
         pet:PivotTo(newCF)
     end)
 
-    -- Bobbing for idle
+    -- Bobbing
     bobConn = RunService.Heartbeat:Connect(function(dt)
         if not pet or not pet.Parent then
             if bobConn then bobConn:Disconnect() end
@@ -327,11 +321,10 @@ local function FollowPlayer(pet, petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  SPAWN PET - KEEPS THEM ALIVE
+--  SPAWN PET - ANCHORED, NO FALLING
 -- ═══════════════════════════════════════════════════════════════
 
 function SpawnPet(petName)
-    -- Max limit
     if #SpawnedPets >= CONFIG.MaxPets then
         local oldest = table.remove(SpawnedPets, 1)
         if oldest and oldest.Model then
@@ -352,47 +345,26 @@ function SpawnPet(petName)
 
     local currentHRP = char:WaitForChild("HumanoidRootPart")
     
-    -- Spawn position beside player
+    -- Spawn beside player
     local spawnOffset = CFrame.new(CONFIG.FollowDistance, 0, 0)
-    local spawnCF = currentHRP.CFrame * spawnOffset
-    
-    -- Set CFrame BEFORE parenting (prevents physics weirdness)
-    pet:PivotTo(spawnCF)
+    pet:PivotTo(currentHRP.CFrame * spawnOffset)
     
     -- Parent to workspace
     pet.Parent = workspace
     
-    -- CRITICAL: Wait a frame then verify all parts exist
+    -- Verify all parts anchored after parenting
     task.wait()
-    
-    -- Double-check visibility
-    local partCount = 0
     for _, part in ipairs(pet:GetDescendants()) do
         if part:IsA("BasePart") then
-            partCount = partCount + 1
-            part.Anchored = false
+            part.Anchored = true  -- RE-ANCHOR after parent
             part.CanCollide = false
-            part.CanQuery = false
-            
-            -- Force visible
-            if part.Transparency >= 1 then
-                part.Transparency = 0
-            end
-            
-            -- Reparent fix - sometimes parts get lost
-            if not part.Parent then
-                part.Parent = pet
-            end
         end
     end
-    
-    print("📊 Pet parts:", partCount)
 
     -- Start follow + animations
     local followConn, bobConn = FollowPlayer(pet, petName)
     StartAnimations(pet, petName)
 
-    -- Store with cleanup
     local petData = {
         Model = pet,
         Name = petName,
@@ -401,7 +373,7 @@ function SpawnPet(petName)
     }
     
     table.insert(SpawnedPets, petData)
-    
+
     -- Auto-cleanup if destroyed
     pet.AncestryChanged:Connect(function(_, newParent)
         if not newParent then
@@ -443,7 +415,6 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Toggle button
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "Toggle"
 toggleBtn.Size = UDim2.new(0, 55, 0, 55)
@@ -465,7 +436,6 @@ tStroke.Parent = toggleBtn
 
 toggleBtn.Parent = screenGui
 
--- Main frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Main"
 mainFrame.Size = UDim2.new(0, 300, 0, 400)
@@ -527,7 +497,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Title bar
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
@@ -550,7 +519,6 @@ titleLabel.Parent = titleBar
 
 titleBar.Parent = mainFrame
 
--- Close
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 34, 0, 34)
 closeBtn.Position = UDim2.new(1, -39, 0, 4)
@@ -566,7 +534,6 @@ cCorner.Parent = closeBtn
 
 closeBtn.Parent = mainFrame
 
--- Clear All
 local clearBtn = Instance.new("TextButton")
 clearBtn.Size = UDim2.new(0, 70, 0, 28)
 clearBtn.Position = UDim2.new(1, -82, 0, 7)
@@ -582,7 +549,6 @@ clCorner.Parent = clearBtn
 
 clearBtn.Parent = titleBar
 
--- Scroll
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, -16, 1, -95)
 scroll.Position = UDim2.new(0, 8, 0, 48)
@@ -598,7 +564,6 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 listLayout.Parent = scroll
 
--- Count
 local countFrame = Instance.new("Frame")
 countFrame.Size = UDim2.new(1, -16, 0, 38)
 countFrame.Position = UDim2.new(0, 8, 1, -42)
@@ -699,14 +664,12 @@ clearBtn.MouseButton1Click:Connect(function()
     countLabel.Text = "Spawned: 0"
 end)
 
--- Keybind P
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == Enum.KeyCode.P then
         toggleGUI()
     end
 end)
 
--- Clear on death
 player.CharacterRemoving:Connect(function()
     ClearAllPets()
     countLabel.Text = "Spawned: 0"
