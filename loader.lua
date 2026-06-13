@@ -1,601 +1,678 @@
+-- ═══════════════════════════════════════════════════════════════
+--  GAG 2 - PET SPAWNER (Delta Executor)
+--  Equips pets that follow you like real GAG 2 pets
+--  Path: ReplicatedStorage.Assets.Pets
+-- ═══════════════════════════════════════════════════════════════
+
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
-local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats", 5)
-if not leaderstats then return end
-local sheckles = leaderstats:FindFirstChild("Sheckles") or leaderstats:WaitForChild("Sheckles", 5)
-if not sheckles then return end
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
 
-local old = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MikkaHub")
-if old then old:Destroy() end
+-- ═══════════════════════════════════════════════════════════════
+--  CONFIG
+-- ═══════════════════════════════════════════════════════════════
 
-local AVATAR_URL = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. player.UserId .. "&width=150&height=150&format=png"
+local CONFIG = {
+    PetFolderPath = {"Assets", "Pets"},
+    FollowDistance = 3.5,
+    HeightOffset = 2, -- above ground
+    FlyHeight = 4,    -- for flying pets
+    FollowSmoothness = 0.08,
+    BobSpeed = 2,     -- idle bobbing speed
+    BobAmount = 0.3,  -- idle bobbing height
+}
 
-local sg = Instance.new("ScreenGui")
-sg.Name = "MikkaHub"
-sg.ResetOnSpawn = false
-sg.Parent = player:WaitForChild("PlayerGui")
+-- ═══════════════════════════════════════════════════════════════
+--  GET PET FOLDER
+-- ═══════════════════════════════════════════════════════════════
 
--- Main frame
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 340, 0, 190)
-frame.Position = UDim2.new(0.5, -170, 0.5, -95)
-frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.ClipsDescendants = true
-frame.Parent = sg
-
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
-
--- TRAVELING GLOW around GUI border
-local glowContainer = Instance.new("Frame")
-glowContainer.Size = UDim2.new(1, 0, 1, 0)
-glowContainer.BackgroundTransparency = 1
-glowContainer.ZIndex = 0
-glowContainer.Parent = frame
-
--- 4 glow dots traveling the border
-local glowDots = {}
-for i = 1, 4 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 8, 0, 8)
-    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 0
-    dot.Parent = glowContainer
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    -- Glow effect
-    local dotGlow = Instance.new("ImageLabel")
-    dotGlow.Size = UDim2.new(0, 20, 0, 20)
-    dotGlow.Position = UDim2.new(0.5, -10, 0.5, -10)
-    dotGlow.BackgroundTransparency = 1
-    dotGlow.Image = "rbxassetid://1316045217"
-    dotGlow.ImageColor3 = Color3.fromRGB(220, 100, 170)
-    dotGlow.ImageTransparency = 0.6
-    dotGlow.ScaleType = Enum.ScaleType.Slice
-    dotGlow.SliceCenter = Rect.new(10, 10, 118, 118)
-    dotGlow.ZIndex = -1
-    dotGlow.Parent = dot
-    
-    table.insert(glowDots, dot)
+local PetFolder = ReplicatedStorage
+for _, folderName in ipairs(CONFIG.PetFolderPath) do
+    PetFolder = PetFolder:FindFirstChild(folderName)
+    if not PetFolder then
+        warn("❌ Path broken at:", folderName)
+        return
+    end
 end
 
--- Animate glow dots traveling border
-spawn(function()
-    local progress = 0
-    while glowContainer.Parent do
-        progress = progress + 0.008
-        if progress > 1 then progress = 0 end
-        
-        for i, dot in ipairs(glowDots) do
-            local offset = (i - 1) * 0.25
-            local p = (progress + offset) % 1
+print("✅ Found pet folder:", PetFolder:GetFullName())
+
+-- ═══════════════════════════════════════════════════════════════
+--  PET DATA (for special handling)
+-- ═══════════════════════════════════════════════════════════════
+
+local FLYING_PETS = {
+    ["Dragonfly"] = true,
+    ["Golden Dragonfly"] = true,
+    ["Bee"] = true,
+    ["Firefly"] = true,
+    ["Butterfly"] = true,
+    ["Moth"] = true,
+}
+
+local function IsFlyingPet(petName)
+    return FLYING_PETS[petName] == true
+end
+
+-- ═══════════════════════════════════════════════════════════════
+--  GET ALL PETS
+-- ═══════════════════════════════════════════════════════════════
+
+local function GetAllPets()
+    local pets = {}
+    for _, template in ipairs(PetFolder:GetChildren()) do
+        if template:IsA("Model") then
+            table.insert(pets, template.Name)
+        end
+    end
+    table.sort(pets)
+    return pets
+end
+
+-- ═══════════════════════════════════════════════════════════════
+--  ACTIVE PET TRACKER
+-- ═══════════════════════════════════════════════════════════════
+
+local ActivePet = nil
+local FollowConnection = nil
+local BobConnection = nil
+
+-- ═══════════════════════════════════════════════════════════════
+--  DEEP CLONE WITH FIXES
+-- ═══════════════════════════════════════════════════════════════
+
+local function ClonePet(petName)
+    local template = PetFolder:FindFirstChild(petName)
+    if not template then
+        warn("❌ Pet not found:", petName)
+        return nil
+    end
+
+    local clone = template:Clone()
+
+    -- Restore PrimaryPart
+    if template.PrimaryPart then
+        local pp = clone:FindFirstChild(template.PrimaryPart.Name)
+        if pp then
+            clone.PrimaryPart = pp
+        end
+    end
+
+    -- Fix all BaseParts
+    for _, part in ipairs(clone:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = false
+            part.CanCollide = false
             
-            local x, y
-            if p < 0.25 then
-                -- Top edge left to right
-                x = p * 4
-                y = 0
-            elseif p < 0.5 then
-                -- Right edge top to bottom
-                x = 1
-                y = (p - 0.25) * 4
-            elseif p < 0.75 then
-                -- Bottom edge right to left
-                x = 1 - (p - 0.5) * 4
-                y = 1
-            else
-                -- Left edge bottom to top
-                x = 0
-                y = 1 - (p - 0.75) * 4
+            if part.Transparency >= 1 then
+                part.Transparency = 0
             end
             
-            dot.Position = UDim2.new(x, -4, y, -4)
+            -- Fix upside-down parts (Bee fix)
+            if part:IsA("MeshPart") or part:IsA("Part") then
+                -- Don't rotate individual parts, fix at model level
+            end
         end
         
-        task.wait(0.03)
+        -- Fix Motor6D joints
+        if part:IsA("Motor6D") then
+            local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
+            local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
+            if p0 and p1 then
+                part.Part0 = p0
+                part.Part1 = p1
+            end
+        end
+        
+        -- Fix animations
+        if part:IsA("Animation") then
+            local orig = template:FindFirstChild(part.Name, true)
+            if orig and orig:IsA("Animation") then
+                part.AnimationId = orig.AnimationId
+            end
+        end
+        
+        -- Fix decals/textures
+        if part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 0
+        end
     end
-end)
 
--- Shadow
-local shadow = Instance.new("ImageLabel")
-shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-shadow.Position = UDim2.new(0.5, 0, 0.5, 6)
-shadow.Size = UDim2.new(1, 30, 1, 30)
-shadow.BackgroundTransparency = 1
-shadow.Image = "rbxassetid://1316045217"
-shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-shadow.ImageTransparency = 0.6
-shadow.ScaleType = Enum.ScaleType.Slice
-shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-shadow.ZIndex = -2
-shadow.Parent = frame
+    -- Ensure AnimationController (CRITICAL for Dragonfly/Bee)
+    local animController = clone:FindFirstChildOfClass("AnimationController")
+    if not animController then
+        animController = Instance.new("AnimationController")
+        animController.Parent = clone
+    end
 
--- Header
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
-header.BorderSizePixel = 0
-header.ZIndex = 1
-header.Parent = frame
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 16)
-headerCorner.Parent = header
-
-local headerFix = Instance.new("Frame")
-headerFix.Size = UDim2.new(1, 0, 0, 20)
-headerFix.Position = UDim2.new(0, 0, 0.5, 0)
-headerFix.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
-headerFix.BorderSizePixel = 0
-headerFix.ZIndex = 1
-headerFix.Parent = header
-
--- Avatar in header
-local miniAvatar = Instance.new("ImageLabel")
-miniAvatar.Size = UDim2.new(0, 30, 0, 30)
-miniAvatar.Position = UDim2.new(0, 14, 0, 10)
-miniAvatar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-miniAvatar.Image = AVATAR_URL
-miniAvatar.ScaleType = Enum.ScaleType.Crop
-miniAvatar.ZIndex = 2
-miniAvatar.Parent = header
-
-Instance.new("UICorner", miniAvatar).CornerRadius = UDim.new(1, 0)
-
-local miniStroke = Instance.new("UIStroke")
-miniStroke.Color = Color3.fromRGB(70, 60, 75)
-miniStroke.Thickness = 1.5
-miniStroke.ZIndex = 2
-miniStroke.Parent = miniAvatar
-
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(0, 200, 0, 50)
-title.Position = UDim2.new(0, 52, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "MIKKA HUB"
-title.TextColor3 = Color3.fromRGB(220, 200, 215)
-title.TextSize = 16
-title.Font = Enum.Font.GothamBlack
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.ZIndex = 2
-title.Parent = header
-
--- Close
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 28, 0, 28)
-closeBtn.Position = UDim2.new(1, -38, 0, 11)
-closeBtn.BackgroundColor3 = Color3.fromRGB(40, 25, 30)
-closeBtn.Text = ""
-closeBtn.AutoButtonColor = false
-closeBtn.ZIndex = 2
-closeBtn.Parent = header
-
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-
-local closeIcon = Instance.new("TextLabel")
-closeIcon.Size = UDim2.new(1, 0, 1, 0)
-closeIcon.BackgroundTransparency = 1
-closeIcon.Text = "×"
-closeIcon.TextColor3 = Color3.fromRGB(160, 120, 135)
-closeIcon.TextSize = 20
-closeIcon.Font = Enum.Font.GothamBold
-closeIcon.ZIndex = 3
-closeIcon.Parent = closeBtn
-
-closeBtn.MouseEnter:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(220, 60, 90)}):Play()
-    closeIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-end)
-closeBtn.MouseLeave:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(40, 25, 30)}):Play()
-    closeIcon.TextColor3 = Color3.fromRGB(160, 120, 135)
-end)
-
--- Content
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -24, 0, 126)
-content.Position = UDim2.new(0, 12, 0, 52)
-content.BackgroundTransparency = 1
-content.ZIndex = 1
-content.Parent = frame
-
--- Left: Avatar with bounce + spin ring
-local leftSection = Instance.new("Frame")
-leftSection.Size = UDim2.new(0, 90, 1, 0)
-leftSection.BackgroundTransparency = 1
-leftSection.ZIndex = 1
-leftSection.Parent = content
-
--- Outer spinning ring
-local spinRing = Instance.new("Frame")
-spinRing.Size = UDim2.new(0, 84, 0, 84)
-spinRing.Position = UDim2.new(0.5, -42, 0, 0)
-spinRing.BackgroundTransparency = 1
-spinRing.ZIndex = 0
-spinRing.Parent = leftSection
-
--- Ring segments
-for i = 1, 3 do
-    local segment = Instance.new("Frame")
-    segment.Size = UDim2.new(0, 6, 0, 2)
-    segment.BackgroundColor3 = Color3.fromRGB(200, 100, 160)
-    segment.BorderSizePixel = 0
-    segment.ZIndex = 0
-    segment.Parent = spinRing
-    Instance.new("UICorner", segment).CornerRadius = UDim.new(0, 1)
+    clone:SetAttribute("IsPet", true)
+    clone:SetAttribute("PetName", petName)
     
-    spawn(function()
-        local angle = (i / 3) * math.pi * 2
-        while segment.Parent do
-            angle = angle + 0.03
-            local x = math.cos(angle) * 42
-            local y = math.sin(angle) * 42
-            segment.Position = UDim2.new(0.5, x - 3, 0.5, y - 1)
-            segment.Rotation = math.deg(angle)
-            task.wait(0.03)
+    return clone
+end
+
+-- ═══════════════════════════════════════════════════════════════
+--  ANIMATIONS
+-- ═══════════════════════════════════════════════════════════════
+
+local function StartAnimations(pet, petName)
+    local animController = pet:FindFirstChildOfClass("AnimationController")
+    if not animController then return end
+
+    -- Find and play appropriate animation
+    local foundAnim = false
+    for _, desc in ipairs(pet:GetDescendants()) do
+        if desc:IsA("Animation") then
+            local name = desc.Name:lower()
+            
+            -- Flying pets need fly animation
+            if IsFlyingPet(petName) then
+                if name:find("fly") or name:find("hover") or name:find("idle") then
+                    local track = animController:LoadAnimation(desc)
+                    track.Looped = true
+                    track.Priority = Enum.AnimationPriority.Movement
+                    track:Play()
+                    foundAnim = true
+                    print("▶ Fly anim:", desc.Name)
+                    break
+                end
+            else
+                -- Ground pets
+                if name:find("idle") or name:find("walk") or name:find("sit") then
+                    local track = animController:LoadAnimation(desc)
+                    track.Looped = true
+                    track.Priority = Enum.AnimationPriority.Idle
+                    track:Play()
+                    foundAnim = true
+                    print("▶ Idle anim:", desc.Name)
+                    break
+                end
+            end
+        end
+    end
+
+    -- If no animation found, try any animation
+    if not foundAnim then
+        for _, desc in ipairs(pet:GetDescendants()) do
+            if desc:IsA("Animation") then
+                local track = animController:LoadAnimation(desc)
+                track.Looped = true
+                track:Play()
+                print("▶ Fallback anim:", desc.Name)
+                break
+            end
+        end
+    end
+
+    -- Enable Animate script
+    local animate = pet:FindFirstChild("Animate")
+    if animate and animate:IsA("Script") then
+        animate.Disabled = false
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+--  FOLLOW SYSTEM
+-- ═══════════════════════════════════════════════════════════════
+
+local function FollowPlayer(pet, petName)
+    if FollowConnection then
+        FollowConnection:Disconnect()
+        FollowConnection = nil
+    end
+    
+    if BobConnection then
+        BobConnection:Disconnect()
+        BobConnection = nil
+    end
+
+    local isFlying = IsFlyingPet(petName)
+    local time = 0
+
+    FollowConnection = RunService.Heartbeat:Connect(function(dt)
+        if not pet or not pet.Parent then
+            if FollowConnection then FollowConnection:Disconnect() end
+            if BobConnection then BobConnection:Disconnect() end
+            return
+        end
+
+        local char = player.Character
+        if not char then return end
+
+        local currentHRP = char:FindFirstChild("HumanoidRootPart")
+        if not currentHRP then return end
+
+        -- Calculate target position
+        local baseOffset = CFrame.new(0, 0, -CONFIG.FollowDistance)
+        local targetCFrame = currentHRP.CFrame * baseOffset
+        
+        local targetPos = targetCFrame.Position
+        local targetLook = currentHRP.CFrame.LookVector
+
+        -- Flying pets hover above
+        if isFlying then
+            targetPos = targetPos + Vector3.new(0, CONFIG.FlyHeight, 0)
+        else
+            targetPos = targetPos + Vector3.new(0, CONFIG.HeightOffset, 0)
+        end
+
+        -- Smooth follow
+        local currentCF = pet:GetPivot()
+        local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
+
+        -- Face direction of travel (slightly lagged for natural feel)
+        local lookTarget = currentHRP.Position + currentHRP.Velocity * 0.1
+        local lookDir = (lookTarget - smoothedPos).Unit
+        if lookDir.Magnitude < 0.001 then
+            lookDir = currentHRP.CFrame.LookVector
+        end
+
+        -- Build CFrame with proper orientation
+        local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
+        
+        -- FIX BEE UPSIDE DOWN: Apply rotation offset if needed
+        -- Some pets need 180 degree Y rotation or X flip
+        if petName == "Bee" or petName == "Firefly" then
+            -- Bee spawns upside down, flip it
+            newCF = newCF * CFrame.Angles(0, math.pi, 0)
+        end
+
+        pet:PivotTo(newCF)
+    end)
+
+    -- Bobbing animation for idle
+    BobConnection = RunService.Heartbeat:Connect(function(dt)
+        if not pet or not pet.Parent then
+            if BobConnection then BobConnection:Disconnect() end
+            return
+        end
+        
+        time = time + dt * CONFIG.BobSpeed
+        
+        local char = player.Character
+        if not char then return end
+        local currentHRP = char:FindFirstChild("HumanoidRootPart")
+        if not currentHRP then return end
+
+        -- Only bob when nearly stopped
+        if currentHRP.Velocity.Magnitude < 2 then
+            local bobOffset = math.sin(time) * CONFIG.BobAmount
+            local currentCF = pet:GetPivot()
+            local bobbedPos = currentCF.Position + Vector3.new(0, bobOffset, 0)
+            
+            local newCF = CFrame.new(bobbedPos) * currentCF.Rotation
+            pet:PivotTo(newCF)
         end
     end)
 end
 
--- Avatar frame with bounce
-local avatarFrame = Instance.new("Frame")
-avatarFrame.Size = UDim2.new(0, 68, 0, 68)
-avatarFrame.Position = UDim2.new(0.5, -34, 0, 8)
-avatarFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-avatarFrame.BorderSizePixel = 0
-avatarFrame.ZIndex = 1
-avatarFrame.Parent = leftSection
+-- ═══════════════════════════════════════════════════════════════
+--  SPAWN / EQUIP PET
+-- ═══════════════════════════════════════════════════════════════
 
-Instance.new("UICorner", avatarFrame).CornerRadius = UDim.new(1, 0)
-
-local avatarStroke = Instance.new("UIStroke")
-avatarStroke.Color = Color3.fromRGB(100, 80, 115)
-avatarStroke.Thickness = 2
-avatarStroke.ZIndex = 1
-avatarStroke.Parent = avatarFrame
-
--- Bounce animation
-spawn(function()
-    while avatarFrame.Parent do
-        TweenService:Create(avatarFrame, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {Position = UDim2.new(0.5, -34, 0, 6)}):Play()
-        task.wait(1.5)
-        TweenService:Create(avatarFrame, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {Position = UDim2.new(0.5, -34, 0, 10)}):Play()
-        task.wait(1.5)
+function EquipPet(petName)
+    -- Despawn current
+    if ActivePet then
+        if FollowConnection then
+            FollowConnection:Disconnect()
+            FollowConnection = nil
+        end
+        if BobConnection then
+            BobConnection:Disconnect()
+            BobConnection = nil
+        end
+        ActivePet:Destroy()
+        ActivePet = nil
     end
-end)
 
--- Avatar image
-local avatarImage = Instance.new("ImageLabel")
-avatarImage.Size = UDim2.new(1, 0, 1, 0)
-avatarImage.BackgroundTransparency = 1
-avatarImage.Image = AVATAR_URL
-avatarImage.ScaleType = Enum.ScaleType.Crop
-avatarImage.ZIndex = 1
-avatarImage.Parent = avatarFrame
+    local pet = ClonePet(petName)
+    if not pet then return end
 
-Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(1, 0)
-
--- Hover scale
-avatarFrame.MouseEnter:Connect(function()
-    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 72, 0, 72), Position = UDim2.new(0.5, -36, 0, 6)}):Play()
-    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(220, 120, 180)}):Play()
-end)
-avatarFrame.MouseLeave:Connect(function()
-    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 68, 0, 68), Position = UDim2.new(0.5, -34, 0, 8)}):Play()
-    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 80, 115)}):Play()
-end)
-
--- Status dot
-local statusDot = Instance.new("Frame")
-statusDot.Size = UDim2.new(0, 12, 0, 12)
-statusDot.Position = UDim2.new(1, -16, 1, -16)
-statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
-statusDot.BorderSizePixel = 0
-statusDot.ZIndex = 2
-statusDot.Parent = avatarFrame
-
-Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
-
-local statusRing = Instance.new("UIStroke")
-statusRing.Color = Color3.fromRGB(18, 18, 22)
-statusRing.Thickness = 2
-statusRing.Parent = statusDot
-
--- Username
-local username = Instance.new("TextLabel")
-username.Size = UDim2.new(1, 0, 0, 18)
-username.Position = UDim2.new(0, 0, 0, 94)
-username.BackgroundTransparency = 1
-username.Text = "@" .. player.Name
-username.TextColor3 = Color3.fromRGB(130, 120, 135)
-username.TextSize = 11
-username.Font = Enum.Font.Gotham
-username.TextXAlignment = Enum.TextXAlignment.Center
-username.ZIndex = 1
-username.Parent = leftSection
-
--- Right: Number Display
-local rightSection = Instance.new("Frame")
-rightSection.Size = UDim2.new(1, -98, 1, 0)
-rightSection.Position = UDim2.new(0, 98, 0, 0)
-rightSection.BackgroundTransparency = 1
-rightSection.ZIndex = 1
-rightSection.Parent = content
-
--- Number card
-local numberCard = Instance.new("Frame")
-numberCard.Size = UDim2.new(1, 0, 0, 70)
-numberCard.Position = UDim2.new(0, 0, 0, 6)
-numberCard.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
-numberCard.BorderSizePixel = 0
-numberCard.ZIndex = 1
-numberCard.Parent = rightSection
-
-Instance.new("UICorner", numberCard).CornerRadius = UDim.new(0, 12)
-
-local cardStroke = Instance.new("UIStroke")
-cardStroke.Color = Color3.fromRGB(50, 45, 55)
-cardStroke.Thickness = 1
-cardStroke.ZIndex = 1
-cardStroke.Parent = numberCard
-
--- Big number
-local valueText = Instance.new("TextLabel")
-valueText.Size = UDim2.new(1, -16, 0, 40)
-valueText.Position = UDim2.new(0, 10, 0, 8)
-valueText.BackgroundTransparency = 1
-valueText.Text = tostring(sheckles.Value)
-valueText.TextColor3 = Color3.fromRGB(255, 255, 255)
-valueText.TextSize = 32
-valueText.Font = Enum.Font.GothamBlack
-valueText.TextXAlignment = Enum.TextXAlignment.Left
-valueText.ZIndex = 2
-valueText.Parent = numberCard
-
-local valueLabel = Instance.new("TextLabel")
-valueLabel.Size = UDim2.new(1, -16, 0, 16)
-valueLabel.Position = UDim2.new(0, 10, 0, 46)
-valueLabel.BackgroundTransparency = 1
-valueLabel.Text = "SHECKLES"
-valueLabel.TextColor3 = Color3.fromRGB(150, 130, 145)
-valueLabel.TextSize = 10
-valueLabel.Font = Enum.Font.GothamBold
-valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-valueLabel.ZIndex = 2
-valueLabel.Parent = numberCard
-
--- Controls
-local controls = Instance.new("Frame")
-controls.Size = UDim2.new(1, 0, 0, 36)
-controls.Position = UDim2.new(0, 0, 0, 84)
-controls.BackgroundTransparency = 1
-controls.ZIndex = 1
-controls.Parent = rightSection
-
-local inputBox = Instance.new("TextBox")
-inputBox.Size = UDim2.new(0.4, 0, 0, 32)
-inputBox.Position = UDim2.new(0, 0, 0, 2)
-inputBox.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-inputBox.Text = "1000"
-inputBox.TextColor3 = Color3.fromRGB(200, 200, 205)
-inputBox.PlaceholderText = "Amount"
-inputBox.PlaceholderColor3 = Color3.fromRGB(70, 70, 75)
-inputBox.TextSize = 13
-inputBox.Font = Enum.Font.Gotham
-inputBox.ClearTextOnFocus = true
-inputBox.ZIndex = 2
-inputBox.Parent = controls
-
-Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 10)
-
-local inputStroke = Instance.new("UIStroke")
-inputStroke.Color = Color3.fromRGB(50, 50, 55)
-inputStroke.Thickness = 1
-inputStroke.ZIndex = 2
-inputStroke.Parent = inputBox
-
-local addBtn = Instance.new("TextButton")
-addBtn.Size = UDim2.new(0.56, 0, 0, 32)
-addBtn.Position = UDim2.new(0.44, 0, 0, 2)
-addBtn.BackgroundColor3 = Color3.fromRGB(175, 85, 130)
-addBtn.Text = "ADD"
-addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-addBtn.TextSize = 13
-addBtn.Font = Enum.Font.GothamBold
-addBtn.AutoButtonColor = false
-addBtn.ZIndex = 2
-addBtn.Parent = controls
-
-Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0, 10)
-
-addBtn.MouseEnter:Connect(function()
-    TweenService:Create(addBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(205, 105, 160)}):Play()
-    inputStroke.Color = Color3.fromRGB(80, 70, 90)
-end)
-addBtn.MouseLeave:Connect(function()
-    TweenService:Create(addBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(175, 85, 130)}):Play()
-    inputStroke.Color = Color3.fromRGB(50, 50, 55)
-end)
-
-addBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        TweenService:Create(addBtn, TweenInfo.new(0.06), {BackgroundColor3 = Color3.fromRGB(145, 65, 110)}):Play()
+    local char = player.Character
+    if not char then
+        warn("❌ Character not loaded")
+        return
     end
-end)
-addBtn.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        TweenService:Create(addBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(175, 85, 130)}):Play()
-    end
-end)
 
--- Functionality
-local function addSheckles(amount)
-    amount = tonumber(amount) or 1000
-    local target = sheckles.Value + amount
-    TweenService:Create(valueText, TweenInfo.new(0.1), {TextTransparency = 0.3}):Play()
-    task.wait(0.06)
-    sheckles.Value = target
-    valueText.Text = tostring(target)
-    TweenService:Create(valueText, TweenInfo.new(0.15), {TextTransparency = 0}):Play()
+    local currentHRP = char:WaitForChild("HumanoidRootPart")
+    
+    -- Spawn beside player
+    local spawnOffset = CFrame.new(CONFIG.FollowDistance, 0, 0)
+    pet:PivotTo(currentHRP.CFrame * spawnOffset)
+    pet.Parent = workspace
+
+    -- Fix visibility on all parts after parenting
+    for _, part in ipairs(pet:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = false
+            part.CanCollide = false
+            if part.Transparency >= 1 then
+                part.Transparency = 0
+            end
+        end
+    end
+
+    ActivePet = pet
+    FollowPlayer(pet, petName)
+    StartAnimations(pet, petName)
+
+    print("✅ EQUIPPED:", petName, "| Flying:", IsFlyingPet(petName))
+    return pet
 end
 
-addBtn.MouseButton1Click:Connect(function()
-    addSheckles(inputBox.Text)
-end)
+function UnequipPet()
+    if ActivePet then
+        if FollowConnection then
+            FollowConnection:Disconnect()
+            FollowConnection = nil
+        end
+        if BobConnection then
+            BobConnection:Disconnect()
+            BobConnection = nil
+        end
+        ActivePet:Destroy()
+        ActivePet = nil
+        print("❌ Unequipped")
+    end
+end
 
-sheckles.Changed:Connect(function(newVal)
-    valueText.Text = tostring(newVal)
-end)
+-- ═══════════════════════════════════════════════════════════════
+--  DRAGGABLE GUI
+-- ═══════════════════════════════════════════════════════════════
 
--- Dragging
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GAG2PetSpawner"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Toggle button
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "Toggle"
+toggleBtn.Size = UDim2.new(0, 55, 0, 55)
+toggleBtn.Position = UDim2.new(0, 15, 0.5, -27)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 80)
+toggleBtn.Text = "🐾"
+toggleBtn.TextSize = 28
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextColor3 = Color3.fromRGB(50, 30, 0)
+
+local tCorner = Instance.new("UICorner")
+tCorner.CornerRadius = UDim.new(1, 0)
+tCorner.Parent = toggleBtn
+
+local tStroke = Instance.new("UIStroke")
+tStroke.Color = Color3.fromRGB(200, 150, 40)
+tStroke.Thickness = 3
+tStroke.Parent = toggleBtn
+
+toggleBtn.Parent = screenGui
+
+-- Main frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Main"
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.ClipsDescendants = true
+
+local mCorner = Instance.new("UICorner")
+mCorner.CornerRadius = UDim.new(0, 14)
+mCorner.Parent = mainFrame
+
+local mStroke = Instance.new("UIStroke")
+mStroke.Color = Color3.fromRGB(80, 80, 100)
+mStroke.Thickness = 2
+mStroke.Parent = mainFrame
+
+mainFrame.Parent = screenGui
+
+-- DRAG
 local dragging = false
-local dragStart, startPos
+local dragStart = nil
+local startPos = nil
 
-frame.InputBegan:Connect(function(input)
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+mainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
-        startPos = frame.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
-frame.InputChanged:Connect(function(input)
+mainFrame.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        updateDrag(input)
     end
 end)
 
-frame.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateDrag(input)
     end
 end)
 
--- TOGGLE - Bottom Left
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(0, 52, 0, 52)
-toggle.Position = UDim2.new(0, 20, 1, -72)
-toggle.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
-toggle.Text = ""
-toggle.AutoButtonColor = false
-toggle.Visible = false
-toggle.Parent = sg
+-- Title bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 42)
+titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+titleBar.BorderSizePixel = 0
 
-Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+local tbCorner = Instance.new("UICorner")
+tbCorner.CornerRadius = UDim.new(0, 14)
+tbCorner.Parent = titleBar
 
-local toggleStroke = Instance.new("UIStroke")
-toggleStroke.Color = Color3.fromRGB(80, 70, 90)
-toggleStroke.Thickness = 2
-toggleStroke.Parent = toggle
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -100, 1, 0)
+titleLabel.Position = UDim2.new(0, 12, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "🐾 Pet Spawner"
+titleLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
 
--- Toggle traveling glow
-local toggleGlowDots = {}
-for i = 1, 2 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 6, 0, 6)
-    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 0
-    dot.Parent = toggle
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    table.insert(toggleGlowDots, dot)
+titleBar.Parent = mainFrame
+
+-- Close
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 34, 0, 34)
+closeBtn.Position = UDim2.new(1, -39, 0, 4)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+closeBtn.Text = "✕"
+closeBtn.TextSize = 16
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local cCorner = Instance.new("UICorner")
+cCorner.CornerRadius = UDim.new(0, 10)
+cCorner.Parent = closeBtn
+
+closeBtn.Parent = mainFrame
+
+-- Unequip button
+local unequipBtn = Instance.new("TextButton")
+unequipBtn.Size = UDim2.new(0, 70, 0, 28)
+unequipBtn.Position = UDim2.new(1, -82, 0, 7)
+unequipBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+unequipBtn.Text = "Unequip"
+unequipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+unequipBtn.TextSize = 11
+unequipBtn.Font = Enum.Font.GothamBold
+unequipBtn.Visible = false
+
+local uCorner = Instance.new("UICorner")
+uCorner.CornerRadius = UDim.new(0, 8)
+uCorner.Parent = unequipBtn
+
+unequipBtn.Parent = titleBar
+
+-- Scroll
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -16, 1, -95)
+scroll.Position = UDim2.new(0, 8, 0, 48)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 5
+scroll.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = mainFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 6)
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+listLayout.Parent = scroll
+
+-- Status
+local statusFrame = Instance.new("Frame")
+statusFrame.Size = UDim2.new(1, -16, 0, 38)
+statusFrame.Position = UDim2.new(0, 8, 1, -42)
+statusFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+
+local sfCorner = Instance.new("UICorner")
+sfCorner.CornerRadius = UDim.new(0, 10)
+sfCorner.Parent = statusFrame
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -10, 1, 0)
+statusLabel.Position = UDim2.new(0, 5, 0, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Equipped: None"
+statusLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+statusLabel.TextSize = 13
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = statusFrame
+
+statusFrame.Parent = mainFrame
+
+-- ═══════════════════════════════════════════════════════════════
+--  POPULATE LIST
+-- ═══════════════════════════════════════════════════════════════
+
+local allPets = GetAllPets()
+print("📋 Found", #allPets, "pets")
+
+for _, petName in ipairs(allPets) do
+    local btn = Instance.new("TextButton")
+    btn.Name = petName
+    btn.Size = UDim2.new(1, -10, 0, 42)
+    btn.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+    btn.Text = "  " .. petName
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = btn
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(75, 75, 95)
+    stroke.Thickness = 1
+    stroke.Parent = btn
+
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.new(0, 28, 0, 28)
+    arrow.Position = UDim2.new(1, -34, 0.5, -14)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▶"
+    arrow.TextColor3 = Color3.fromRGB(100, 255, 100)
+    arrow.TextSize = 16
+    arrow.Font = Enum.Font.GothamBold
+    arrow.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        EquipPet(petName)
+        statusLabel.Text = "Equipped: " .. petName
+        unequipBtn.Visible = true
+
+        for _, child in ipairs(scroll:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+            end
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(70, 120, 70)
+    end)
+
+    btn.Parent = scroll
 end
 
-spawn(function()
-    local progress = 0
-    while toggle.Parent do
-        progress = progress + 0.015
-        if progress > 1 then progress = 0 end
-        
-        for i, dot in ipairs(toggleGlowDots) do
-            local offset = (i - 1) * 0.5
-            local p = (progress + offset) % 1
-            
-            local angle = p * math.pi * 2
-            local x = math.cos(angle) * 26
-            local y = math.sin(angle) * 26
-            
-            dot.Position = UDim2.new(0.5, x - 3, 0.5, y - 3)
+-- ═══════════════════════════════════════════════════════════════
+--  BUTTONS
+-- ═══════════════════════════════════════════════════════════════
+
+local function toggleGUI()
+    if mainFrame.Visible then
+        TweenService:Create(mainFrame, TweenInfo.new(0.18), {
+            Size = UDim2.new(0, 300, 0, 0),
+            Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, 0.5, 0)
+        }):Play()
+        task.wait(0.18)
+        mainFrame.Visible = false
+    else
+        mainFrame.Visible = true
+        mainFrame.Size = UDim2.new(0, 300, 0, 0)
+        TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 300, 0, 400),
+            Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
+        }):Play()
+    end
+end
+
+toggleBtn.MouseButton1Click:Connect(toggleGUI)
+closeBtn.MouseButton1Click:Connect(toggleGUI)
+
+unequipBtn.MouseButton1Click:Connect(function()
+    UnequipPet()
+    statusLabel.Text = "Equipped: None"
+    unequipBtn.Visible = false
+    for _, child in ipairs(scroll:GetChildren()) do
+        if child:IsA("TextButton") then
+            child.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
         end
-        
-        task.wait(0.03)
     end
 end)
 
-local toggleAvatar = Instance.new("ImageLabel")
-toggleAvatar.Size = UDim2.new(0, 42, 0, 42)
-toggleAvatar.Position = UDim2.new(0.5, -21, 0.5, -21)
-toggleAvatar.BackgroundTransparency = 1
-toggleAvatar.Image = AVATAR_URL
-toggleAvatar.ScaleType = Enum.ScaleType.Crop
-toggleAvatar.ZIndex = 1
-toggleAvatar.Parent = toggle
-
-Instance.new("UICorner", toggleAvatar).CornerRadius = UDim.new(1, 0)
-
-local toggleStatus = Instance.new("Frame")
-toggleStatus.Size = UDim2.new(0, 10, 0, 10)
-toggleStatus.Position = UDim2.new(1, -13, 1, -13)
-toggleStatus.BackgroundColor3 = Color3.fromRGB(0, 210, 100)
-toggleStatus.BorderSizePixel = 0
-toggleStatus.ZIndex = 2
-toggleStatus.Parent = toggle
-
-Instance.new("UICorner", toggleStatus).CornerRadius = UDim.new(1, 0)
-
-local toggleRing = Instance.new("UIStroke")
-toggleRing.Color = Color3.fromRGB(22, 22, 26)
-toggleRing.Thickness = 2
-toggleRing.Parent = toggleStatus
-
-toggle.MouseEnter:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(35, 35, 42), Size = UDim2.new(0, 56, 0, 56)}):Play()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(0, 18, 1, -76)}):Play()
-end)
-toggle.MouseLeave:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(22, 22, 26), Size = UDim2.new(0, 52, 0, 52)}):Play()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(0, 20, 1, -72)}):Play()
+-- Keybind P
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.P then
+        toggleGUI()
+    end
 end)
 
--- Close animation
-closeBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0)
-    }):Play()
-    task.wait(0.2)
-    frame.Visible = false
-    toggle.Visible = true
-    toggle.Size = UDim2.new(0, 0, 0, 0)
-    toggle.Position = UDim2.new(0, 46, 1, -26)
-    TweenService:Create(toggle, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 52, 0, 52),
-        Position = UDim2.new(0, 20, 1, -72)
-    }):Play()
+-- Auto-unequip on death
+player.CharacterRemoving:Connect(function()
+    UnequipPet()
+    statusLabel.Text = "Equipped: None"
+    unequipBtn.Visible = false
 end)
 
--- Open animation
-toggle.MouseButton1Click:Connect(function()
-    toggle.Visible = false
-    frame.Visible = true
-    frame.Size = UDim2.new(0, 0, 0, 0)
-    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 340, 0, 190),
-        Position = UDim2.new(0.5, -170, 0.5, -95)
-    }):Play()
-end)
-
--- Initial open
-frame.Size = UDim2.new(0, 0, 0, 0)
-frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 340, 0, 190),
-    Position = UDim2.new(0.5, -170, 0.5, -95)
-}):Play()
+print("🐾 GAG 2 Pet Spawner loaded!")
+print("📋 Pets:", #allPets, "| Press P or click 🐾")
+print("🖱️ Draggable GUI | Flying pets hover, ground pets walk")
