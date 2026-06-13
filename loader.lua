@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 --  GAG 2 - PET SPAWNER (Delta Executor)
---  Pets ON ground (not inside) | Real animations working
+--  Auto-finds animation location | Uses pet's actual animation setup
 --  Path: ReplicatedStorage.Assets.Pets
 -- ═══════════════════════════════════════════════════════════════
 
@@ -21,7 +21,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local CONFIG = {
     PetFolderPath = {"Assets", "Pets"},
     FollowDistance = 4,
-    HeightAboveGround = 1,  -- spawn 1 stud ABOVE ground
+    HeightAboveGround = 1,
     FollowSmoothness = 0.1,
     MaxPets = 10,
 }
@@ -40,6 +40,67 @@ for _, folderName in ipairs(CONFIG.PetFolderPath) do
 end
 
 print("✅ Found pet folder:", PetFolder:GetFullName())
+
+-- ═══════════════════════════════════════════════════════════════
+--  SCAN PET STRUCTURE - FIND WHERE ANIMATIONS ARE
+-- ═══════════════════════════════════════════════════════════════
+
+local function ScanPet(petName)
+    local template = PetFolder:FindFirstChild(petName)
+    if not template then return end
+    
+    print("\n========== SCANNING:", petName, "==========")
+    
+    -- Check top level
+    print("Top level children:")
+    for _, child in ipairs(template:GetChildren()) do
+        print("  -", child.Name, "(", child.ClassName, ")")
+    end
+    
+    -- Find ALL Animation objects
+    print("\nAll Animation objects:")
+    local animCount = 0
+    for _, desc in ipairs(template:GetDescendants()) do
+        if desc:IsA("Animation") then
+            animCount = animCount + 1
+            print("  [" .. animCount .. "]", desc:GetFullName())
+            print("     ID:", desc.AnimationId ~= "" and desc.AnimationId or "EMPTY")
+            print("     Parent:", desc.Parent and desc.Parent.Name or "nil", "(", desc.Parent and desc.Parent.ClassName or "nil", ")")
+        end
+    end
+    
+    -- Find AnimationController
+    print("\nAnimationControllers:")
+    for _, desc in ipairs(template:GetDescendants()) do
+        if desc:IsA("AnimationController") then
+            print("  -", desc:GetFullName())
+        end
+    end
+    
+    -- Find Humanoid
+    print("\nHumanoids:")
+    for _, desc in ipairs(template:GetDescendants()) do
+        if desc:IsA("Humanoid") then
+            print("  -", desc:GetFullName())
+        end
+    end
+    
+    -- Find Animate script
+    print("\nAnimate scripts:")
+    for _, desc in ipairs(template:GetDescendants()) do
+        if desc:IsA("Script") and desc.Name:lower():find("animate") then
+            print("  -", desc:GetFullName())
+        end
+    end
+    
+    print("========================\n")
+end
+
+-- Scan first pet to understand structure
+local firstPet = PetFolder:FindFirstChildOfClass("Model")
+if firstPet then
+    ScanPet(firstPet.Name)
+end
 
 -- ═══════════════════════════════════════════════════════════════
 --  GET ALL PETS
@@ -63,7 +124,7 @@ end
 local SpawnedPets = {}
 
 -- ═══════════════════════════════════════════════════════════════
---  GET GROUND HEIGHT - EXCLUDE PETS FROM RAYCAST
+--  GET GROUND HEIGHT
 -- ═══════════════════════════════════════════════════════════════
 
 local function GetGroundHeight(position)
@@ -72,7 +133,6 @@ local function GetGroundHeight(position)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     
-    -- Build filter: exclude ALL spawned pets + player
     local filterList = {}
     for _, petData in ipairs(SpawnedPets) do
         if petData.Model and petData.Model.Parent then
@@ -89,7 +149,6 @@ local function GetGroundHeight(position)
         return result.Position.Y
     end
     
-    -- Fallback: use character's foot position
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         return player.Character.HumanoidRootPart.Position.Y - 3
     end
@@ -98,7 +157,7 @@ local function GetGroundHeight(position)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  CLONE PET - FIX ANIMATIONS PROPERLY
+--  CLONE PET
 -- ═══════════════════════════════════════════════════════════════
 
 local function ClonePet(petName)
@@ -163,11 +222,13 @@ local function ClonePet(petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  ANIMATIONS - PROPER SETUP
+--  ANIMATIONS - AUTO-FIND AND PLAY
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartAnimations(pet, petName)
-    -- Step 1: Find existing AnimationController or create one
+    print("\n--- ANIMATIONS for", petName, "---")
+    
+    -- Step 1: Find AnimationController
     local animController = pet:FindFirstChildOfClass("AnimationController")
     if not animController then
         animController = Instance.new("AnimationController")
@@ -175,103 +236,82 @@ local function StartAnimations(pet, petName)
         animController.Parent = pet
         print("📎 Created AnimationController")
     else
-        print("📎 Found AnimationController")
+        print("📎 Found AnimationController:", animController:GetFullName())
     end
     
-    -- Step 2: Find the "Animation" part
-    local animPart = pet:FindFirstChild("Animation")
-    print("🔍 Animation part:", animPart and "FOUND" or "NOT FOUND")
+    -- Step 2: Find ALL Animation objects anywhere in the pet
+    local allAnims = {}
+    for _, desc in ipairs(pet:GetDescendants()) do
+        if desc:IsA("Animation") and desc.AnimationId ~= "" then
+            table.insert(allAnims, desc)
+        end
+    end
     
+    print("🎬 Found", #allAnims, "Animation objects")
+    
+    -- Step 3: Try to play each one
     local playedAny = false
-    
-    -- Step 3: Play animations from Animation part
-    if animPart then
-        -- Check descendants (deep search)
-        for _, child in ipairs(animPart:GetDescendants()) do
-            if child:IsA("Animation") then
-                print("  🎬 Found anim (deep):", child.Name, "ID:", child.AnimationId ~= "" and "YES" or "EMPTY")
-                if child.AnimationId ~= "" then
-                    local success, track = pcall(function()
-                        return animController:LoadAnimation(child)
-                    end)
-                    if success and track then
-                        track.Looped = true
-                        track.Priority = Enum.AnimationPriority.Action
-                        track:Play()
-                        playedAny = true
-                        print("  ▶ PLAYING:", child.Name)
-                    else
-                        print("  ❌ Failed to load:", child.Name)
-                    end
-                end
-            end
-        end
+    for i, anim in ipairs(allAnims) do
+        print("  [" .. i .. "]", anim.Name, "at", anim:GetFullName())
+        print("     ID:", anim.AnimationId:sub(1, 50), "...")
         
-        -- Check direct children
-        for _, child in ipairs(animPart:GetChildren()) do
-            if child:IsA("Animation") then
-                print("  🎬 Found anim (direct):", child.Name, "ID:", child.AnimationId ~= "" and "YES" or "EMPTY")
-                if child.AnimationId ~= "" then
-                    local success, track = pcall(function()
-                        return animController:LoadAnimation(child)
-                    end)
-                    if success and track then
-                        track.Looped = true
-                        track.Priority = Enum.AnimationPriority.Action
-                        track:Play()
-                        playedAny = true
-                        print("  ▶ PLAYING:", child.Name)
-                    else
-                        print("  ❌ Failed to load:", child.Name)
-                    end
-                end
-            end
+        local success, track = pcall(function()
+            return animController:LoadAnimation(anim)
+        end)
+        
+        if success and track then
+            track.Looped = true
+            track.Priority = Enum.AnimationPriority.Action
+            track:Play()
+            playedAny = true
+            print("     ▶ PLAYING")
+        else
+            print("     ❌ Failed:", tostring(track))
         end
     end
     
-    -- Step 4: Fallback - search entire pet
-    if not playedAny then
-        print("🔍 Searching entire pet for animations...")
-        for _, desc in ipairs(pet:GetDescendants()) do
-            if desc:IsA("Animation") and desc.AnimationId ~= "" then
-                local success, track = pcall(function()
-                    return animController:LoadAnimation(desc)
-                end)
-                if success and track then
-                    track.Looped = true
-                    track.Priority = Enum.AnimationPriority.Action
-                    track:Play()
-                    playedAny = true
-                    print("  ▶ Fallback:", desc.Name)
-                end
-            end
+    -- Step 4: Check for Animate script
+    local animateScript = nil
+    for _, desc in ipairs(pet:GetDescendants()) do
+        if desc:IsA("Script") and desc.Name:lower() == "animate" then
+            animateScript = desc
+            break
         end
     end
     
-    -- Step 5: Handle Animate script
-    local animate = pet:FindFirstChild("Animate")
-    if animate and animate:IsA("Script") then
-        print("📜 Found Animate script")
-        -- Clone and re-enable (sometimes scripts break on clone)
-        local newAnimate = animate:Clone()
-        animate:Destroy()
-        newAnimate.Parent = pet
-        newAnimate.Disabled = false
+    if animateScript then
+        print("📜 Found Animate script:", animateScript:GetFullName())
+        -- Clone to refresh
+        local newScript = animateScript:Clone()
+        animateScript:Destroy()
+        newScript.Parent = pet
+        newScript.Disabled = false
+        print("     ▶ Enabled fresh copy")
         playedAny = true
-        print("  ▶ Animate script enabled")
+    else
+        print("📜 No Animate script found")
+    end
+    
+    -- Step 5: Check for Humanoid (some pets need it)
+    local humanoid = pet:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        print("👤 Found Humanoid")
+    else
+        print("👤 No Humanoid")
     end
     
     if not playedAny then
         warn("⚠ NO ANIMATIONS PLAYED for", petName)
     else
-        print("✅ Animations active for", petName)
+        print("✅ Animations active")
     end
     
+    print("---\n")
     return playedAny
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  FOLLOW SYSTEM - KEEP PETS ON GROUND SURFACE
+--  FOLLOW SYSTEM
 -- ═══════════════════════════════════════════════════════════════
 
 local function FollowPlayer(pet, petName)
@@ -289,7 +329,6 @@ local function FollowPlayer(pet, petName)
         local currentHRP = char:FindFirstChild("HumanoidRootPart")
         if not currentHRP then return end
 
-        -- Find pet index for spread
         local petIndex = 0
         for i, p in ipairs(SpawnedPets) do
             if p.Model == pet then
@@ -298,28 +337,18 @@ local function FollowPlayer(pet, petName)
             end
         end
         
-        -- Position behind player
         local angleOffset = (petIndex - 1) * 0.8
         local baseOffset = CFrame.Angles(0, angleOffset, 0) * CFrame.new(0, 0, -CONFIG.FollowDistance)
         local targetCFrame = currentHRP.CFrame * baseOffset
         
         local targetPos = targetCFrame.Position
 
-        -- RAYCAST TO GROUND - find surface height
         local groundY = GetGroundHeight(targetPos)
-        
-        -- Position ABOVE ground (not inside)
-        targetPos = Vector3.new(
-            targetPos.X, 
-            groundY + CONFIG.HeightAboveGround, 
-            targetPos.Z
-        )
+        targetPos = Vector3.new(targetPos.X, groundY + CONFIG.HeightAboveGround, targetPos.Z)
 
-        -- Smooth follow
         local currentCF = pet:GetPivot()
         local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
 
-        -- Face player
         local lookDir = currentHRP.CFrame.LookVector
         if lookDir.Magnitude < 0.001 then
             lookDir = Vector3.new(0, 0, -1)
@@ -327,7 +356,6 @@ local function FollowPlayer(pet, petName)
 
         local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
         
-        -- Bee upside down fix
         if petName == "Bee" or petName == "Firefly" then
             newCF = newCF * CFrame.Angles(0, math.pi, 0)
         end
@@ -339,7 +367,7 @@ local function FollowPlayer(pet, petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  SPAWN PET - FIX GROUND POSITION
+--  SPAWN PET
 -- ═══════════════════════════════════════════════════════════════
 
 function SpawnPet(petName)
@@ -367,43 +395,25 @@ function SpawnPet(petName)
 
     local currentHRP = char:WaitForChild("HumanoidRootPart")
     
-    -- Get spawn position beside player
     local spawnPos = currentHRP.Position + Vector3.new(CONFIG.FollowDistance, 0, 0)
-    
-    -- RAYCAST to find ground at spawn position
     local groundY = GetGroundHeight(spawnPos)
-    
-    -- Spawn ABOVE ground (HeightAboveGround studs up)
-    spawnPos = Vector3.new(
-        spawnPos.X, 
-        groundY + CONFIG.HeightAboveGround, 
-        spawnPos.Z
-    )
+    spawnPos = Vector3.new(spawnPos.X, groundY + CONFIG.HeightAboveGround, spawnPos.Z)
     
     print("🌍 Ground Y:", groundY, "| Spawn Y:", spawnPos.Y)
     
     local spawnCF = CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0)
     
-    -- Position before parenting
     pet:PivotTo(spawnCF)
-    
-    -- Parent to workspace
     pet.Parent = workspace
     
-    -- Re-anchor after parenting
     task.wait()
-    local partCount = 0
     for _, part in ipairs(pet:GetDescendants()) do
         if part:IsA("BasePart") then
-            partCount = partCount + 1
             part.Anchored = true
             part.CanCollide = false
         end
     end
-    
-    print("📊 Parts in pet:", partCount)
 
-    -- Start follow + animations
     local followConn = FollowPlayer(pet, petName)
     local hasAnims = StartAnimations(pet, petName)
 
@@ -415,7 +425,6 @@ function SpawnPet(petName)
     
     table.insert(SpawnedPets, petData)
 
-    -- Cleanup on destroy
     pet.AncestryChanged:Connect(function(_, newParent)
         if not newParent then
             for i, p in ipairs(SpawnedPets) do
