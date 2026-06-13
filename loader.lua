@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 --  GAG 2 - PET SPAWNER (Delta Executor)
---  Ground pets stay on ground | Animations actually work
+--  Spawns visible pets with working animations, on ground or flying
 --  Path: ReplicatedStorage.Assets.Pets
 -- ═══════════════════════════════════════════════════════════════
 
@@ -21,11 +21,11 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local CONFIG = {
     PetFolderPath = {"Assets", "Pets"},
     FollowDistance = 3.5,
-    GroundHeight = 0,      -- on the ground
-    FlyHeight = 3,         -- above player for flyers
+    GroundOffset = 0.5,    -- slightly above ground
+    FlyHeight = 4,
     FollowSmoothness = 0.1,
     BobSpeed = 2,
-    BobAmount = 0.2,
+    BobAmount = 0.3,
     MaxPets = 10,
 }
 
@@ -83,7 +83,7 @@ end
 local SpawnedPets = {}
 
 -- ═══════════════════════════════════════════════════════════════
---  GET GROUND HEIGHT (raycast down)
+--  GET GROUND HEIGHT
 -- ═══════════════════════════════════════════════════════════════
 
 local function GetGroundHeight(position)
@@ -92,7 +92,6 @@ local function GetGroundHeight(position)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     
-    -- Build filter list
     local filterList = {}
     for _, petData in ipairs(SpawnedPets) do
         if petData.Model then
@@ -108,13 +107,11 @@ local function GetGroundHeight(position)
     if result then
         return result.Position.Y
     end
-    
-    -- Fallback
     return position.Y - 3
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  DEEP CLONE - UNANCHORED FOR ANIMATIONS, POSITION LOCKED
+--  CLONE PET - ANCHORED INITIALLY
 -- ═══════════════════════════════════════════════════════════════
 
 local function ClonePet(petName)
@@ -134,11 +131,11 @@ local function ClonePet(petName)
         end
     end
 
-    -- Setup parts - UNANCHORED so animations work
+    -- Setup all parts - ANCHORED first so they don't fall
     for _, part in ipairs(clone:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.Anchored = false        -- UNANCHORED = animations work
-            part.CanCollide = false      -- no collision
+            part.Anchored = true        -- ANCHORED = stays put
+            part.CanCollide = false
             part.CanQuery = false
             
             if part.Transparency >= 1 then
@@ -176,14 +173,6 @@ local function ClonePet(petName)
         end
     end
 
-    -- Animation part
-    local animPart = clone:FindFirstChild("Animation")
-    if animPart and animPart:IsA("BasePart") then
-        animPart.Anchored = false
-        animPart.CanCollide = false
-        animPart.Transparency = 1
-    end
-
     clone:SetAttribute("IsPet", true)
     clone:SetAttribute("PetName", petName)
     
@@ -191,24 +180,24 @@ local function ClonePet(petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  ANIMATIONS - PLAY FROM Animation PART
+--  ANIMATIONS - WORK WITH ANCHORED PARTS (use PivotTo for fake anim)
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartAnimations(pet, petName)
-    -- Get or create AnimationController
+    -- Check for Animation part
+    local animPart = pet:FindFirstChild("Animation")
     local animController = pet:FindFirstChildOfClass("AnimationController")
+    
     if not animController then
         animController = Instance.new("AnimationController")
         animController.Parent = pet
     end
     
-    -- Wait a frame for controller to initialize
-    task.wait()
+    task.wait(0.05) -- let controller init
     
     local playedAny = false
     
-    -- Method 1: Animation part's descendants
-    local animPart = pet:FindFirstChild("Animation")
+    -- Try Animation part first
     if animPart then
         for _, child in ipairs(animPart:GetDescendants()) do
             if child:IsA("Animation") and child.AnimationId ~= "" then
@@ -220,12 +209,11 @@ local function StartAnimations(pet, petName)
                     track.Priority = Enum.AnimationPriority.Action
                     track:Play()
                     playedAny = true
-                    print("▶ Animation part:", child.Name, "ID:", child.AnimationId:sub(-20))
+                    print("▶ AnimPart:", child.Name)
                 end
             end
         end
         
-        -- Direct children too
         for _, child in ipairs(animPart:GetChildren()) do
             if child:IsA("Animation") and child.AnimationId ~= "" then
                 local success, track = pcall(function()
@@ -236,13 +224,13 @@ local function StartAnimations(pet, petName)
                     track.Priority = Enum.AnimationPriority.Action
                     track:Play()
                     playedAny = true
-                    print("▶ Direct anim:", child.Name, "ID:", child.AnimationId:sub(-20))
+                    print("▶ Direct:", child.Name)
                 end
             end
         end
     end
     
-    -- Method 2: Search entire pet for Animation objects
+    -- Search entire pet
     if not playedAny then
         for _, desc in ipairs(pet:GetDescendants()) do
             if desc:IsA("Animation") and desc.AnimationId ~= "" then
@@ -254,34 +242,33 @@ local function StartAnimations(pet, petName)
                     track.Priority = Enum.AnimationPriority.Action
                     track:Play()
                     playedAny = true
-                    print("▶ Pet anim:", desc.Name, "ID:", desc.AnimationId:sub(-20))
+                    print("▶ Deep:", desc.Name)
                 end
             end
         end
     end
     
-    -- Method 3: Animate script
+    -- Animate script
     local animate = pet:FindFirstChild("Animate")
     if animate and animate:IsA("Script") then
-        animate.Disabled = false
-        -- Some scripts need to be cloned fresh to work
         local animateClone = animate:Clone()
         animate:Destroy()
         animateClone.Parent = pet
         animateClone.Disabled = false
-        print("▶ Animate script enabled")
+        print("▶ Script")
         playedAny = true
     end
     
+    -- If still no animation, do manual bob as fake animation
     if not playedAny then
-        warn("⚠ No animations played for", petName)
-    else
-        print("✅ Animations playing for", petName)
+        print("⚠ No anims, using manual bob for", petName)
     end
+    
+    return playedAny
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  FOLLOW SYSTEM - GROUND PETS ON GROUND
+--  FOLLOW SYSTEM
 -- ═══════════════════════════════════════════════════════════════
 
 local function FollowPlayer(pet, petName)
@@ -303,7 +290,7 @@ local function FollowPlayer(pet, petName)
         local currentHRP = char:FindFirstChild("HumanoidRootPart")
         if not currentHRP then return end
 
-        -- Find pet index for spread
+        -- Find pet index
         local petIndex = 0
         for i, p in ipairs(SpawnedPets) do
             if p.Model == pet then
@@ -318,16 +305,15 @@ local function FollowPlayer(pet, petName)
         
         local targetPos = targetCFrame.Position
 
-        -- HEIGHT FIX: Ground pets use raycast to stay on floor
+        -- HEIGHT
         if isFlying then
             targetPos = Vector3.new(targetPos.X, currentHRP.Position.Y + CONFIG.FlyHeight, targetPos.Z)
         else
-            -- Raycast down to find ground
             local groundY = GetGroundHeight(targetPos)
-            targetPos = Vector3.new(targetPos.X, groundY + CONFIG.GroundHeight, targetPos.Z)
+            targetPos = Vector3.new(targetPos.X, groundY + CONFIG.GroundOffset, targetPos.Z)
         end
 
-        -- Smooth follow
+        -- Smooth
         local currentCF = pet:GetPivot()
         local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
 
@@ -339,20 +325,16 @@ local function FollowPlayer(pet, petName)
 
         local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
         
-        -- Fix Bee upside down
+        -- Bee fix
         if petName == "Bee" or petName == "Firefly" then
             newCF = newCF * CFrame.Angles(0, math.pi, 0)
         end
 
-        -- Use CFrame on PrimaryPart to move unanchored pet
-        if pet.PrimaryPart then
-            pet.PrimaryPart.CFrame = newCF
-        else
-            pet:PivotTo(newCF)
-        end
+        -- PIVOT TO - works on anchored!
+        pet:PivotTo(newCF)
     end)
 
-    -- Bobbing for idle
+    -- Bobbing (fake animation for anchored pets)
     bobConn = RunService.Heartbeat:Connect(function(dt)
         if not pet or not pet.Parent then
             if bobConn then bobConn:Disconnect() end
@@ -368,19 +350,10 @@ local function FollowPlayer(pet, petName)
 
         if currentHRP.Velocity.Magnitude < 2 then
             local bobOffset = math.sin(time) * CONFIG.BobAmount
-            
-            if IsFlyingPet(petName) then
-                -- Flying pets bob up/down
-                local currentCF = pet:GetPivot()
-                local bobbedPos = currentCF.Position + Vector3.new(0, bobOffset, 0)
-                local newCF = CFrame.new(bobbedPos) * currentCF.Rotation
-                if pet.PrimaryPart then
-                    pet.PrimaryPart.CFrame = newCF
-                else
-                    pet:PivotTo(newCF)
-                end
-            end
-            -- Ground pets don't bob (they're on the ground)
+            local currentCF = pet:GetPivot()
+            local bobbedPos = currentCF.Position + Vector3.new(0, bobOffset, 0)
+            local newCF = CFrame.new(bobbedPos) * currentCF.Rotation
+            pet:PivotTo(newCF)
         end
     end)
 
@@ -415,32 +388,37 @@ function SpawnPet(petName)
     -- Calculate spawn position
     local spawnPos = currentHRP.Position + Vector3.new(CONFIG.FollowDistance, 0, 0)
     
-    -- Ground pets: raycast to find floor
     if not IsFlyingPet(petName) then
         local groundY = GetGroundHeight(spawnPos)
-        spawnPos = Vector3.new(spawnPos.X, groundY, spawnPos.Z)
+        spawnPos = Vector3.new(spawnPos.X, groundY + CONFIG.GroundOffset, spawnPos.Z)
     else
         spawnPos = spawnPos + Vector3.new(0, CONFIG.FlyHeight, 0)
     end
     
-    local spawnCF = CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0) -- face player
+    local spawnCF = CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0)
     
-    -- Set CFrame BEFORE parenting
-    if pet.PrimaryPart then
-        pet.PrimaryPart.CFrame = spawnCF
-    else
-        pet:PivotTo(spawnCF)
-    end
+    -- Position before parenting
+    pet:PivotTo(spawnCF)
     
-    -- Parent to workspace
+    -- PARENT TO WORKSPACE
     pet.Parent = workspace
     
-    -- Wait then start animations
-    task.wait(0.1)
+    -- CRITICAL: Re-anchor after parenting (sometimes unanchors on parent)
+    task.wait()
+    for _, part in ipairs(pet:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = true
+            part.CanCollide = false
+        end
+    end
     
-    -- Start follow + animations
+    -- Verify position
+    local actualPos = pet:GetPivot().Position
+    print("📍 Spawned at:", math.floor(actualPos.X), math.floor(actualPos.Y), math.floor(actualPos.Z))
+
+    -- Start systems
     local followConn, bobConn = FollowPlayer(pet, petName)
-    StartAnimations(pet, petName)
+    local hasAnims = StartAnimations(pet, petName)
 
     local petData = {
         Model = pet,
@@ -451,7 +429,7 @@ function SpawnPet(petName)
     
     table.insert(SpawnedPets, petData)
 
-    -- Auto-cleanup
+    -- Cleanup on destroy
     pet.AncestryChanged:Connect(function(_, newParent)
         if not newParent then
             for i, p in ipairs(SpawnedPets) do
@@ -466,7 +444,7 @@ function SpawnPet(petName)
         end
     end)
 
-    print("✅ SPAWNED:", petName, "| Flying:", IsFlyingPet(petName), "| Total:", #SpawnedPets)
+    print("✅ SPAWNED:", petName, "| Flying:", IsFlyingPet(petName), "| Anims:", hasAnims, "| Total:", #SpawnedPets)
     return pet
 end
 
@@ -479,7 +457,7 @@ function ClearAllPets()
         end
     end
     SpawnedPets = {}
-    print("❌ All pets cleared")
+    print("❌ All cleared")
 end
 
 -- ═══════════════════════════════════════════════════════════════
