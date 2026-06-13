@@ -29,76 +29,59 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
 
--- FULL AMBIENT GLOW overlay
-local glowOverlay = Instance.new("Frame")
-glowOverlay.Name = "GlowOverlay"
-glowOverlay.Size = UDim2.new(1, 0, 1, 0)
-glowOverlay.BackgroundTransparency = 1
-glowOverlay.ZIndex = 0
-glowOverlay.Parent = frame
+-- FULL AMBIENT GLOW around entire GUI
+local glowBack = Instance.new("ImageLabel")
+glowBack.Name = "GlowBack"
+glowBack.Size = UDim2.new(1, 60, 1, 60)
+glowBack.Position = UDim2.new(0, -30, 0, -30)
+glowBack.BackgroundTransparency = 1
+glowBack.Image = "rbxassetid://1316045217"
+glowBack.ImageColor3 = Color3.fromRGB(220, 100, 170)
+glowBack.ImageTransparency = 0.55
+glowBack.ScaleType = Enum.ScaleType.Slice
+glowBack.SliceCenter = Rect.new(10, 10, 118, 118)
+glowBack.ZIndex = -3
+glowBack.Parent = frame
 
--- Animated gradient glow
-local glowGradient = Instance.new("UIGradient")
-glowGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100, 170)),
-    ColorSequenceKeypoint.new(0.3, Color3.fromRGB(180, 80, 150)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(220, 100, 170)),
-    ColorSequenceKeypoint.new(0.7, Color3.fromRGB(160, 70, 140)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 100, 170))
-})
-glowGradient.Rotation = 45
-glowGradient.Parent = glowOverlay
+local glowMid = Instance.new("ImageLabel")
+glowMid.Name = "GlowMid"
+glowMid.Size = UDim2.new(1, 40, 1, 40)
+glowMid.Position = UDim2.new(0, -20, 0, -20)
+glowMid.BackgroundTransparency = 1
+glowMid.Image = "rbxassetid://1316045217"
+glowMid.ImageColor3 = Color3.fromRGB(200, 90, 160)
+glowMid.ImageTransparency = 0.65
+glowMid.ScaleType = Enum.ScaleType.Slice
+glowMid.SliceCenter = Rect.new(10, 10, 118, 118)
+glowMid.ZIndex = -2
+glowMid.Parent = frame
 
--- Glow image for soft bloom effect
-local glowImage = Instance.new("ImageLabel")
-glowImage.Name = "GlowImage"
-glowImage.Size = UDim2.new(1, 40, 1, 40)
-glowImage.Position = UDim2.new(0, -20, 0, -20)
-glowImage.BackgroundTransparency = 1
-glowImage.Image = "rbxassetid://1316045217"
-glowImage.ImageColor3 = Color3.fromRGB(220, 100, 170)
-glowImage.ImageTransparency = 0.75
-glowImage.ScaleType = Enum.ScaleType.Slice
-glowImage.SliceCenter = Rect.new(10, 10, 118, 118)
-glowImage.ZIndex = -1
-glowImage.Parent = glowOverlay
+local glowFront = Instance.new("ImageLabel")
+glowFront.Name = "GlowFront"
+glowFront.Size = UDim2.new(1, 20, 1, 20)
+glowFront.Position = UDim2.new(0, -10, 0, -10)
+glowFront.BackgroundTransparency = 1
+glowFront.Image = "rbxassetid://1316045217"
+glowFront.ImageColor3 = Color3.fromRGB(220, 110, 180)
+glowFront.ImageTransparency = 0.75
+glowFront.ScaleType = Enum.ScaleType.Slice
+glowFront.SliceCenter = Rect.new(10, 10, 118, 118)
+glowFront.ZIndex = -1
+glowFront.Parent = frame
 
--- Inner soft glow
-local innerGlow = Instance.new("ImageLabel")
-innerGlow.Name = "InnerGlow"
-innerGlow.Size = UDim2.new(1, 20, 1, 20)
-innerGlow.Position = UDim2.new(0, -10, 0, -10)
-innerGlow.BackgroundTransparency = 1
-innerGlow.Image = "rbxassetid://1316045217"
-innerGlow.ImageColor3 = Color3.fromRGB(200, 90, 160)
-innerGlow.ImageTransparency = 0.85
-innerGlow.ScaleType = Enum.ScaleType.Slice
-innerGlow.SliceCenter = Rect.new(10, 10, 118, 118)
-innerGlow.ZIndex = -1
-innerGlow.Parent = glowOverlay
-
--- Animate gradient rotation and color shift
+-- Animate glow breathing effect
 spawn(function()
-    local rotation = 45
-    while glowOverlay.Parent do
-        rotation = rotation + 0.5
-        glowGradient.Rotation = rotation
-        
-        -- Subtle color shift
-        local shift = (math.sin(tick() * 0.5) + 1) / 2
-        glowGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100 + shift * 20, 170)),
-            ColorSequenceKeypoint.new(0.3, Color3.fromRGB(180 + shift * 20, 80, 150)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(220, 100, 170 + shift * 20)),
-            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(160 + shift * 30, 70, 140)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 100 + shift * 20, 170))
-        })
-        
-        task.wait(0.03)
+    while frame.Parent do
+        TweenService:Create(glowBack, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.5}):Play()
+        TweenService:Create(glowMid, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.6}):Play()
+        TweenService:Create(glowFront, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.7}):Play()
+        task.wait(2)
+        TweenService:Create(glowBack, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.6}):Play()
+        TweenService:Create(glowMid, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.7}):Play()
+        TweenService:Create(glowFront, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.8}):Play()
+        task.wait(2)
     end
 end)
-
--- Shadow
 local shadow = Instance.new("ImageLabel")
 shadow.AnchorPoint = Vector2.new(0.5, 0.5)
 shadow.Position = UDim2.new(0.5, 0, 0.5, 6)
@@ -209,38 +192,6 @@ leftSection.BackgroundTransparency = 1
 leftSection.ZIndex = 1
 leftSection.Parent = content
 
--- Outer spinning ring
-local spinRing = Instance.new("Frame")
-spinRing.Size = UDim2.new(0, 84, 0, 84)
-spinRing.Position = UDim2.new(0.5, -42, 0, 0)
-spinRing.BackgroundTransparency = 1
-spinRing.ZIndex = 0
-spinRing.Parent = leftSection
-
--- Ring segments
-for i = 1, 3 do
-    local segment = Instance.new("Frame")
-    segment.Size = UDim2.new(0, 6, 0, 2)
-    segment.BackgroundColor3 = Color3.fromRGB(200, 100, 160)
-    segment.BorderSizePixel = 0
-    segment.ZIndex = 0
-    segment.Parent = spinRing
-    Instance.new("UICorner", segment).CornerRadius = UDim.new(0, 1)
-    
-    spawn(function()
-        local angle = (i / 3) * math.pi * 2
-        while segment.Parent do
-            angle = angle + 0.03
-            local x = math.cos(angle) * 42
-            local y = math.sin(angle) * 42
-            segment.Position = UDim2.new(0.5, x - 3, 0.5, y - 1)
-            segment.Rotation = math.deg(angle)
-            task.wait(0.03)
-        end
-    end)
-end
-
--- Avatar frame with bounce
 local avatarFrame = Instance.new("Frame")
 avatarFrame.Size = UDim2.new(0, 68, 0, 68)
 avatarFrame.Position = UDim2.new(0.5, -34, 0, 8)
@@ -288,7 +239,6 @@ avatarFrame.MouseLeave:Connect(function()
     TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 80, 115)}):Play()
 end)
 
--- Username
 local username = Instance.new("TextLabel")
 username.Size = UDim2.new(1, 0, 0, 18)
 username.Position = UDim2.new(0, 0, 0, 94)
@@ -477,39 +427,43 @@ toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
 -- Toggle ambient glow
-local toggleGlow = Instance.new("ImageLabel")
-toggleGlow.Name = "ToggleGlow"
-toggleGlow.Size = UDim2.new(1, 16, 1, 16)
-toggleGlow.Position = UDim2.new(0, -8, 0, -8)
-toggleGlow.BackgroundTransparency = 1
-toggleGlow.Image = "rbxassetid://1316045217"
-toggleGlow.ImageColor3 = Color3.fromRGB(220, 100, 170)
-toggleGlow.ImageTransparency = 0.7
-toggleGlow.ScaleType = Enum.ScaleType.Slice
-toggleGlow.SliceCenter = Rect.new(10, 10, 118, 118)
-toggleGlow.ZIndex = -1
-toggleGlow.Parent = toggle
+local toggleGlowBack = Instance.new("ImageLabel")
+toggleGlowBack.Name = "ToggleGlowBack"
+toggleGlowBack.Size = UDim2.new(1, 20, 1, 20)
+toggleGlowBack.Position = UDim2.new(0, -10, 0, -10)
+toggleGlowBack.BackgroundTransparency = 1
+toggleGlowBack.Image = "rbxassetid://1316045217"
+toggleGlowBack.ImageColor3 = Color3.fromRGB(220, 100, 170)
+toggleGlowBack.ImageTransparency = 0.5
+toggleGlowBack.ScaleType = Enum.ScaleType.Slice
+toggleGlowBack.SliceCenter = Rect.new(10, 10, 118, 118)
+toggleGlowBack.ZIndex = -1
+toggleGlowBack.Parent = toggle
 
-local toggleGradient = Instance.new("UIGradient")
-toggleGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100, 170)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 80, 150)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 100, 170))
-})
-toggleGradient.Rotation = 0
-toggleGradient.Parent = toggleGlow
+local toggleGlowFront = Instance.new("ImageLabel")
+toggleGlowFront.Name = "ToggleGlowFront"
+toggleGlowFront.Size = UDim2.new(1, 10, 1, 10)
+toggleGlowFront.Position = UDim2.new(0, -5, 0, -5)
+toggleGlowFront.BackgroundTransparency = 1
+toggleGlowFront.Image = "rbxassetid://1316045217"
+toggleGlowFront.ImageColor3 = Color3.fromRGB(200, 90, 160)
+toggleGlowFront.ImageTransparency = 0.65
+toggleGlowFront.ScaleType = Enum.ScaleType.Slice
+toggleGlowFront.SliceCenter = Rect.new(10, 10, 118, 118)
+toggleGlowFront.ZIndex = -1
+toggleGlowFront.Parent = toggle
 
--- Animate toggle glow
+-- Animate toggle glow breathing
 spawn(function()
-    local rotation = 0
     while toggle.Parent do
-        rotation = rotation + 1
-        toggleGradient.Rotation = rotation
-        task.wait(0.03)
+        TweenService:Create(toggleGlowBack, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.4}):Play()
+        TweenService:Create(toggleGlowFront, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.55}):Play()
+        task.wait(1.5)
+        TweenService:Create(toggleGlowBack, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.55}):Play()
+        TweenService:Create(toggleGlowFront, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.7}):Play()
+        task.wait(1.5)
     end
 end)
-
-local toggleAvatar = Instance.new("ImageLabel")
 toggleAvatar.Size = UDim2.new(0, 42, 0, 42)
 toggleAvatar.Position = UDim2.new(0.5, -21, 0.5, -21)
 toggleAvatar.BackgroundTransparency = 1
