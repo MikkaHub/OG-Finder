@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 --  GAG 2 - PET SPAWNER (Delta Executor)
---  Auto-finds animation location | Uses pet's actual animation setup
+--  Animations in ReplicatedStorage.Animation folder (shared)
 --  Path: ReplicatedStorage.Assets.Pets
 -- ═══════════════════════════════════════════════════════════════
 
@@ -20,6 +20,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local CONFIG = {
     PetFolderPath = {"Assets", "Pets"},
+    AnimationFolderPath = {"Animation"}, -- ReplicatedStorage.Animation
     FollowDistance = 4,
     HeightAboveGround = 1,
     FollowSmoothness = 0.1,
@@ -27,79 +28,58 @@ local CONFIG = {
 }
 
 -- ═══════════════════════════════════════════════════════════════
---  GET PET FOLDER
+--  GET FOLDERS
 -- ═══════════════════════════════════════════════════════════════
 
 local PetFolder = ReplicatedStorage
 for _, folderName in ipairs(CONFIG.PetFolderPath) do
     PetFolder = PetFolder:FindFirstChild(folderName)
     if not PetFolder then
-        warn("❌ Path broken at:", folderName)
+        warn("❌ Pet path broken at:", folderName)
         return
     end
 end
 
-print("✅ Found pet folder:", PetFolder:GetFullName())
-
--- ═══════════════════════════════════════════════════════════════
---  SCAN PET STRUCTURE - FIND WHERE ANIMATIONS ARE
--- ═══════════════════════════════════════════════════════════════
-
-local function ScanPet(petName)
-    local template = PetFolder:FindFirstChild(petName)
-    if not template then return end
-    
-    print("\n========== SCANNING:", petName, "==========")
-    
-    -- Check top level
-    print("Top level children:")
-    for _, child in ipairs(template:GetChildren()) do
-        print("  -", child.Name, "(", child.ClassName, ")")
+local AnimFolder = ReplicatedStorage
+for _, folderName in ipairs(CONFIG.AnimationFolderPath) do
+    AnimFolder = AnimFolder:FindFirstChild(folderName)
+    if not AnimFolder then
+        warn("⚠ Animation path broken at:", folderName)
+        AnimFolder = nil
+        break
     end
-    
-    -- Find ALL Animation objects
-    print("\nAll Animation objects:")
-    local animCount = 0
-    for _, desc in ipairs(template:GetDescendants()) do
-        if desc:IsA("Animation") then
-            animCount = animCount + 1
-            print("  [" .. animCount .. "]", desc:GetFullName())
-            print("     ID:", desc.AnimationId ~= "" and desc.AnimationId or "EMPTY")
-            print("     Parent:", desc.Parent and desc.Parent.Name or "nil", "(", desc.Parent and desc.Parent.ClassName or "nil", ")")
-        end
-    end
-    
-    -- Find AnimationController
-    print("\nAnimationControllers:")
-    for _, desc in ipairs(template:GetDescendants()) do
-        if desc:IsA("AnimationController") then
-            print("  -", desc:GetFullName())
-        end
-    end
-    
-    -- Find Humanoid
-    print("\nHumanoids:")
-    for _, desc in ipairs(template:GetDescendants()) do
-        if desc:IsA("Humanoid") then
-            print("  -", desc:GetFullName())
-        end
-    end
-    
-    -- Find Animate script
-    print("\nAnimate scripts:")
-    for _, desc in ipairs(template:GetDescendants()) do
-        if desc:IsA("Script") and desc.Name:lower():find("animate") then
-            print("  -", desc:GetFullName())
-        end
-    end
-    
-    print("========================\n")
 end
 
--- Scan first pet to understand structure
-local firstPet = PetFolder:FindFirstChildOfClass("Model")
-if firstPet then
-    ScanPet(firstPet.Name)
+print("✅ Pet folder:", PetFolder:GetFullName())
+if AnimFolder then
+    print("✅ Animation folder:", AnimFolder:GetFullName())
+else
+    print("⚠ No Animation folder found, will search ReplicatedStorage")
+    -- Search for any folder named Animation
+    for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+        if child.Name:lower():find("animation") and (child:IsA("Folder") or child:IsA("Model")) then
+            AnimFolder = child
+            print("✅ Found alternative:", AnimFolder:GetFullName())
+            break
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+--  SCAN ANIMATION FOLDER
+-- ═══════════════════════════════════════════════════════════════
+
+if AnimFolder then
+    print("\n=== ANIMATION FOLDER CONTENTS ===")
+    for _, child in ipairs(AnimFolder:GetChildren()) do
+        print(" -", child.Name, "(", child.ClassName, ")")
+        if child:IsA("Folder") or child:IsA("Model") then
+            for _, sub in ipairs(child:GetChildren()) do
+                print("   -", sub.Name, "(", sub.ClassName, ")")
+            end
+        end
+    end
+    print("================================\n")
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -222,13 +202,13 @@ local function ClonePet(petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  ANIMATIONS - AUTO-FIND AND PLAY
+--  ANIMATIONS - LOAD FROM ReplicatedStorage.Animation
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartAnimations(pet, petName)
     print("\n--- ANIMATIONS for", petName, "---")
     
-    -- Step 1: Find AnimationController
+    -- Step 1: AnimationController
     local animController = pet:FindFirstChildOfClass("AnimationController")
     if not animController then
         animController = Instance.new("AnimationController")
@@ -236,72 +216,131 @@ local function StartAnimations(pet, petName)
         animController.Parent = pet
         print("📎 Created AnimationController")
     else
-        print("📎 Found AnimationController:", animController:GetFullName())
+        print("📎 Found AnimationController")
     end
     
-    -- Step 2: Find ALL Animation objects anywhere in the pet
-    local allAnims = {}
-    for _, desc in ipairs(pet:GetDescendants()) do
-        if desc:IsA("Animation") and desc.AnimationId ~= "" then
-            table.insert(allAnims, desc)
-        end
-    end
-    
-    print("🎬 Found", #allAnims, "Animation objects")
-    
-    -- Step 3: Try to play each one
     local playedAny = false
-    for i, anim in ipairs(allAnims) do
-        print("  [" .. i .. "]", anim.Name, "at", anim:GetFullName())
-        print("     ID:", anim.AnimationId:sub(1, 50), "...")
+    
+    -- Step 2: Try to find animations in ReplicatedStorage.Animation folder
+    if AnimFolder then
+        -- Look for pet-specific animation folder
+        local petAnimFolder = AnimFolder:FindFirstChild(petName)
+        if not petAnimFolder then
+            -- Try lowercase or partial match
+            for _, child in ipairs(AnimFolder:GetChildren()) do
+                if child.Name:lower():find(petName:lower()) or petName:lower():find(child.Name:lower()) then
+                    petAnimFolder = child
+                    print("🔍 Matched anim folder:", child.Name, "for pet:", petName)
+                    break
+                end
+            end
+        end
         
-        local success, track = pcall(function()
-            return animController:LoadAnimation(anim)
-        end)
-        
-        if success and track then
-            track.Looped = true
-            track.Priority = Enum.AnimationPriority.Action
-            track:Play()
-            playedAny = true
-            print("     ▶ PLAYING")
+        if petAnimFolder then
+            print("🎬 Found anim folder for", petName, ":", petAnimFolder:GetFullName())
+            
+            -- Play all animations in this folder
+            for _, animObj in ipairs(petAnimFolder:GetDescendants()) do
+                if animObj:IsA("Animation") and animObj.AnimationId ~= "" then
+                    print("  🎬", animObj.Name, "ID:", animObj.AnimationId:sub(1, 40))
+                    
+                    local success, track = pcall(function()
+                        return animController:LoadAnimation(animObj)
+                    end)
+                    
+                    if success and track then
+                        track.Looped = true
+                        track:Play()
+                        playedAny = true
+                        print("     ▶ PLAYING")
+                    else
+                        print("     ❌ Failed:", tostring(track))
+                    end
+                end
+            end
+            
+            -- Also check direct children
+            for _, animObj in ipairs(petAnimFolder:GetChildren()) do
+                if animObj:IsA("Animation") and animObj.AnimationId ~= "" then
+                    print("  🎬 (direct)", animObj.Name, "ID:", animObj.AnimationId:sub(1, 40))
+                    
+                    local success, track = pcall(function()
+                        return animController:LoadAnimation(animObj)
+                    end)
+                    
+                    if success and track then
+                        track.Looped = true
+                        track:Play()
+                        playedAny = true
+                        print("     ▶ PLAYING")
+                    end
+                end
+            end
         else
-            print("     ❌ Failed:", tostring(track))
+            print("⚠ No animation folder found for", petName)
         end
     end
     
-    -- Step 4: Check for Animate script
-    local animateScript = nil
-    for _, desc in ipairs(pet:GetDescendants()) do
-        if desc:IsA("Script") and desc.Name:lower() == "animate" then
-            animateScript = desc
-            break
+    -- Step 3: Check if pet has animation references inside it
+    if not playedAny then
+        print("🔍 Searching pet model for animation references...")
+        for _, desc in ipairs(pet:GetDescendants()) do
+            if desc:IsA("Animation") and desc.AnimationId ~= "" then
+                print("  🎬 Found in pet:", desc.Name, "at", desc:GetFullName())
+                
+                local success, track = pcall(function()
+                    return animController:LoadAnimation(desc)
+                end)
+                
+                if success and track then
+                    track.Looped = true
+                    track:Play()
+                    playedAny = true
+                    print("     ▶ PLAYING")
+                end
+            end
         end
     end
     
-    if animateScript then
-        print("📜 Found Animate script:", animateScript:GetFullName())
-        -- Clone to refresh
-        local newScript = animateScript:Clone()
-        animateScript:Destroy()
-        newScript.Parent = pet
-        newScript.Disabled = false
-        print("     ▶ Enabled fresh copy")
+    -- Step 4: Try generic idle animation from Animation folder
+    if not playedAny and AnimFolder then
+        print("🔍 Trying generic animations...")
+        for _, child in ipairs(AnimFolder:GetDescendants()) do
+            if child:IsA("Animation") and child.AnimationId ~= "" then
+                local name = child.Name:lower()
+                if name:find("idle") or name:find("walk") or name:find("run") then
+                    print("  🎬 Generic:", child.Name)
+                    
+                    local success, track = pcall(function()
+                        return animController:LoadAnimation(child)
+                    end)
+                    
+                    if success and track then
+                        track.Looped = true
+                        track:Play()
+                        playedAny = true
+                        print("     ▶ PLAYING")
+                        break -- just play one
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Step 5: Animate script
+    local animate = pet:FindFirstChild("Animate")
+    if animate and animate:IsA("Script") then
+        print("📜 Found Animate script")
+        local newAnimate = animate:Clone()
+        animate:Destroy()
+        newAnimate.Parent = pet
+        newAnimate.Disabled = false
         playedAny = true
-    else
-        print("📜 No Animate script found")
-    end
-    
-    -- Step 5: Check for Humanoid (some pets need it)
-    local humanoid = pet:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        print("👤 Found Humanoid")
-    else
-        print("👤 No Humanoid")
+        print("  ▶ Enabled")
     end
     
     if not playedAny then
-        warn("⚠ NO ANIMATIONS PLAYED for", petName)
+        warn("⚠ NO ANIMATIONS for", petName)
     else
         print("✅ Animations active")
     end
