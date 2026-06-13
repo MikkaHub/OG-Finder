@@ -10,14 +10,13 @@ if not sheckles then return end
 local old = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MikkaHub")
 if old then old:Destroy() end
 
-local IMAGE_URL = "https://files.catbox.moe/29dya4.png"
+local AVATAR_URL = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. player.UserId .. "&width=150&height=150&format=png"
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "MikkaHub"
 sg.ResetOnSpawn = false
 sg.Parent = player:WaitForChild("PlayerGui")
 
--- Main Frame
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 170)
 frame.Position = UDim2.new(0.5, -150, 0.1, 0)
@@ -35,14 +34,12 @@ stroke.Thickness = 1
 stroke.Transparency = 0.5
 stroke.Parent = frame
 
--- Top accent line
 local accentLine = Instance.new("Frame")
 accentLine.Size = UDim2.new(1, 0, 0, 2)
 accentLine.BackgroundColor3 = Color3.fromRGB(180, 90, 130)
 accentLine.BorderSizePixel = 0
 accentLine.Parent = frame
 
--- Header
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 38)
 header.Position = UDim2.new(0, 0, 0, 2)
@@ -50,9 +47,7 @@ header.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 header.BorderSizePixel = 0
 header.Parent = frame
 
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 0)
-headerCorner.Parent = header
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 0)
 
 local headerTitle = Instance.new("TextLabel")
 headerTitle.Size = UDim2.new(1, -50, 1, 0)
@@ -65,7 +60,6 @@ headerTitle.Font = Enum.Font.GothamBold
 headerTitle.TextXAlignment = Enum.TextXAlignment.Left
 headerTitle.Parent = header
 
--- Close
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 24, 0, 24)
 closeBtn.Position = UDim2.new(1, -32, 0, 7)
@@ -94,47 +88,74 @@ closeBtn.MouseLeave:Connect(function()
     closeIcon.TextColor3 = Color3.fromRGB(140, 100, 115)
 end)
 
--- Content area
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -20, 0, 110)
 content.Position = UDim2.new(0, 10, 0, 44)
 content.BackgroundTransparency = 1
 content.Parent = frame
 
--- Circular logo
-local logoFrame = Instance.new("Frame")
-logoFrame.Size = UDim2.new(0, 52, 0, 52)
-logoFrame.Position = UDim2.new(0, 0, 0, 4)
-logoFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-logoFrame.BorderSizePixel = 0
-logoFrame.Parent = content
+-- AVATAR (Roblox headshot)
+local avatarFrame = Instance.new("Frame")
+avatarFrame.Size = UDim2.new(0, 52, 0, 52)
+avatarFrame.Position = UDim2.new(0, 0, 0, 4)
+avatarFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+avatarFrame.BorderSizePixel = 0
+avatarFrame.Parent = content
 
-Instance.new("UICorner", logoFrame).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", avatarFrame).CornerRadius = UDim.new(1, 0)
 
-local logoStroke = Instance.new("UIStroke")
-logoStroke.Color = Color3.fromRGB(60, 40, 55)
-logoStroke.Thickness = 1.5
-logoStroke.Parent = logoFrame
+local avatarStroke = Instance.new("UIStroke")
+avatarStroke.Color = Color3.fromRGB(60, 40, 55)
+avatarStroke.Thickness = 1.5
+avatarStroke.Parent = avatarFrame
 
-local logoImage = Instance.new("ImageLabel")
-logoImage.Size = UDim2.new(1, 0, 1, 0)
-logoImage.BackgroundTransparency = 1
-logoImage.Image = IMAGE_URL
-logoImage.ScaleType = Enum.ScaleType.Crop
-logoImage.Parent = logoFrame
+local avatarImage = Instance.new("ImageLabel")
+avatarImage.Size = UDim2.new(1, 0, 1, 0)
+avatarImage.BackgroundTransparency = 1
+avatarImage.Image = AVATAR_URL
+avatarImage.ScaleType = Enum.ScaleType.Crop
+avatarImage.Parent = avatarFrame
 
-Instance.new("UICorner", logoImage).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(1, 0)
+
+-- Online status dot
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 10, 0, 10)
+statusDot.Position = UDim2.new(1, -12, 1, -12)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+statusDot.BorderSizePixel = 0
+statusDot.ZIndex = 2
+statusDot.Parent = avatarFrame
+
+Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+
+local statusStroke = Instance.new("UIStroke")
+statusStroke.Color = Color3.fromRGB(15, 15, 18)
+statusStroke.Thickness = 2
+statusStroke.Parent = statusDot
+
+-- Username label
+local usernameLabel = Instance.new("TextLabel")
+usernameLabel.Size = UDim2.new(1, -64, 0, 14)
+usernameLabel.Position = UDim2.new(0, 64, 0, 4)
+usernameLabel.BackgroundTransparency = 1
+usernameLabel.Text = "@" .. player.Name
+usernameLabel.TextColor3 = Color3.fromRGB(140, 120, 135)
+usernameLabel.TextSize = 10
+usernameLabel.Font = Enum.Font.Gotham
+usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+usernameLabel.Parent = content
 
 -- Value section
 local valueSection = Instance.new("Frame")
-valueSection.Size = UDim2.new(1, -64, 0, 60)
-valueSection.Position = UDim2.new(0, 64, 0, 0)
+valueSection.Size = UDim2.new(1, -64, 0, 40)
+valueSection.Position = UDim2.new(0, 64, 0, 18)
 valueSection.BackgroundTransparency = 1
 valueSection.Parent = content
 
 local valueText = Instance.new("TextLabel")
 valueText.Size = UDim2.new(1, 0, 0, 32)
-valueText.Position = UDim2.new(0, 0, 0, 8)
+valueText.Position = UDim2.new(0, 0, 0, 0)
 valueText.BackgroundTransparency = 1
 valueText.Text = tostring(sheckles.Value)
 valueText.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -145,7 +166,7 @@ valueText.Parent = valueSection
 
 local valueLabel = Instance.new("TextLabel")
 valueLabel.Size = UDim2.new(1, 0, 0, 14)
-valueLabel.Position = UDim2.new(0, 0, 0, 38)
+valueLabel.Position = UDim2.new(0, 0, 0, 30)
 valueLabel.BackgroundTransparency = 1
 valueLabel.Text = "SHECKLES"
 valueLabel.TextColor3 = Color3.fromRGB(110, 90, 105)
@@ -154,14 +175,13 @@ valueLabel.Font = Enum.Font.Gotham
 valueLabel.TextXAlignment = Enum.TextXAlignment.Left
 valueLabel.Parent = valueSection
 
--- Controls row
+-- Controls
 local controls = Instance.new("Frame")
 controls.Size = UDim2.new(1, 0, 0, 34)
 controls.Position = UDim2.new(0, 0, 0, 70)
 controls.BackgroundTransparency = 1
 controls.Parent = content
 
--- Input
 local inputBox = Instance.new("TextBox")
 inputBox.Size = UDim2.new(0.42, 0, 0, 30)
 inputBox.Position = UDim2.new(0, 0, 0, 2)
@@ -182,7 +202,6 @@ inputStroke.Color = Color3.fromRGB(45, 40, 50)
 inputStroke.Thickness = 1
 inputStroke.Parent = inputBox
 
--- Add button
 local addBtn = Instance.new("TextButton")
 addBtn.Size = UDim2.new(0.54, 0, 0, 30)
 addBtn.Position = UDim2.new(0.46, 0, 0, 2)
@@ -260,7 +279,7 @@ frame.InputEnded:Connect(function(input)
     end
 end)
 
--- Toggle button (circular, professional)
+-- Toggle button with avatar
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(0, 44, 0, 44)
 toggle.Position = UDim2.new(0, 12, 0.5, -22)
@@ -277,15 +296,31 @@ toggleStroke.Color = Color3.fromRGB(100, 60, 85)
 toggleStroke.Thickness = 1.5
 toggleStroke.Parent = toggle
 
-local toggleLogo = Instance.new("ImageLabel")
-toggleLogo.Size = UDim2.new(0, 36, 0, 36)
-toggleLogo.Position = UDim2.new(0.5, -18, 0.5, -18)
-toggleLogo.BackgroundTransparency = 1
-toggleLogo.Image = IMAGE_URL
-toggleLogo.ScaleType = Enum.ScaleType.Crop
-toggleLogo.Parent = toggle
+local toggleAvatar = Instance.new("ImageLabel")
+toggleAvatar.Size = UDim2.new(0, 36, 0, 36)
+toggleAvatar.Position = UDim2.new(0.5, -18, 0.5, -18)
+toggleAvatar.BackgroundTransparency = 1
+toggleAvatar.Image = AVATAR_URL
+toggleAvatar.ScaleType = Enum.ScaleType.Crop
+toggleAvatar.Parent = toggle
 
-Instance.new("UICorner", toggleLogo).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", toggleAvatar).CornerRadius = UDim.new(1, 0)
+
+-- Toggle status dot
+local toggleStatus = Instance.new("Frame")
+toggleStatus.Size = UDim2.new(0, 8, 0, 8)
+toggleStatus.Position = UDim2.new(1, -10, 1, -10)
+toggleStatus.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+toggleStatus.BorderSizePixel = 0
+toggleStatus.ZIndex = 2
+toggleStatus.Parent = toggle
+
+Instance.new("UICorner", toggleStatus).CornerRadius = UDim.new(1, 0)
+
+local toggleStatusStroke = Instance.new("UIStroke")
+toggleStatusStroke.Color = Color3.fromRGB(20, 20, 24)
+toggleStatusStroke.Thickness = 1.5
+toggleStatusStroke.Parent = toggleStatus
 
 -- Toggle glow
 spawn(function()
@@ -342,4 +377,4 @@ TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.Easin
     Position = UDim2.new(0.5, -150, 0.1, 0)
 }):Play()
 
-print("MIKKA HUB loaded.")
+print("MIKKA HUB loaded. Avatar: " .. player.Name)
