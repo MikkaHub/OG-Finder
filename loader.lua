@@ -29,59 +29,78 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
 
--- FULL AMBIENT GLOW around entire GUI
-local glowBack = Instance.new("ImageLabel")
-glowBack.Name = "GlowBack"
-glowBack.Size = UDim2.new(1, 60, 1, 60)
-glowBack.Position = UDim2.new(0, -30, 0, -30)
-glowBack.BackgroundTransparency = 1
-glowBack.Image = "rbxassetid://1316045217"
-glowBack.ImageColor3 = Color3.fromRGB(220, 100, 170)
-glowBack.ImageTransparency = 0.55
-glowBack.ScaleType = Enum.ScaleType.Slice
-glowBack.SliceCenter = Rect.new(10, 10, 118, 118)
-glowBack.ZIndex = -3
-glowBack.Parent = frame
+-- TRAVELING GLOW around GUI border
+local glowContainer = Instance.new("Frame")
+glowContainer.Size = UDim2.new(1, 0, 1, 0)
+glowContainer.BackgroundTransparency = 1
+glowContainer.ZIndex = 0
+glowContainer.Parent = frame
 
-local glowMid = Instance.new("ImageLabel")
-glowMid.Name = "GlowMid"
-glowMid.Size = UDim2.new(1, 40, 1, 40)
-glowMid.Position = UDim2.new(0, -20, 0, -20)
-glowMid.BackgroundTransparency = 1
-glowMid.Image = "rbxassetid://1316045217"
-glowMid.ImageColor3 = Color3.fromRGB(200, 90, 160)
-glowMid.ImageTransparency = 0.65
-glowMid.ScaleType = Enum.ScaleType.Slice
-glowMid.SliceCenter = Rect.new(10, 10, 118, 118)
-glowMid.ZIndex = -2
-glowMid.Parent = frame
+-- 4 glow dots traveling the border
+local glowDots = {}
+for i = 1, 4 do
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 8, 0, 8)
+    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 0
+    dot.Parent = glowContainer
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    -- Glow effect
+    local dotGlow = Instance.new("ImageLabel")
+    dotGlow.Size = UDim2.new(0, 20, 0, 20)
+    dotGlow.Position = UDim2.new(0.5, -10, 0.5, -10)
+    dotGlow.BackgroundTransparency = 1
+    dotGlow.Image = "rbxassetid://1316045217"
+    dotGlow.ImageColor3 = Color3.fromRGB(220, 100, 170)
+    dotGlow.ImageTransparency = 0.6
+    dotGlow.ScaleType = Enum.ScaleType.Slice
+    dotGlow.SliceCenter = Rect.new(10, 10, 118, 118)
+    dotGlow.ZIndex = -1
+    dotGlow.Parent = dot
+    
+    table.insert(glowDots, dot)
+end
 
-local glowFront = Instance.new("ImageLabel")
-glowFront.Name = "GlowFront"
-glowFront.Size = UDim2.new(1, 20, 1, 20)
-glowFront.Position = UDim2.new(0, -10, 0, -10)
-glowFront.BackgroundTransparency = 1
-glowFront.Image = "rbxassetid://1316045217"
-glowFront.ImageColor3 = Color3.fromRGB(220, 110, 180)
-glowFront.ImageTransparency = 0.75
-glowFront.ScaleType = Enum.ScaleType.Slice
-glowFront.SliceCenter = Rect.new(10, 10, 118, 118)
-glowFront.ZIndex = -1
-glowFront.Parent = frame
-
--- Animate glow breathing effect
+-- Animate glow dots traveling border
 spawn(function()
-    while frame.Parent do
-        TweenService:Create(glowBack, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.5}):Play()
-        TweenService:Create(glowMid, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.6}):Play()
-        TweenService:Create(glowFront, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.7}):Play()
-        task.wait(2)
-        TweenService:Create(glowBack, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.6}):Play()
-        TweenService:Create(glowMid, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.7}):Play()
-        TweenService:Create(glowFront, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.8}):Play()
-        task.wait(2)
+    local progress = 0
+    while glowContainer.Parent do
+        progress = progress + 0.008
+        if progress > 1 then progress = 0 end
+        
+        for i, dot in ipairs(glowDots) do
+            local offset = (i - 1) * 0.25
+            local p = (progress + offset) % 1
+            
+            local x, y
+            if p < 0.25 then
+                -- Top edge left to right
+                x = p * 4
+                y = 0
+            elseif p < 0.5 then
+                -- Right edge top to bottom
+                x = 1
+                y = (p - 0.25) * 4
+            elseif p < 0.75 then
+                -- Bottom edge right to left
+                x = 1 - (p - 0.5) * 4
+                y = 1
+            else
+                -- Left edge bottom to top
+                x = 0
+                y = 1 - (p - 0.75) * 4
+            end
+            
+            dot.Position = UDim2.new(x, -4, y, -4)
+        end
+        
+        task.wait(0.03)
     end
 end)
+
+-- Shadow
 local shadow = Instance.new("ImageLabel")
 shadow.AnchorPoint = Vector2.new(0.5, 0.5)
 shadow.Position = UDim2.new(0.5, 0, 0.5, 6)
@@ -192,6 +211,38 @@ leftSection.BackgroundTransparency = 1
 leftSection.ZIndex = 1
 leftSection.Parent = content
 
+-- Outer spinning ring
+local spinRing = Instance.new("Frame")
+spinRing.Size = UDim2.new(0, 84, 0, 84)
+spinRing.Position = UDim2.new(0.5, -42, 0, 0)
+spinRing.BackgroundTransparency = 1
+spinRing.ZIndex = 0
+spinRing.Parent = leftSection
+
+-- Ring segments
+for i = 1, 3 do
+    local segment = Instance.new("Frame")
+    segment.Size = UDim2.new(0, 6, 0, 2)
+    segment.BackgroundColor3 = Color3.fromRGB(200, 100, 160)
+    segment.BorderSizePixel = 0
+    segment.ZIndex = 0
+    segment.Parent = spinRing
+    Instance.new("UICorner", segment).CornerRadius = UDim.new(0, 1)
+    
+    spawn(function()
+        local angle = (i / 3) * math.pi * 2
+        while segment.Parent do
+            angle = angle + 0.03
+            local x = math.cos(angle) * 42
+            local y = math.sin(angle) * 42
+            segment.Position = UDim2.new(0.5, x - 3, 0.5, y - 1)
+            segment.Rotation = math.deg(angle)
+            task.wait(0.03)
+        end
+    end)
+end
+
+-- Avatar frame with bounce
 local avatarFrame = Instance.new("Frame")
 avatarFrame.Size = UDim2.new(0, 68, 0, 68)
 avatarFrame.Position = UDim2.new(0.5, -34, 0, 8)
@@ -239,6 +290,23 @@ avatarFrame.MouseLeave:Connect(function()
     TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 80, 115)}):Play()
 end)
 
+-- Status dot
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 12, 0, 12)
+statusDot.Position = UDim2.new(1, -16, 1, -16)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
+statusDot.BorderSizePixel = 0
+statusDot.ZIndex = 2
+statusDot.Parent = avatarFrame
+
+Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+
+local statusRing = Instance.new("UIStroke")
+statusRing.Color = Color3.fromRGB(18, 18, 22)
+statusRing.Thickness = 2
+statusRing.Parent = statusDot
+
+-- Username
 local username = Instance.new("TextLabel")
 username.Size = UDim2.new(1, 0, 0, 18)
 username.Position = UDim2.new(0, 0, 0, 94)
@@ -426,44 +494,41 @@ toggleStroke.Color = Color3.fromRGB(80, 70, 90)
 toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
--- Toggle ambient glow
-local toggleGlowBack = Instance.new("ImageLabel")
-toggleGlowBack.Name = "ToggleGlowBack"
-toggleGlowBack.Size = UDim2.new(1, 20, 1, 20)
-toggleGlowBack.Position = UDim2.new(0, -10, 0, -10)
-toggleGlowBack.BackgroundTransparency = 1
-toggleGlowBack.Image = "rbxassetid://1316045217"
-toggleGlowBack.ImageColor3 = Color3.fromRGB(220, 100, 170)
-toggleGlowBack.ImageTransparency = 0.5
-toggleGlowBack.ScaleType = Enum.ScaleType.Slice
-toggleGlowBack.SliceCenter = Rect.new(10, 10, 118, 118)
-toggleGlowBack.ZIndex = -1
-toggleGlowBack.Parent = toggle
+-- Toggle traveling glow
+local toggleGlowDots = {}
+for i = 1, 2 do
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 6, 0, 6)
+    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 0
+    dot.Parent = toggle
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    table.insert(toggleGlowDots, dot)
+end
 
-local toggleGlowFront = Instance.new("ImageLabel")
-toggleGlowFront.Name = "ToggleGlowFront"
-toggleGlowFront.Size = UDim2.new(1, 10, 1, 10)
-toggleGlowFront.Position = UDim2.new(0, -5, 0, -5)
-toggleGlowFront.BackgroundTransparency = 1
-toggleGlowFront.Image = "rbxassetid://1316045217"
-toggleGlowFront.ImageColor3 = Color3.fromRGB(200, 90, 160)
-toggleGlowFront.ImageTransparency = 0.65
-toggleGlowFront.ScaleType = Enum.ScaleType.Slice
-toggleGlowFront.SliceCenter = Rect.new(10, 10, 118, 118)
-toggleGlowFront.ZIndex = -1
-toggleGlowFront.Parent = toggle
-
--- Animate toggle glow breathing
 spawn(function()
+    local progress = 0
     while toggle.Parent do
-        TweenService:Create(toggleGlowBack, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.4}):Play()
-        TweenService:Create(toggleGlowFront, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.55}):Play()
-        task.wait(1.5)
-        TweenService:Create(toggleGlowBack, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.55}):Play()
-        TweenService:Create(toggleGlowFront, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.7}):Play()
-        task.wait(1.5)
+        progress = progress + 0.015
+        if progress > 1 then progress = 0 end
+        
+        for i, dot in ipairs(toggleGlowDots) do
+            local offset = (i - 1) * 0.5
+            local p = (progress + offset) % 1
+            
+            local angle = p * math.pi * 2
+            local x = math.cos(angle) * 26
+            local y = math.sin(angle) * 26
+            
+            dot.Position = UDim2.new(0.5, x - 3, 0.5, y - 3)
+        end
+        
+        task.wait(0.03)
     end
 end)
+
+local toggleAvatar = Instance.new("ImageLabel")
 toggleAvatar.Size = UDim2.new(0, 42, 0, 42)
 toggleAvatar.Position = UDim2.new(0.5, -21, 0.5, -21)
 toggleAvatar.BackgroundTransparency = 1
