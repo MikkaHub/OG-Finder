@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 --  GAG 2 - PET SPAWNER (Delta Executor)
---  Spawns pets in world that follow you | Draggable GUI
+--  Spawns pets that STAY VISIBLE and use their Animation part
 --  Path: ReplicatedStorage.Assets.Pets
 -- ═══════════════════════════════════════════════════════════════
 
@@ -26,7 +26,7 @@ local CONFIG = {
     FollowSmoothness = 0.08,
     BobSpeed = 2,
     BobAmount = 0.3,
-    MaxPets = 10, -- max spawned pets at once
+    MaxPets = 10,
 }
 
 -- ═══════════════════════════════════════════════════════════════
@@ -83,7 +83,7 @@ end
 local SpawnedPets = {}
 
 -- ═══════════════════════════════════════════════════════════════
---  DEEP CLONE
+--  DEEP CLONE - KEEPS PETS VISIBLE
 -- ═══════════════════════════════════════════════════════════════
 
 local function ClonePet(petName)
@@ -103,18 +103,31 @@ local function ClonePet(petName)
         end
     end
 
-    -- Fix all parts
+    -- Fix all parts - CRITICAL for visibility
     for _, part in ipairs(clone:GetDescendants()) do
         if part:IsA("BasePart") then
+            -- DON'T anchor - let them exist in world
             part.Anchored = false
             part.CanCollide = false
+            part.CanQuery = false -- prevents raycast issues
             
+            -- Fix transparency
             if part.Transparency >= 1 then
                 part.Transparency = 0
             end
+            
+            -- Ensure visible material
+            if part.Material == Enum.Material.ForceField then
+                part.Material = Enum.Material.SmoothPlastic
+            end
+            
+            -- Size check - sometimes parts are size 0
+            if part.Size.Magnitude < 0.01 then
+                part.Size = Vector3.new(1, 1, 1)
+            end
         end
         
-        -- Fix Motor6D
+        -- Fix Motor6D joints
         if part:IsA("Motor6D") then
             local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
             local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
@@ -124,25 +137,28 @@ local function ClonePet(petName)
             end
         end
         
-        -- Fix animations
-        if part:IsA("Animation") then
-            local orig = template:FindFirstChild(part.Name, true)
-            if orig and orig:IsA("Animation") then
-                part.AnimationId = orig.AnimationId
+        -- Fix welds
+        if part:IsA("Weld") or part:IsA("ManualWeld") then
+            local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
+            local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
+            if p0 and p1 then
+                part.Part0 = p0
+                part.Part1 = p1
             end
         end
         
-        -- Fix decals
+        -- Fix decals/textures
         if part:IsA("Decal") or part:IsA("Texture") then
             part.Transparency = 0
         end
     end
 
-    -- AnimationController
-    local animController = clone:FindFirstChildOfClass("AnimationController")
-    if not animController then
-        animController = Instance.new("AnimationController")
-        animController.Parent = clone
+    -- IMPORTANT: Find the "Animation" part and set it up
+    local animPart = clone:FindFirstChild("Animation")
+    if animPart and animPart:IsA("BasePart") then
+        animPart.Anchored = false
+        animPart.CanCollide = false
+        animPart.Transparency = 1 -- usually invisible animation controller part
     end
 
     clone:SetAttribute("IsPet", true)
@@ -152,57 +168,70 @@ local function ClonePet(petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  ANIMATIONS
+--  ANIMATIONS - USE THE "Animation" PART
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartAnimations(pet, petName)
-    local animController = pet:FindFirstChildOfClass("AnimationController")
-    if not animController then return end
+    -- GAG 2 pets have an "Animation" part with Animation objects inside
+    local animPart = pet:FindFirstChild("Animation")
+    
+    if animPart then
+        -- Look for Animation objects inside the Animation part
+        for _, desc in ipairs(animPart:GetDescendants()) do
+            if desc:IsA("Animation") then
+                local animController = pet:FindFirstChildOfClass("AnimationController")
+                if animController then
+                    local track = animController:LoadAnimation(desc)
+                    track.Looped = true
+                    track.Priority = Enum.AnimationPriority.Action
+                    track:Play()
+                    print("▶ Playing Animation part anim:", desc.Name, "ID:", desc.AnimationId)
+                end
+            end
+        end
+        
+        -- Also check direct children
+        for _, child in ipairs(animPart:GetChildren()) do
+            if child:IsA("Animation") then
+                local animController = pet:FindFirstChildOfClass("AnimationController")
+                if animController then
+                    local track = animController:LoadAnimation(child)
+                    track.Looped = true
+                    track.Priority = Enum.AnimationPriority.Action
+                    track:Play()
+                    print("▶ Playing direct anim:", child.Name, "ID:", child.AnimationId)
+                end
+            end
+        end
+    end
 
-    local foundAnim = false
+    -- Also search entire pet for Animation objects
+    local foundAny = false
     for _, desc in ipairs(pet:GetDescendants()) do
         if desc:IsA("Animation") then
-            local name = desc.Name:lower()
+            local animController = pet:FindFirstChildOfClass("AnimationController")
+            if not animController then
+                animController = Instance.new("AnimationController")
+                animController.Parent = pet
+            end
             
-            if IsFlyingPet(petName) then
-                if name:find("fly") or name:find("hover") or name:find("idle") then
-                    local track = animController:LoadAnimation(desc)
-                    track.Looped = true
-                    track.Priority = Enum.AnimationPriority.Movement
-                    track:Play()
-                    foundAnim = true
-                    print("▶ Fly anim:", desc.Name)
-                    break
-                end
-            else
-                if name:find("idle") or name:find("walk") or name:find("sit") then
-                    local track = animController:LoadAnimation(desc)
-                    track.Looped = true
-                    track.Priority = Enum.AnimationPriority.Idle
-                    track:Play()
-                    foundAnim = true
-                    print("▶ Idle anim:", desc.Name)
-                    break
-                end
-            end
+            local track = animController:LoadAnimation(desc)
+            track.Looped = true
+            track.Priority = Enum.AnimationPriority.Action
+            track:Play()
+            foundAny = true
+            print("▶ Playing pet anim:", desc.Name, "ID:", desc.AnimationId)
         end
     end
 
-    if not foundAnim then
-        for _, desc in ipairs(pet:GetDescendants()) do
-            if desc:IsA("Animation") then
-                local track = animController:LoadAnimation(desc)
-                track.Looped = true
-                track:Play()
-                print("▶ Fallback anim:", desc.Name)
-                break
-            end
-        end
-    end
-
+    -- Enable Animate script if present
     local animate = pet:FindFirstChild("Animate")
     if animate and animate:IsA("Script") then
         animate.Disabled = false
+    end
+    
+    if not foundAny and not animPart then
+        warn("⚠ No animations found for", petName)
     end
 end
 
@@ -229,7 +258,7 @@ local function FollowPlayer(pet, petName)
         local currentHRP = char:FindFirstChild("HumanoidRootPart")
         if not currentHRP then return end
 
-        -- Offset behind player, spread out if multiple pets
+        -- Find this pet's index for spreading
         local petIndex = 0
         for i, p in ipairs(SpawnedPets) do
             if p.Model == pet then
@@ -244,7 +273,7 @@ local function FollowPlayer(pet, petName)
         
         local targetPos = targetCFrame.Position
 
-        -- Flying vs ground height
+        -- Height based on flying or ground
         if isFlying then
             targetPos = targetPos + Vector3.new(0, CONFIG.FlyHeight, 0)
         else
@@ -255,11 +284,10 @@ local function FollowPlayer(pet, petName)
         local currentCF = pet:GetPivot()
         local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
 
-        -- Face direction of travel
-        local lookTarget = currentHRP.Position + currentHRP.Velocity * 0.1
-        local lookDir = (lookTarget - smoothedPos).Unit
+        -- Face player direction
+        local lookDir = currentHRP.CFrame.LookVector
         if lookDir.Magnitude < 0.001 then
-            lookDir = currentHRP.CFrame.LookVector
+            lookDir = Vector3.new(0, 0, -1)
         end
 
         local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
@@ -272,7 +300,7 @@ local function FollowPlayer(pet, petName)
         pet:PivotTo(newCF)
     end)
 
-    -- Bobbing
+    -- Bobbing for idle
     bobConn = RunService.Heartbeat:Connect(function(dt)
         if not pet or not pet.Parent then
             if bobConn then bobConn:Disconnect() end
@@ -299,13 +327,12 @@ local function FollowPlayer(pet, petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  SPAWN PET IN WORLD (follows you)
+--  SPAWN PET - KEEPS THEM ALIVE
 -- ═══════════════════════════════════════════════════════════════
 
 function SpawnPet(petName)
     -- Max limit
     if #SpawnedPets >= CONFIG.MaxPets then
-        -- Remove oldest
         local oldest = table.remove(SpawnedPets, 1)
         if oldest and oldest.Model then
             if oldest.FollowConn then oldest.FollowConn:Disconnect() end
@@ -325,32 +352,70 @@ function SpawnPet(petName)
 
     local currentHRP = char:WaitForChild("HumanoidRootPart")
     
-    -- Spawn beside player
+    -- Spawn position beside player
     local spawnOffset = CFrame.new(CONFIG.FollowDistance, 0, 0)
-    pet:PivotTo(currentHRP.CFrame * spawnOffset)
+    local spawnCF = currentHRP.CFrame * spawnOffset
+    
+    -- Set CFrame BEFORE parenting (prevents physics weirdness)
+    pet:PivotTo(spawnCF)
+    
+    -- Parent to workspace
     pet.Parent = workspace
-
-    -- Fix visibility
+    
+    -- CRITICAL: Wait a frame then verify all parts exist
+    task.wait()
+    
+    -- Double-check visibility
+    local partCount = 0
     for _, part in ipairs(pet:GetDescendants()) do
         if part:IsA("BasePart") then
+            partCount = partCount + 1
             part.Anchored = false
             part.CanCollide = false
+            part.CanQuery = false
+            
+            -- Force visible
             if part.Transparency >= 1 then
                 part.Transparency = 0
             end
+            
+            -- Reparent fix - sometimes parts get lost
+            if not part.Parent then
+                part.Parent = pet
+            end
         end
     end
+    
+    print("📊 Pet parts:", partCount)
 
     -- Start follow + animations
     local followConn, bobConn = FollowPlayer(pet, petName)
     StartAnimations(pet, petName)
 
-    table.insert(SpawnedPets, {
+    -- Store with cleanup
+    local petData = {
         Model = pet,
         Name = petName,
         FollowConn = followConn,
         BobConn = bobConn,
-    })
+    }
+    
+    table.insert(SpawnedPets, petData)
+    
+    -- Auto-cleanup if destroyed
+    pet.AncestryChanged:Connect(function(_, newParent)
+        if not newParent then
+            for i, p in ipairs(SpawnedPets) do
+                if p.Model == pet then
+                    if p.FollowConn then p.FollowConn:Disconnect() end
+                    if p.BobConn then p.BobConn:Disconnect() end
+                    table.remove(SpawnedPets, i)
+                    countLabel.Text = "Spawned: " .. #SpawnedPets
+                    break
+                end
+            end
+        end
+    end)
 
     print("✅ SPAWNED:", petName, "| Total:", #SpawnedPets)
     return pet
@@ -501,7 +566,7 @@ cCorner.Parent = closeBtn
 
 closeBtn.Parent = mainFrame
 
--- Clear All button
+-- Clear All
 local clearBtn = Instance.new("TextButton")
 clearBtn.Size = UDim2.new(0, 70, 0, 28)
 clearBtn.Position = UDim2.new(1, -82, 0, 7)
@@ -649,4 +714,3 @@ end)
 
 print("🐾 GAG 2 Pet Spawner loaded!")
 print("📋 Pets:", #allPets, "| Press P or click 🐾")
-print("🖱️ Draggable | Spawn multiple | Max:", CONFIG.MaxPets)
