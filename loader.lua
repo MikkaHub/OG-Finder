@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════
---  GAG 2 - NATIVE BACKPACK PET INJECTOR
---  Injects pets into: PlayerGui.BackpackGui.Backpack.Inventory
---  Equip from real inventory → spawns in-world with animations
+--  GAG 2 - NATIVE PET DATA INJECTOR
+--  Injects pets into the REAL game data system that the inventory reads
+--  Pets appear in the actual GAG 2 inventory UI automatically
 -- ═══════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -20,7 +20,6 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local CONFIG = {
     PetFolderPath = {"Assets", "Pets"},
-    BackpackPath = {"PlayerGui", "BackpackGui", "Backpack", "Inventory"},
     FollowDistance = 4,
     HeightAboveGround = 1,
     FollowSmoothness = 0.1,
@@ -28,29 +27,94 @@ local CONFIG = {
 }
 
 -- ═══════════════════════════════════════════════════════════════
---  GET NATIVE BACKPACK INVENTORY
+--  DISCOVER NATIVE PET DATA SYSTEM
 -- ═══════════════════════════════════════════════════════════════
 
-local function GetBackpackInventory()
-    local current = player
-    for _, name in ipairs(CONFIG.BackpackPath) do
-        current = current:FindFirstChild(name)
-        if not current then
-            warn("❌ Backpack path broken at:", name)
-            return nil
+local NativePetData = {
+    Folder = nil,           -- player.Pets or player.Data.Pets
+    Remotes = nil,          -- ReplicatedStorage.Remotes
+    PetAddedEvent = nil,    -- RemoteEvent for adding pets
+    PetEquipEvent = nil,    -- RemoteEvent for equipping
+    PetDataTemplate = nil,  -- Template from existing pet
+}
+
+local function DiscoverNativeSystem()
+    print("\n🔍 DISCOVERING GAG 2 NATIVE PET SYSTEM...")
+    
+    -- 1. Look for player.Pets folder (most common in GAG 2)
+    local petsFolder = player:FindFirstChild("Pets")
+    if petsFolder then
+        NativePetData.Folder = petsFolder
+        print("  📁 Found player.Pets")
+    else
+        -- Check player.Data.Pets
+        local dataFolder = player:FindFirstChild("Data")
+        if dataFolder then
+            petsFolder = dataFolder:FindFirstChild("Pets")
+            if petsFolder then
+                NativePetData.Folder = petsFolder
+                print("  📁 Found player.Data.Pets")
+            end
         end
     end
-    return current
+    
+    -- 2. Look for stats/leaderstats with pet info
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, stat in ipairs(leaderstats:GetChildren()) do
+            if stat.Name:lower():find("pet") then
+                print("  📊 Found pet stat:", stat.Name)
+            end
+        end
+    end
+    
+    -- 3. Look for Remotes
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remotes then
+        remotes = ReplicatedStorage:FindFirstChild("Events")
+    end
+    if remotes then
+        NativePetData.Remotes = remotes
+        print("  📡 Found Remotes folder")
+        
+        for _, remote in ipairs(remotes:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local rName = remote.Name:lower()
+                if rName:find("pet") and (rName:find("add") or rName:find("give") or rName:find("spawn") or rName:find("create") or rName:find("buy")) then
+                    NativePetData.PetAddedEvent = remote
+                    print("  📡 Found PetAdd remote:", remote.Name)
+                end
+                if rName:find("pet") and (rName:find("equip") or rName:find("wear") or rName:find("active") or rName:find("toggle")) then
+                    NativePetData.PetEquipEvent = remote
+                    print("  📡 Found PetEquip remote:", remote.Name)
+                end
+            end
+        end
+    end
+    
+    -- 4. Analyze existing pet data structure
+    if NativePetData.Folder then
+        local existing = NativePetData.Folder:GetChildren()
+        print("  📝 Existing pets in data:", #existing)
+        if #existing > 0 then
+            NativePetData.PetDataTemplate = existing[1]
+            print("  📝 Template:", existing[1].Name, "| Class:", existing[1].ClassName)
+            for _, child in ipairs(existing[1]:GetChildren()) do
+                print("     -", child.Name, "(" .. child.ClassName .. ") =", 
+                    child:IsA("ValueBase") and tostring(child.Value) or "N/A")
+            end
+        end
+    end
+    
+    print("\n📊 NATIVE SYSTEM STATUS:")
+    print("  Data Folder:", NativePetData.Folder and "✅" or "❌")
+    print("  PetAdd Remote:", NativePetData.PetAddedEvent and "✅" or "❌")
+    print("  PetEquip Remote:", NativePetData.PetEquipEvent and "✅" or "❌")
+    
+    return NativePetData.Folder ~= nil or NativePetData.PetAddedEvent ~= nil
 end
 
-local BackpackInventory = GetBackpackInventory()
-local HAS_REAL_INVENTORY = BackpackInventory ~= nil
-
-print("🎒 Backpack Inventory:", HAS_REAL_INVENTORY and "✅ FOUND" or "❌ NOT FOUND")
-if BackpackInventory then
-    print("   Path:", BackpackInventory:GetFullName())
-    print("   Children:", #BackpackInventory:GetChildren())
-end
+local HAS_NATIVE_SYSTEM = DiscoverNativeSystem()
 
 -- ═══════════════════════════════════════════════════════════════
 --  GET PET FOLDER
@@ -83,169 +147,146 @@ local function GetAllPetNames()
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  ANALYZE BACKPACK STRUCTURE
+--  INJECT PET INTO NATIVE DATA SYSTEM
 -- ═══════════════════════════════════════════════════════════════
 
-local BackpackTemplate = nil
-local BackpackItemClass = "Frame" -- Default guess
+local InjectedPetData = {} -- Track what we injected
 
-local function AnalyzeBackpack()
-    if not BackpackInventory then return end
-    
-    print("\n🔍 Analyzing backpack structure...")
-    
-    local children = BackpackInventory:GetChildren()
-    print("   Items in backpack:", #children)
-    
-    -- Find a template item to clone structure from
-    for _, child in ipairs(children) do
-        if child:IsA("GuiObject") then
-            BackpackTemplate = child
-            BackpackItemClass = child.ClassName
-            print("   Found template:", child.Name, "| Class:", child.ClassName)
-            print("   Template children:")
-            for _, desc in ipairs(child:GetDescendants()) do
-                if desc:IsA("TextLabel") or desc:IsA("ImageLabel") or desc:IsA("TextButton") then
-                    print("      -", desc.Name, "(" .. desc.ClassName .. ")")
-                end
-            end
-            break
-        end
+local function InjectPetToNativeData(petName)
+    if not HAS_NATIVE_SYSTEM then
+        return false, "No native system found"
     end
     
-    -- Look for pet-related values
-    for _, child in ipairs(children) do
-        local name = child.Name:lower()
-        if name:find("pet") or name:find("companion") then
-            print("   Found existing pet item:", child.Name)
-            BackpackTemplate = child
-            break
-        end
-    end
-end
-
-if HAS_REAL_INVENTORY then
-    AnalyzeBackpack()
-end
-
--- ═══════════════════════════════════════════════════════════════
---  INJECT PET INTO REAL BACKPACK
--- ═══════════════════════════════════════════════════════════════
-
-local InjectedPets = {} -- Track what we injected
-
-local function InjectPetToBackpack(petName)
-    if not BackpackInventory then
-        return false, "No backpack inventory"
-    end
+    print("\n💉 INJECTING", petName, "into native data...")
     
-    print("\n💉 Injecting", petName, "into backpack...")
-    
-    -- Check if already injected
-    if InjectedPets[petName] then
-        print("   ⚠ Already injected, reusing")
+    -- Check if already exists
+    if InjectedPetData[petName] then
+        print("   ⚠ Already injected")
         return true, "Already exists"
     end
     
-    -- Try to clone existing template
-    if BackpackTemplate then
-        local clone = BackpackTemplate:Clone()
-        clone.Name = petName
-        
-        -- Update text labels to show pet name
-        for _, desc in ipairs(clone:GetDescendants()) do
-            if desc:IsA("TextLabel") or desc:IsA("TextButton") then
-                if desc.Name:lower():find("name") or desc.Name:lower():find("title") or desc.Name:lower():find("label") then
-                    desc.Text = petName
-                end
-            end
-            if desc:IsA("ImageLabel") or desc:IsA("ImageButton") then
-                if desc.Name:lower():find("icon") or desc.Name:lower():find("image") or desc.Name:lower():find("pet") then
-                    -- Try to set pet image if available
-                    -- GAG 2 might use asset IDs, we can't guess those
-                end
-            end
+    -- Method 1: Fire RemoteEvent (most reliable)
+    if NativePetData.PetAddedEvent then
+        print("   📡 Firing PetAdd remote...")
+        local success = pcall(function()
+            -- Try different argument patterns
+            NativePetData.PetAddedEvent:FireServer(petName)
+        end)
+        if success then
+            print("   ✅ Remote fired successfully")
+            InjectedPetData[petName] = true
+            return true, "RemoteEvent"
         end
-        
-        -- Add custom attributes so we can identify our injected pets
-        clone:SetAttribute("IsInjectedPet", true)
-        clone:SetAttribute("PetName", petName)
-        
-        -- Add click handler for equipping
-        local clickTarget = clone
-        if clone:IsA("TextButton") or clone:IsA("ImageButton") then
-            clickTarget = clone
-        else
-            -- Find a button inside
-            for _, desc in ipairs(clone:GetDescendants()) do
-                if desc:IsA("TextButton") or desc:IsA("ImageButton") then
-                    clickTarget = desc
-                    break
-                end
-            end
-        end
-        
-        -- Store original click if any
-        local originalClick = nil
-        if clickTarget:IsA("GuiButton") then
-            -- We can't easily hook existing connections, but we can add our own
-            clickTarget.MouseButton1Click:Connect(function()
-                print("🖱️ Clicked injected pet:", petName)
-                EquipPet(petName)
-            end)
-        end
-        
-        clone.Parent = BackpackInventory
-        InjectedPets[petName] = clone
-        print("   ✅ Cloned template into backpack")
-        return true, "TemplateClone"
     end
     
-    -- Fallback: Create minimal Frame
-    print("   📁 Creating minimal entry...")
-    local entry = Instance.new("Frame")
-    entry.Name = petName
-    entry.Size = UDim2.new(0, 80, 0, 80)
-    entry.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    entry:SetAttribute("IsInjectedPet", true)
-    entry:SetAttribute("PetName", petName)
+    -- Method 2: Direct folder manipulation
+    if NativePetData.Folder then
+        print("   📁 Inserting into data folder...")
+        
+        local petEntry = nil
+        
+        if NativePetData.PetDataTemplate then
+            -- Clone existing structure
+            petEntry = NativePetData.PetDataTemplate:Clone()
+            petEntry.Name = petName
+            print("   📝 Cloned from template")
+        else
+            -- Create standard GAG 2 pet data structure
+            -- Based on wiki: pets have Name, Equipped, Age, Weight, etc.
+            petEntry = Instance.new("Folder")
+            petEntry.Name = petName
+            
+            -- Standard GAG 2 pet values
+            local equipped = Instance.new("BoolValue")
+            equipped.Name = "Equipped"
+            equipped.Value = false
+            equipped.Parent = petEntry
+            
+            local age = Instance.new("IntValue")
+            age.Name = "Age"
+            age.Value = 0
+            age.Parent = petEntry
+            
+            local weight = Instance.new("NumberValue")
+            weight.Name = "Weight"
+            weight.Value = 1
+            weight.Parent = petEntry
+            
+            local hunger = Instance.new("NumberValue")
+            hunger.Name = "Hunger"
+            hunger.Value = 100
+            hunger.Parent = petEntry
+            
+            local xp = Instance.new("NumberValue")
+            xp.Name = "XP"
+            xp.Value = 0
+            xp.Parent = petEntry
+            
+            print("   📝 Created standard GAG 2 structure")
+        end
+        
+        -- Mark as injected
+        petEntry:SetAttribute("IsInjected", true)
+        petEntry:SetAttribute("InjectedTime", os.time())
+        
+        petEntry.Parent = NativePetData.Folder
+        InjectedPetData[petName] = petEntry
+        print("   ✅ Inserted into", NativePetData.Folder.Name)
+        return true, "DirectFolder"
+    end
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = entry
+    return false, "All methods failed"
+end
+
+local function EquipPetInNativeData(petName)
+    if not HAS_NATIVE_SYSTEM then return false end
     
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.Position = UDim2.new(0, 0, 1, -20)
-    label.BackgroundTransparency = 1
-    label.Text = petName
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 10
-    label.Font = Enum.Font.GothamBold
-    label.Parent = entry
+    -- Method 1: RemoteEvent
+    if NativePetData.PetEquipEvent then
+        pcall(function()
+            NativePetData.PetEquipEvent:FireServer(petName)
+        end)
+        return true
+    end
     
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 1, 0)
-    btn.BackgroundTransparency = 1
-    btn.Text = ""
-    btn.Parent = entry
+    -- Method 2: Direct value change
+    if NativePetData.Folder then
+        local pet = NativePetData.Folder:FindFirstChild(petName)
+        if pet then
+            local equipped = pet:FindFirstChild("Equipped")
+            if equipped and equipped:IsA("BoolValue") then
+                equipped.Value = true
+                print("   ✅ Set Equipped = true for", petName)
+                return true
+            end
+        end
+    end
     
-    btn.MouseButton1Click:Connect(function()
-        print("🖱️ Clicked injected pet:", petName)
-        EquipPet(petName)
-    end)
+    return false
+end
+
+local function UnequipPetInNativeData(petName)
+    if not HAS_NATIVE_SYSTEM then return false end
     
-    entry.Parent = BackpackInventory
-    InjectedPets[petName] = entry
-    print("   ✅ Created minimal entry")
-    return true, "MinimalFrame"
+    if NativePetData.Folder then
+        local pet = NativePetData.Folder:FindFirstChild(petName)
+        if pet then
+            local equipped = pet:FindFirstChild("Equipped")
+            if equipped and equipped:IsA("BoolValue") then
+                equipped.Value = false
+                return true
+            end
+        end
+    end
+    
+    return false
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  VISUAL PET SPAWNER (World + Animations)
+--  VISUAL PET SPAWNER (for equipped pets)
 -- ═══════════════════════════════════════════════════════════════
 
-local EquippedPets = {} -- [petName] = { model, followConn, animTracks }
+local EquippedVisuals = {} -- [petName] = { model, followConn, animTracks }
 
 local function GetGroundHeight(position)
     local rayOrigin = position + Vector3.new(0, 100, 0)
@@ -254,9 +295,9 @@ local function GetGroundHeight(position)
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     
     local filterList = {}
-    for _, petData in pairs(EquippedPets) do
-        if petData.model and petData.model.Parent then
-            table.insert(filterList, petData.model)
+    for _, data in pairs(EquippedVisuals) do
+        if data.model and data.model.Parent then
+            table.insert(filterList, data.model)
         end
     end
     if player.Character then
@@ -265,31 +306,21 @@ local function GetGroundHeight(position)
     raycastParams.FilterDescendantsInstances = filterList
     
     local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    if result then
-        return result.Position.Y
-    end
-    
+    if result then return result.Position.Y end
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         return player.Character.HumanoidRootPart.Position.Y - 3
     end
-    
     return position.Y
 end
 
 local function ClonePetForWorld(petName)
     local template = PetFolder:FindFirstChild(petName)
-    if not template then
-        warn("❌ Pet not found:", petName)
-        return nil
-    end
+    if not template then return nil end
 
     local clone = template:Clone()
-
     if template.PrimaryPart then
         local pp = clone:FindFirstChild(template.PrimaryPart.Name)
-        if pp then
-            clone.PrimaryPart = pp
-        end
+        if pp then clone.PrimaryPart = pp end
     end
 
     for _, part in ipairs(clone:GetDescendants()) do
@@ -297,12 +328,9 @@ local function ClonePetForWorld(petName)
             part.Anchored = true
             part.CanCollide = false
             part.CanQuery = false
-            if part.Transparency >= 1 then
-                part.Transparency = 0
-            end
+            if part.Transparency >= 1 then part.Transparency = 0 end
         end
-        
-        if part:IsA("Motor6D") then
+        if part:IsA("Motor6D") or part:IsA("Weld") or part:IsA("ManualWeld") then
             local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
             local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
             if p0 and p1 then
@@ -310,16 +338,6 @@ local function ClonePetForWorld(petName)
                 part.Part1 = p1
             end
         end
-        
-        if part:IsA("Weld") or part:IsA("ManualWeld") then
-            local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
-            local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
-            if p0 and p1 then
-                part.Part0 = p0
-                part.Part1 = p1
-            end
-        end
-        
         if part:IsA("Decal") or part:IsA("Texture") then
             part.Transparency = 0
         end
@@ -327,14 +345,10 @@ local function ClonePetForWorld(petName)
 
     clone:SetAttribute("IsPet", true)
     clone:SetAttribute("PetName", petName)
-    
     return clone
 end
 
--- FIXED ANIMATION SYSTEM
 local function StartAnimations(pet, petName)
-    print("\n--- ANIMATIONS for", petName, "---")
-    
     local animTracks = {}
     local playedAny = false
     
@@ -345,9 +359,6 @@ local function StartAnimations(pet, petName)
         humanoid.Health = 100
         humanoid.MaxHealth = 100
         humanoid.Parent = pet
-        print("📎 Created Humanoid")
-    else
-        print("📎 Found Humanoid")
     end
     
     local animationsFolder = pet:FindFirstChild("Animations")
@@ -355,57 +366,41 @@ local function StartAnimations(pet, petName)
         for _, child in ipairs(pet:GetChildren()) do
             if child:IsA("Folder") and child.Name:lower():find("anim") then
                 animationsFolder = child
-                print("🔍 Found anim folder:", child.Name)
                 break
             end
         end
-    else
-        print("🔍 Found Animations folder")
     end
     
     local function loadAndPlay(animObj)
         if not animObj:IsA("Animation") or animObj.AnimationId == "" then return false end
-        
-        print("  🎬", animObj.Name, "ID:", animObj.AnimationId:sub(1, 40))
-        
         local success, track = pcall(function()
             return humanoid:LoadAnimation(animObj)
         end)
-        
         if success and track then
             local name = animObj.Name:lower()
-            
             if name:find("idle") or name:find("ground") or name:find("sit") then
                 track.Looped = true
                 track.Priority = Enum.AnimationPriority.Idle
                 track:Play()
                 playedAny = true
-                print("     ▶ PLAYING (Idle)")
                 table.insert(animTracks, track)
-                return true
             elseif name:find("walk") or name:find("fly") or name:find("run") or name:find("move") then
                 track.Looped = true
                 track.Priority = Enum.AnimationPriority.Movement
-                print("     📥 LOADED (Movement)")
                 table.insert(animTracks, track)
-                return true
             else
                 track.Looped = true
                 track.Priority = Enum.AnimationPriority.Action
                 track:Play()
                 playedAny = true
-                print("     ▶ PLAYING (Action)")
                 table.insert(animTracks, track)
-                return true
             end
-        else
-            print("     ❌ Failed:", tostring(track))
-            return false
+            return true
         end
+        return false
     end
     
     if animationsFolder then
-        print("🎬 Scanning Animations folder...")
         for _, animObj in ipairs(animationsFolder:GetDescendants()) do
             loadAndPlay(animObj)
         end
@@ -415,7 +410,6 @@ local function StartAnimations(pet, petName)
     end
     
     if not playedAny then
-        print("🔍 Searching entire pet for animations...")
         for _, desc in ipairs(pet:GetDescendants()) do
             if desc:IsA("Animation") and desc.AnimationId ~= "" then
                 loadAndPlay(desc)
@@ -426,23 +420,14 @@ local function StartAnimations(pet, petName)
     if not playedAny then
         local animate = pet:FindFirstChild("Animate")
         if animate and animate:IsA("Script") then
-            print("📜 Found Animate script")
             local newAnimate = animate:Clone()
             animate:Destroy()
             newAnimate.Parent = pet
             newAnimate.Disabled = false
             playedAny = true
-            print("  ▶ Enabled")
         end
     end
     
-    if not playedAny then
-        warn("⚠ NO ANIMATIONS for", petName)
-    else
-        print("✅ Animations active")
-    end
-    
-    print("---\n")
     return playedAny, animTracks
 end
 
@@ -470,9 +455,7 @@ local function FollowPlayer(pet, petIndex)
         local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
         
         local lookDir = currentHRP.CFrame.LookVector
-        if lookDir.Magnitude < 0.001 then
-            lookDir = Vector3.new(0, 0, -1)
-        end
+        if lookDir.Magnitude < 0.001 then lookDir = Vector3.new(0, 0, -1) end
         
         local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
         local pName = pet:GetAttribute("PetName") or ""
@@ -485,38 +468,24 @@ local function FollowPlayer(pet, petIndex)
     return followConn
 end
 
--- ═══════════════════════════════════════════════════════════════
---  EQUIP / UNEQUIP
--- ═══════════════════════════════════════════════════════════════
-
-function EquipPet(petName)
-    -- Check if already equipped
-    if EquippedPets[petName] then
-        print("⚠", petName, "already equipped")
+function SpawnVisualPet(petName)
+    if EquippedVisuals[petName] then
+        print("⚠", petName, "already visualized")
         return true
     end
     
-    -- Check max equipped
     local eqCount = 0
-    for _ in pairs(EquippedPets) do eqCount += 1 end
+    for _ in pairs(EquippedVisuals) do eqCount += 1 end
     if eqCount >= CONFIG.MaxEquipped then
         warn("❌ Max equipped:", CONFIG.MaxEquipped)
         return false
     end
     
-    print("\n========== EQUIPPING:", petName, "==========")
-    
     local pet = ClonePetForWorld(petName)
-    if not pet then
-        print("❌ Clone failed")
-        return false
-    end
+    if not pet then return false end
     
     local char = player.Character
-    if not char then
-        pet:Destroy()
-        return false
-    end
+    if not char then pet:Destroy() return false end
     
     local currentHRP = char:WaitForChild("HumanoidRootPart")
     local spawnPos = currentHRP.Position + Vector3.new(CONFIG.FollowDistance, 0, 0)
@@ -539,81 +508,98 @@ function EquipPet(petName)
     local hasAnims, animTracks = StartAnimations(pet, petName)
     local followConn = FollowPlayer(pet, followIndex)
     
-    EquippedPets[petName] = {
+    EquippedVisuals[petName] = {
         model = pet,
         followConn = followConn,
         animTracks = animTracks,
     }
     
-    -- Highlight in backpack
-    local injected = InjectedPets[petName]
-    if injected then
-        injected.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
-    end
-    
-    -- Cleanup on destroy
     pet.AncestryChanged:Connect(function(_, newParent)
-        if not newParent then
-            if EquippedPets[petName] then
-                UnequipPet(petName)
-            end
+        if not newParent and EquippedVisuals[petName] then
+            task.defer(function()
+                -- Check if still equipped in native data
+                if NativePetData.Folder then
+                    local petData = NativePetData.Folder:FindFirstChild(petName)
+                    if petData then
+                        local equipped = petData:FindFirstChild("Equipped")
+                        if equipped and equipped:IsA("BoolValue") and equipped.Value then
+                            -- Still equipped, respawn
+                            task.wait(0.5)
+                            SpawnVisualPet(petName)
+                        end
+                    end
+                end
+            end)
         end
     end)
     
-    print("✅ EQUIPPED:", petName, "| Anims:", hasAnims)
-    print("================================\n")
+    print("✅ Visual spawned:", petName, "| Anims:", hasAnims)
     return true
 end
 
-function UnequipPet(petName)
-    local petData = EquippedPets[petName]
-    if not petData then return false end
+function DespawnVisualPet(petName)
+    local data = EquippedVisuals[petName]
+    if not data then return false end
     
-    if petData.followConn then
-        petData.followConn:Disconnect()
-    end
-    
-    if petData.animTracks then
-        for _, track in ipairs(petData.animTracks) do
+    if data.followConn then data.followConn:Disconnect() end
+    if data.animTracks then
+        for _, track in ipairs(data.animTracks) do
             pcall(function() track:Stop() track:Destroy() end)
         end
     end
+    if data.model then data.model:Destroy() end
     
-    if petData.model then
-        petData.model:Destroy()
-    end
+    EquippedVisuals[petName] = nil
     
-    EquippedPets[petName] = nil
-    
-    -- Unhighlight in backpack
-    local injected = InjectedPets[petName]
-    if injected then
-        injected.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    end
-    
-    -- Recalculate follow indices
+    -- Recalculate indices
     task.delay(0.1, function()
         local index = 1
-        for _, data in pairs(EquippedPets) do
-            if data.followConn then
-                data.followConn:Disconnect()
-                data.followConn = FollowPlayer(data.model, index)
+        for _, petData in pairs(EquippedVisuals) do
+            if petData.followConn then
+                petData.followConn:Disconnect()
+                petData.followConn = FollowPlayer(petData.model, index)
                 index += 1
             end
         end
     end)
     
-    print("📤 Unequipped:", petName)
+    print("📤 Despawned:", petName)
     return true
 end
 
-function UnequipAll()
-    local toUnequip = {}
-    for name in pairs(EquippedPets) do
-        table.insert(toUnequip, name)
+function DespawnAllVisuals()
+    for name in pairs(EquippedVisuals) do
+        DespawnVisualPet(name)
     end
-    for _, name in ipairs(toUnequip) do
-        UnequipPet(name)
+end
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNIFIED SPAWN FUNCTION
+-- ═══════════════════════════════════════════════════════════════
+
+function SpawnPet(petName)
+    -- Step 1: Inject into native data
+    local injected, method = InjectPetToNativeData(petName)
+    
+    if injected then
+        print("💉 Native injection successful:", method)
+        
+        -- Step 2: Equip in native data
+        task.delay(0.2, function()
+            EquipPetInNativeData(petName)
+        end)
+        
+        -- Step 3: Spawn visual
+        task.delay(0.5, function()
+            SpawnVisualPet(petName)
+        end)
+        
+        return true
+    else
+        -- Fallback: just visual
+        print("⚠ Native injection failed, spawning visual only")
+        SpawnVisualPet(petName)
+        return false
     end
 end
 
@@ -622,7 +608,7 @@ end
 -- ═══════════════════════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "GAG2BackpackInjector"
+screenGui.Name = "GAG2NativeInjector"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -636,50 +622,36 @@ toggleBtn.Text = "🐾"
 toggleBtn.TextSize = 28
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextColor3 = Color3.fromRGB(50, 30, 0)
-
-local tCorner = Instance.new("UICorner")
-tCorner.CornerRadius = UDim.new(1, 0)
-tCorner.Parent = toggleBtn
-
-local tStroke = Instance.new("UIStroke")
-tStroke.Color = Color3.fromRGB(200, 150, 40)
-tStroke.Thickness = 3
-tStroke.Parent = toggleBtn
-
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", toggleBtn).Color = Color3.fromRGB(200, 150, 40)
+Instance.new("UIStroke", toggleBtn).Thickness = 3
 toggleBtn.Parent = screenGui
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Main"
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+mainFrame.Size = UDim2.new(0, 320, 0, 420)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.ClipsDescendants = true
-
-local mCorner = Instance.new("UICorner")
-mCorner.CornerRadius = UDim.new(0, 14)
-mCorner.Parent = mainFrame
-
-local mStroke = Instance.new("UIStroke")
-mStroke.Color = Color3.fromRGB(80, 80, 100)
-mStroke.Thickness = 2
-mStroke.Parent = mainFrame
-
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
+Instance.new("UIStroke", mainFrame).Color = Color3.fromRGB(80, 80, 100)
+Instance.new("UIStroke", mainFrame).Thickness = 2
 mainFrame.Parent = screenGui
 
 -- Status bar
 local statusBar = Instance.new("Frame")
 statusBar.Size = UDim2.new(1, 0, 0, 24)
 statusBar.Position = UDim2.new(0, 0, 0, 42)
-statusBar.BackgroundColor3 = HAS_REAL_INVENTORY and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(120, 80, 40)
+statusBar.BackgroundColor3 = HAS_NATIVE_SYSTEM and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(120, 80, 40)
 statusBar.BorderSizePixel = 0
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -10, 1, 0)
 statusLabel.Position = UDim2.new(0, 5, 0, 0)
 statusLabel.BackgroundTransparency = 1
-statusLabel.Text = HAS_REAL_INVENTORY and "🟢 BACKPACK INJECTOR ACTIVE" or "🟡 VISUAL MODE ONLY"
+statusLabel.Text = HAS_NATIVE_SYSTEM and "🟢 NATIVE SYSTEM ACTIVE" or "🟡 VISUAL MODE ONLY"
 statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 statusLabel.TextSize = 11
 statusLabel.Font = Enum.Font.GothamBold
@@ -687,7 +659,7 @@ statusLabel.Parent = statusBar
 
 statusBar.Parent = mainFrame
 
--- Drag
+-- Drag system
 local dragging = false
 local dragStart = nil
 local startPos = nil
@@ -732,16 +704,13 @@ local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
 titleBar.BorderSizePixel = 0
-
-local tbCorner = Instance.new("UICorner")
-tbCorner.CornerRadius = UDim.new(0, 14)
-tbCorner.Parent = titleBar
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 14)
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -100, 1, 0)
 titleLabel.Position = UDim2.new(0, 12, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "🐾 Pet Injector"
+titleLabel.Text = "🐾 Native Pet Injector"
 titleLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
 titleLabel.TextSize = 18
 titleLabel.Font = Enum.Font.GothamBold
@@ -758,11 +727,7 @@ closeBtn.Text = "✕"
 closeBtn.TextSize = 16
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-
-local cCorner = Instance.new("UICorner")
-cCorner.CornerRadius = UDim.new(0, 10)
-cCorner.Parent = closeBtn
-
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 10)
 closeBtn.Parent = mainFrame
 
 local clearBtn = Instance.new("TextButton")
@@ -773,11 +738,7 @@ clearBtn.Text = "Clear All"
 clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearBtn.TextSize = 11
 clearBtn.Font = Enum.Font.GothamBold
-
-local clCorner = Instance.new("UICorner")
-clCorner.CornerRadius = UDim.new(0, 8)
-clCorner.Parent = clearBtn
-
+Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 8)
 clearBtn.Parent = titleBar
 
 -- Scroll
@@ -796,21 +757,18 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 listLayout.Parent = scroll
 
--- Count
+-- Stats
 local countFrame = Instance.new("Frame")
 countFrame.Size = UDim2.new(1, -16, 0, 38)
 countFrame.Position = UDim2.new(0, 8, 1, -42)
 countFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-
-local cfCorner = Instance.new("UICorner")
-cfCorner.CornerRadius = UDim.new(0, 10)
-cfCorner.Parent = countFrame
+Instance.new("UICorner", countFrame).CornerRadius = UDim.new(0, 10)
 
 local countLabel = Instance.new("TextLabel")
 countLabel.Size = UDim2.new(1, -10, 1, 0)
 countLabel.Position = UDim2.new(0, 5, 0, 0)
 countLabel.BackgroundTransparency = 1
-countLabel.Text = "Equipped: 0 | In Backpack: 0"
+countLabel.Text = "Native: 0 | Visual: 0"
 countLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
 countLabel.TextSize = 13
 countLabel.Font = Enum.Font.Gotham
@@ -846,27 +804,20 @@ for _, petName in ipairs(allPets) do
     arrow.Size = UDim2.new(0, 28, 0, 28)
     arrow.Position = UDim2.new(1, -34, 0.5, -14)
     arrow.BackgroundTransparency = 1
-    arrow.Text = HAS_REAL_INVENTORY and "💉" or "👁️"
-    arrow.TextColor3 = HAS_REAL_INVENTORY and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 200, 100)
+    arrow.Text = HAS_NATIVE_SYSTEM and "💉" or "👁️"
+    arrow.TextColor3 = HAS_NATIVE_SYSTEM and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 200, 100)
     arrow.TextSize = 20
     arrow.Font = Enum.Font.GothamBold
     arrow.Parent = btn
 
     btn.MouseButton1Click:Connect(function()
-        -- Step 1: Inject to backpack
-        if HAS_REAL_INVENTORY then
-            InjectPetToBackpack(petName)
-        end
+        SpawnPet(petName)
         
-        -- Step 2: Equip (spawn in world)
-        EquipPet(petName)
-        
-        -- Update count
-        local eqCount = 0
-        for _ in pairs(EquippedPets) do eqCount += 1 end
-        local invCount = 0
-        for _ in pairs(InjectedPets) do invCount += 1 end
-        countLabel.Text = "Equipped: " .. eqCount .. " | In Backpack: " .. invCount
+        local nativeCount = 0
+        for _ in pairs(InjectedPetData) do nativeCount += 1 end
+        local visualCount = 0
+        for _ in pairs(EquippedVisuals) do visualCount += 1 end
+        countLabel.Text = "Native: " .. nativeCount .. " | Visual: " .. visualCount
         
         btn.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
         task.wait(0.2)
@@ -876,20 +827,20 @@ for _, petName in ipairs(allPets) do
     btn.Parent = scroll
 end
 
--- Buttons
+-- Toggle
 local function toggleGUI()
     if mainFrame.Visible then
         TweenService:Create(mainFrame, TweenInfo.new(0.18), {
-            Size = UDim2.new(0, 300, 0, 0),
+            Size = UDim2.new(0, 320, 0, 0),
             Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, 0.5, 0)
         }):Play()
         task.wait(0.18)
         mainFrame.Visible = false
     else
         mainFrame.Visible = true
-        mainFrame.Size = UDim2.new(0, 300, 0, 0)
+        mainFrame.Size = UDim2.new(0, 320, 0, 0)
         TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-            Size = UDim2.new(0, 300, 0, 400),
+            Size = UDim2.new(0, 320, 0, 420),
             Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
         }):Play()
     end
@@ -899,10 +850,8 @@ toggleBtn.MouseButton1Click:Connect(toggleGUI)
 closeBtn.MouseButton1Click:Connect(toggleGUI)
 
 clearBtn.MouseButton1Click:Connect(function()
-    UnequipAll()
-    local invCount = 0
-    for _ in pairs(InjectedPets) do invCount += 1 end
-    countLabel.Text = "Equipped: 0 | In Backpack: " .. invCount
+    DespawnAllVisuals()
+    countLabel.Text = "Native: " .. #InjectedPetData .. " | Visual: 0"
 end)
 
 UserInputService.InputBegan:Connect(function(input, gpe)
@@ -912,11 +861,10 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 player.CharacterRemoving:Connect(function()
-    UnequipAll()
+    DespawnAllVisuals()
 end)
 
-print("\n🐾 GAG 2 BACKPACK PET INJECTOR loaded!")
+print("\n🐾 GAG 2 NATIVE PET INJECTOR loaded!")
 print("📋 Pets:", #allPets)
-print("🎒 Backpack:", HAS_REAL_INVENTORY and "ACTIVE" or "NOT FOUND")
-print("💡 Click pet in injector → adds to backpack → auto-equips")
-print("   Or open GAG 2 backpack and click injected pet to equip")
+print("🎯 Native System:", HAS_NATIVE_SYSTEM and "DETECTED" or "NOT FOUND")
+print("💡 Check console for discovery details")
