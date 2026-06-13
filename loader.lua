@@ -10,19 +10,9 @@ if not sheckles then return end
 local old = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MikkaHub")
 if old then old:Destroy() end
 
--- FORCE DOWNLOAD IMAGE
-local imagePath = ""
-local success = pcall(function()
-    local data = game:HttpGet("https://files.catbox.moe/29dya4.png")
-    writefile("mikka.png", data)
-    if isfile("mikka.png") then
-        imagePath = getcustomasset("mikka.png")
-    end
-end)
-
-if not success or imagePath == "" then
-    warn("Image download failed, trying direct URL...")
-end
+-- IMAGE SETUP - Try multiple methods
+local IMAGE_URL = "https://files.catbox.moe/29dya4.png"
+local imageLoaded = false
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "MikkaHub"
@@ -144,32 +134,60 @@ logoGlow.Thickness = 2
 logoGlow.Parent = logoFrame
 
 local logoImage = Instance.new("ImageLabel")
+logoImage.Name = "LogoImage"
 logoImage.Size = UDim2.new(1, 0, 1, 0)
 logoImage.BackgroundTransparency = 1
 logoImage.ScaleType = Enum.ScaleType.Crop
+logoImage.Image = IMAGE_URL
 logoImage.Parent = logoFrame
 
 Instance.new("UICorner", logoImage).CornerRadius = UDim.new(1, 0)
 
--- SET IMAGE SOURCE - TRY LOCAL FIRST, THEN URL
-if imagePath ~= "" then
-    logoImage.Image = imagePath
-    print("Using local image: " .. imagePath)
-else
-    logoImage.Image = "https://files.catbox.moe/29dya4.png"
-    print("Using URL image")
-end
+-- Loading indicator
+local loadingSpinner = Instance.new("Frame")
+loadingSpinner.Size = UDim2.new(0, 20, 0, 20)
+loadingSpinner.Position = UDim2.new(0.5, -10, 0.5, -10)
+loadingSpinner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+loadingSpinner.BackgroundTransparency = 0.5
+loadingSpinner.BorderSizePixel = 0
+loadingSpinner.Parent = logoFrame
 
--- FORCE RELOAD IF NOT LOADED
+Instance.new("UICorner", loadingSpinner).CornerRadius = UDim.new(1, 0)
+
+-- Spinner animation
 spawn(function()
-    task.wait(2)
-    if not logoImage.IsLoaded then
-        print("Image not loaded, retrying with URL...")
-        logoImage.Image = "https://files.catbox.moe/29dya4.png"
-        task.wait(2)
-        if not logoImage.IsLoaded then
-            print("URL failed too, keeping pink circle")
+    while loadingSpinner.Parent do
+        TweenService:Create(loadingSpinner, TweenInfo.new(0.5), {Rotation = loadingSpinner.Rotation + 180}):Play()
+        task.wait(0.5)
+    end
+end)
+
+-- IMAGE LOADING SYSTEM
+spawn(function()
+    local attempts = 0
+    local maxAttempts = 5
+    
+    while attempts < maxAttempts do
+        attempts = attempts + 1
+        task.wait(1)
+        
+        if logoImage.IsLoaded then
+            imageLoaded = true
+            loadingSpinner:Destroy()
+            print("Image loaded successfully!")
+            break
+        else
+            print("Attempt " .. attempts .. " failed, retrying...")
+            -- Force reload by resetting image
+            logoImage.Image = ""
+            task.wait(0.1)
+            logoImage.Image = IMAGE_URL
         end
+    end
+    
+    if not imageLoaded then
+        loadingSpinner:Destroy()
+        print("All attempts failed. Image URL may be blocked.")
     end
 end)
 
@@ -300,28 +318,52 @@ toggleStroke.Color = Color3.fromRGB(200, 100, 150)
 toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
--- Circular logo image on toggle
 local toggleLogo = Instance.new("ImageLabel")
+toggleLogo.Name = "ToggleLogo"
 toggleLogo.Size = UDim2.new(0, 40, 0, 40)
 toggleLogo.Position = UDim2.new(0.5, -20, 0.5, -20)
 toggleLogo.BackgroundTransparency = 1
 toggleLogo.ScaleType = Enum.ScaleType.Crop
+toggleLogo.Image = IMAGE_URL
 toggleLogo.Parent = toggle
 
 Instance.new("UICorner", toggleLogo).CornerRadius = UDim.new(1, 0)
 
--- SET TOGGLE IMAGE
-if imagePath ~= "" then
-    toggleLogo.Image = imagePath
-else
-    toggleLogo.Image = "https://files.catbox.moe/29dya4.png"
-end
+-- Toggle loading spinner
+local toggleSpinner = Instance.new("Frame")
+toggleSpinner.Size = UDim2.new(0, 16, 0, 16)
+toggleSpinner.Position = UDim2.new(0.5, -8, 0.5, -8)
+toggleSpinner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+toggleSpinner.BackgroundTransparency = 0.5
+toggleSpinner.BorderSizePixel = 0
+toggleSpinner.Parent = toggle
 
--- FORCE RELOAD TOGGLE IMAGE
+Instance.new("UICorner", toggleSpinner).CornerRadius = UDim.new(1, 0)
+
 spawn(function()
-    task.wait(2)
+    while toggleSpinner.Parent do
+        TweenService:Create(toggleSpinner, TweenInfo.new(0.5), {Rotation = toggleSpinner.Rotation + 180}):Play()
+        task.wait(0.5)
+    end
+end)
+
+-- Toggle image loading
+spawn(function()
+    local attempts = 0
+    while attempts < 5 do
+        attempts = attempts + 1
+        task.wait(1)
+        if toggleLogo.IsLoaded then
+            toggleSpinner:Destroy()
+            break
+        else
+            toggleLogo.Image = ""
+            task.wait(0.1)
+            toggleLogo.Image = IMAGE_URL
+        end
+    end
     if not toggleLogo.IsLoaded then
-        toggleLogo.Image = "https://files.catbox.moe/29dya4.png"
+        toggleSpinner:Destroy()
     end
 end)
 
@@ -379,4 +421,4 @@ TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.Easing
     Position = UDim2.new(0.5, -140, 0.1, 0)
 }):Play()
 
-print("MIKKA HUB loaded. Image path: " .. (imagePath ~= "" and imagePath or "URL"))
+print("MIKKA HUB loaded. Image URL: " .. IMAGE_URL)
