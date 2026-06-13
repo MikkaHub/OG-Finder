@@ -29,25 +29,74 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
 
--- Pink corner glow (bottom right)
-local cornerGlow = Instance.new("Frame")
-cornerGlow.Size = UDim2.new(0, 120, 0, 120)
-cornerGlow.Position = UDim2.new(1, -60, 1, -60)
-cornerGlow.BackgroundColor3 = Color3.fromRGB(200, 80, 140)
-cornerGlow.BackgroundTransparency = 0.9
-cornerGlow.BorderSizePixel = 0
-cornerGlow.ZIndex = 0
-cornerGlow.Parent = frame
+-- TRAVELING GLOW around GUI border
+local glowContainer = Instance.new("Frame")
+glowContainer.Size = UDim2.new(1, 0, 1, 0)
+glowContainer.BackgroundTransparency = 1
+glowContainer.ZIndex = 0
+glowContainer.Parent = frame
 
-Instance.new("UICorner", cornerGlow).CornerRadius = UDim.new(1, 0)
+-- 4 glow dots traveling the border
+local glowDots = {}
+for i = 1, 4 do
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 8, 0, 8)
+    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 0
+    dot.Parent = glowContainer
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    -- Glow effect
+    local dotGlow = Instance.new("ImageLabel")
+    dotGlow.Size = UDim2.new(0, 20, 0, 20)
+    dotGlow.Position = UDim2.new(0.5, -10, 0.5, -10)
+    dotGlow.BackgroundTransparency = 1
+    dotGlow.Image = "rbxassetid://1316045217"
+    dotGlow.ImageColor3 = Color3.fromRGB(220, 100, 170)
+    dotGlow.ImageTransparency = 0.6
+    dotGlow.ScaleType = Enum.ScaleType.Slice
+    dotGlow.SliceCenter = Rect.new(10, 10, 118, 118)
+    dotGlow.ZIndex = -1
+    dotGlow.Parent = dot
+    
+    table.insert(glowDots, dot)
+end
 
--- Animated corner glow
+-- Animate glow dots traveling border
 spawn(function()
-    while cornerGlow.Parent do
-        TweenService:Create(cornerGlow, TweenInfo.new(3, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.85}):Play()
-        task.wait(3)
-        TweenService:Create(cornerGlow, TweenInfo.new(3, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.95}):Play()
-        task.wait(3)
+    local progress = 0
+    while glowContainer.Parent do
+        progress = progress + 0.008
+        if progress > 1 then progress = 0 end
+        
+        for i, dot in ipairs(glowDots) do
+            local offset = (i - 1) * 0.25
+            local p = (progress + offset) % 1
+            
+            local x, y
+            if p < 0.25 then
+                -- Top edge left to right
+                x = p * 4
+                y = 0
+            elseif p < 0.5 then
+                -- Right edge top to bottom
+                x = 1
+                y = (p - 0.25) * 4
+            elseif p < 0.75 then
+                -- Bottom edge right to left
+                x = 1 - (p - 0.5) * 4
+                y = 1
+            else
+                -- Left edge bottom to top
+                x = 0
+                y = 1 - (p - 0.75) * 4
+            end
+            
+            dot.Position = UDim2.new(x, -4, y, -4)
+        end
+        
+        task.wait(0.03)
     end
 end)
 
@@ -62,7 +111,7 @@ shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
 shadow.ImageTransparency = 0.6
 shadow.ScaleType = Enum.ScaleType.Slice
 shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-shadow.ZIndex = -1
+shadow.ZIndex = -2
 shadow.Parent = frame
 
 -- Header
@@ -70,6 +119,7 @@ local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 50)
 header.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
 header.BorderSizePixel = 0
+header.ZIndex = 1
 header.Parent = frame
 
 local headerCorner = Instance.new("UICorner")
@@ -81,6 +131,7 @@ headerFix.Size = UDim2.new(1, 0, 0, 20)
 headerFix.Position = UDim2.new(0, 0, 0.5, 0)
 headerFix.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
 headerFix.BorderSizePixel = 0
+headerFix.ZIndex = 1
 headerFix.Parent = header
 
 -- Avatar in header
@@ -90,6 +141,7 @@ miniAvatar.Position = UDim2.new(0, 14, 0, 10)
 miniAvatar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 miniAvatar.Image = AVATAR_URL
 miniAvatar.ScaleType = Enum.ScaleType.Crop
+miniAvatar.ZIndex = 2
 miniAvatar.Parent = header
 
 Instance.new("UICorner", miniAvatar).CornerRadius = UDim.new(1, 0)
@@ -97,6 +149,7 @@ Instance.new("UICorner", miniAvatar).CornerRadius = UDim.new(1, 0)
 local miniStroke = Instance.new("UIStroke")
 miniStroke.Color = Color3.fromRGB(70, 60, 75)
 miniStroke.Thickness = 1.5
+miniStroke.ZIndex = 2
 miniStroke.Parent = miniAvatar
 
 -- Title
@@ -109,6 +162,7 @@ title.TextColor3 = Color3.fromRGB(220, 200, 215)
 title.TextSize = 16
 title.Font = Enum.Font.GothamBlack
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 2
 title.Parent = header
 
 -- Close
@@ -118,6 +172,7 @@ closeBtn.Position = UDim2.new(1, -38, 0, 11)
 closeBtn.BackgroundColor3 = Color3.fromRGB(40, 25, 30)
 closeBtn.Text = ""
 closeBtn.AutoButtonColor = false
+closeBtn.ZIndex = 2
 closeBtn.Parent = header
 
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
@@ -129,6 +184,7 @@ closeIcon.Text = "×"
 closeIcon.TextColor3 = Color3.fromRGB(160, 120, 135)
 closeIcon.TextSize = 20
 closeIcon.Font = Enum.Font.GothamBold
+closeIcon.ZIndex = 3
 closeIcon.Parent = closeBtn
 
 closeBtn.MouseEnter:Connect(function()
@@ -145,49 +201,71 @@ local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -24, 0, 126)
 content.Position = UDim2.new(0, 12, 0, 52)
 content.BackgroundTransparency = 1
+content.ZIndex = 1
 content.Parent = frame
 
--- Left: Avatar with clean animations
+-- Left: Avatar with bounce + spin ring
 local leftSection = Instance.new("Frame")
 leftSection.Size = UDim2.new(0, 90, 1, 0)
 leftSection.BackgroundTransparency = 1
+leftSection.ZIndex = 1
 leftSection.Parent = content
 
+-- Outer spinning ring
+local spinRing = Instance.new("Frame")
+spinRing.Size = UDim2.new(0, 84, 0, 84)
+spinRing.Position = UDim2.new(0.5, -42, 0, 0)
+spinRing.BackgroundTransparency = 1
+spinRing.ZIndex = 0
+spinRing.Parent = leftSection
+
+-- Ring segments
+for i = 1, 3 do
+    local segment = Instance.new("Frame")
+    segment.Size = UDim2.new(0, 6, 0, 2)
+    segment.BackgroundColor3 = Color3.fromRGB(200, 100, 160)
+    segment.BorderSizePixel = 0
+    segment.ZIndex = 0
+    segment.Parent = spinRing
+    Instance.new("UICorner", segment).CornerRadius = UDim.new(0, 1)
+    
+    spawn(function()
+        local angle = (i / 3) * math.pi * 2
+        while segment.Parent do
+            angle = angle + 0.03
+            local x = math.cos(angle) * 42
+            local y = math.sin(angle) * 42
+            segment.Position = UDim2.new(0.5, x - 3, 0.5, y - 1)
+            segment.Rotation = math.deg(angle)
+            task.wait(0.03)
+        end
+    end)
+end
+
+-- Avatar frame with bounce
 local avatarFrame = Instance.new("Frame")
-avatarFrame.Size = UDim2.new(0, 72, 0, 72)
-avatarFrame.Position = UDim2.new(0.5, -36, 0, 6)
+avatarFrame.Size = UDim2.new(0, 68, 0, 68)
+avatarFrame.Position = UDim2.new(0.5, -34, 0, 8)
 avatarFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 avatarFrame.BorderSizePixel = 0
+avatarFrame.ZIndex = 1
 avatarFrame.Parent = leftSection
 
 Instance.new("UICorner", avatarFrame).CornerRadius = UDim.new(1, 0)
 
--- Animated avatar border
 local avatarStroke = Instance.new("UIStroke")
-avatarStroke.Color = Color3.fromRGB(90, 70, 100)
+avatarStroke.Color = Color3.fromRGB(100, 80, 115)
 avatarStroke.Thickness = 2
+avatarStroke.ZIndex = 1
 avatarStroke.Parent = avatarFrame
 
--- Subtle rotating ring around avatar
-local ring = Instance.new("Frame")
-ring.Size = UDim2.new(0, 80, 0, 80)
-ring.Position = UDim2.new(0.5, -40, 0, 2)
-ring.BackgroundTransparency = 1
-ring.Parent = leftSection
-
-local ringArc = Instance.new("Frame")
-ringArc.Size = UDim2.new(0, 12, 0, 2)
-ringArc.Position = UDim2.new(0.5, -6, 0, 0)
-ringArc.BackgroundColor3 = Color3.fromRGB(200, 100, 150)
-ringArc.BorderSizePixel = 0
-ringArc.Parent = ring
-
-Instance.new("UICorner", ringArc).CornerRadius = UDim.new(0, 1)
-
+-- Bounce animation
 spawn(function()
-    while ring.Parent do
-        TweenService:Create(ring, TweenInfo.new(4, Enum.EasingStyle.Linear), {Rotation = ring.Rotation + 360}):Play()
-        task.wait(4)
+    while avatarFrame.Parent do
+        TweenService:Create(avatarFrame, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {Position = UDim2.new(0.5, -34, 0, 6)}):Play()
+        task.wait(1.5)
+        TweenService:Create(avatarFrame, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {Position = UDim2.new(0.5, -34, 0, 10)}):Play()
+        task.wait(1.5)
     end
 end)
 
@@ -197,18 +275,19 @@ avatarImage.Size = UDim2.new(1, 0, 1, 0)
 avatarImage.BackgroundTransparency = 1
 avatarImage.Image = AVATAR_URL
 avatarImage.ScaleType = Enum.ScaleType.Crop
+avatarImage.ZIndex = 1
 avatarImage.Parent = avatarFrame
 
 Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(1, 0)
 
--- Hover scale animation on avatar
+-- Hover scale
 avatarFrame.MouseEnter:Connect(function()
-    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 76, 0, 76), Position = UDim2.new(0.5, -38, 0, 4)}):Play()
-    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(200, 120, 170)}):Play()
+    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 72, 0, 72), Position = UDim2.new(0.5, -36, 0, 6)}):Play()
+    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(220, 120, 180)}):Play()
 end)
 avatarFrame.MouseLeave:Connect(function()
-    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 72, 0, 72), Position = UDim2.new(0.5, -36, 0, 6)}):Play()
-    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(90, 70, 100)}):Play()
+    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 68, 0, 68), Position = UDim2.new(0.5, -34, 0, 8)}):Play()
+    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 80, 115)}):Play()
 end)
 
 -- Status dot
@@ -230,13 +309,14 @@ statusRing.Parent = statusDot
 -- Username
 local username = Instance.new("TextLabel")
 username.Size = UDim2.new(1, 0, 0, 18)
-username.Position = UDim2.new(0, 0, 0, 88)
+username.Position = UDim2.new(0, 0, 0, 94)
 username.BackgroundTransparency = 1
 username.Text = "@" .. player.Name
 username.TextColor3 = Color3.fromRGB(130, 120, 135)
 username.TextSize = 11
 username.Font = Enum.Font.Gotham
 username.TextXAlignment = Enum.TextXAlignment.Center
+username.ZIndex = 1
 username.Parent = leftSection
 
 -- Right: Number Display
@@ -244,6 +324,7 @@ local rightSection = Instance.new("Frame")
 rightSection.Size = UDim2.new(1, -98, 1, 0)
 rightSection.Position = UDim2.new(0, 98, 0, 0)
 rightSection.BackgroundTransparency = 1
+rightSection.ZIndex = 1
 rightSection.Parent = content
 
 -- Number card
@@ -252,6 +333,7 @@ numberCard.Size = UDim2.new(1, 0, 0, 70)
 numberCard.Position = UDim2.new(0, 0, 0, 6)
 numberCard.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
 numberCard.BorderSizePixel = 0
+numberCard.ZIndex = 1
 numberCard.Parent = rightSection
 
 Instance.new("UICorner", numberCard).CornerRadius = UDim.new(0, 12)
@@ -259,6 +341,7 @@ Instance.new("UICorner", numberCard).CornerRadius = UDim.new(0, 12)
 local cardStroke = Instance.new("UIStroke")
 cardStroke.Color = Color3.fromRGB(50, 45, 55)
 cardStroke.Thickness = 1
+cardStroke.ZIndex = 1
 cardStroke.Parent = numberCard
 
 -- Big number
@@ -271,6 +354,7 @@ valueText.TextColor3 = Color3.fromRGB(255, 255, 255)
 valueText.TextSize = 32
 valueText.Font = Enum.Font.GothamBlack
 valueText.TextXAlignment = Enum.TextXAlignment.Left
+valueText.ZIndex = 2
 valueText.Parent = numberCard
 
 local valueLabel = Instance.new("TextLabel")
@@ -282,6 +366,7 @@ valueLabel.TextColor3 = Color3.fromRGB(150, 130, 145)
 valueLabel.TextSize = 10
 valueLabel.Font = Enum.Font.GothamBold
 valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+valueLabel.ZIndex = 2
 valueLabel.Parent = numberCard
 
 -- Controls
@@ -289,6 +374,7 @@ local controls = Instance.new("Frame")
 controls.Size = UDim2.new(1, 0, 0, 36)
 controls.Position = UDim2.new(0, 0, 0, 84)
 controls.BackgroundTransparency = 1
+controls.ZIndex = 1
 controls.Parent = rightSection
 
 local inputBox = Instance.new("TextBox")
@@ -302,6 +388,7 @@ inputBox.PlaceholderColor3 = Color3.fromRGB(70, 70, 75)
 inputBox.TextSize = 13
 inputBox.Font = Enum.Font.Gotham
 inputBox.ClearTextOnFocus = true
+inputBox.ZIndex = 2
 inputBox.Parent = controls
 
 Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 10)
@@ -309,6 +396,7 @@ Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 10)
 local inputStroke = Instance.new("UIStroke")
 inputStroke.Color = Color3.fromRGB(50, 50, 55)
 inputStroke.Thickness = 1
+inputStroke.ZIndex = 2
 inputStroke.Parent = inputBox
 
 local addBtn = Instance.new("TextButton")
@@ -320,6 +408,7 @@ addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 addBtn.TextSize = 13
 addBtn.Font = Enum.Font.GothamBold
 addBtn.AutoButtonColor = false
+addBtn.ZIndex = 2
 addBtn.Parent = controls
 
 Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0, 10)
@@ -405,12 +494,47 @@ toggleStroke.Color = Color3.fromRGB(80, 70, 90)
 toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
+-- Toggle traveling glow
+local toggleGlowDots = {}
+for i = 1, 2 do
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 6, 0, 6)
+    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 0
+    dot.Parent = toggle
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    table.insert(toggleGlowDots, dot)
+end
+
+spawn(function()
+    local progress = 0
+    while toggle.Parent do
+        progress = progress + 0.015
+        if progress > 1 then progress = 0 end
+        
+        for i, dot in ipairs(toggleGlowDots) do
+            local offset = (i - 1) * 0.5
+            local p = (progress + offset) % 1
+            
+            local angle = p * math.pi * 2
+            local x = math.cos(angle) * 26
+            local y = math.sin(angle) * 26
+            
+            dot.Position = UDim2.new(0.5, x - 3, 0.5, y - 3)
+        end
+        
+        task.wait(0.03)
+    end
+end)
+
 local toggleAvatar = Instance.new("ImageLabel")
 toggleAvatar.Size = UDim2.new(0, 42, 0, 42)
 toggleAvatar.Position = UDim2.new(0.5, -21, 0.5, -21)
 toggleAvatar.BackgroundTransparency = 1
 toggleAvatar.Image = AVATAR_URL
 toggleAvatar.ScaleType = Enum.ScaleType.Crop
+toggleAvatar.ZIndex = 1
 toggleAvatar.Parent = toggle
 
 Instance.new("UICorner", toggleAvatar).CornerRadius = UDim.new(1, 0)
