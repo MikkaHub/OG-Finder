@@ -1,7 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 --  GAG 2 - PET SPAWNER (Delta Executor)
---  Ground pets walk on ground | Flying pets hover
---  Uses pet's Animation part + AnimationController for real anims
+--  All pets same behavior | Uses pet's Animation part + AnimationController
 --  Path: ReplicatedStorage.Assets.Pets
 -- ═══════════════════════════════════════════════════════════════
 
@@ -22,8 +21,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local CONFIG = {
     PetFolderPath = {"Assets", "Pets"},
     FollowDistance = 3.5,
-    GroundOffset = 0,      -- on ground
-    FlyHeight = 3.5,       -- above ground for flyers
+    FollowHeight = 0,      -- on ground for all
     FollowSmoothness = 0.1,
     MaxPets = 10,
 }
@@ -42,23 +40,6 @@ for _, folderName in ipairs(CONFIG.PetFolderPath) do
 end
 
 print("✅ Found pet folder:", PetFolder:GetFullName())
-
--- ═══════════════════════════════════════════════════════════════
---  FLYING PETS
--- ═══════════════════════════════════════════════════════════════
-
-local FLYING_PETS = {
-    ["Dragonfly"] = true,
-    ["Golden Dragonfly"] = true,
-    ["Bee"] = true,
-    ["Firefly"] = true,
-    ["Butterfly"] = true,
-    ["Moth"] = true,
-}
-
-local function IsFlyingPet(petName)
-    return FLYING_PETS[petName] == true
-end
 
 -- ═══════════════════════════════════════════════════════════════
 --  GET ALL PETS
@@ -110,7 +91,7 @@ local function GetGroundHeight(position)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  CLONE PET - USE PET'S OWN ANIMATION CONTROLLER
+--  CLONE PET
 -- ═══════════════════════════════════════════════════════════════
 
 local function ClonePet(petName)
@@ -130,7 +111,7 @@ local function ClonePet(petName)
         end
     end
 
-    -- Setup parts
+    -- Setup all parts
     for _, part in ipairs(clone:GetDescendants()) do
         if part:IsA("BasePart") then
             part.Anchored = true
@@ -142,7 +123,7 @@ local function ClonePet(petName)
             end
         end
         
-        -- Fix Motor6D
+        -- Fix Motor6D joints
         if part:IsA("Motor6D") then
             local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
             local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
@@ -162,7 +143,7 @@ local function ClonePet(petName)
             end
         end
         
-        -- Fix decals
+        -- Fix decals/textures
         if part:IsA("Decal") or part:IsA("Texture") then
             part.Transparency = 0
         end
@@ -179,7 +160,7 @@ end
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartAnimations(pet, petName)
-    -- Use the pet's EXISTING AnimationController, don't create new one
+    -- Use pet's existing AnimationController
     local animController = pet:FindFirstChildOfClass("AnimationController")
     
     if not animController then
@@ -207,7 +188,7 @@ local function StartAnimations(pet, petName)
             end
         end
         
-        -- Also check direct children
+        -- Also check direct children of Animation part
         for _, child in ipairs(animPart:GetChildren()) do
             if child:IsA("Animation") and child.AnimationId ~= "" then
                 local success, track = pcall(function()
@@ -223,7 +204,7 @@ local function StartAnimations(pet, petName)
         end
     end
     
-    -- Fallback: search entire pet
+    -- Fallback: search entire pet for any Animation
     if not playedAny then
         for _, desc in ipairs(pet:GetDescendants()) do
             if desc:IsA("Animation") and desc.AnimationId ~= "" then
@@ -240,7 +221,7 @@ local function StartAnimations(pet, petName)
         end
     end
     
-    -- Enable Animate script
+    -- Enable Animate script if present
     local animate = pet:FindFirstChild("Animate")
     if animate and animate:IsA("Script") then
         animate.Disabled = false
@@ -250,11 +231,10 @@ local function StartAnimations(pet, petName)
 end
 
 -- ═══════════════════════════════════════════════════════════════
---  FOLLOW SYSTEM - GROUND PETS ON GROUND, FLYERS IN AIR
+--  FOLLOW SYSTEM - ALL PETS ON GROUND
 -- ═══════════════════════════════════════════════════════════════
 
 local function FollowPlayer(pet, petName)
-    local isFlying = IsFlyingPet(petName)
     local followConn
 
     followConn = RunService.Heartbeat:Connect(function()
@@ -284,16 +264,9 @@ local function FollowPlayer(pet, petName)
         
         local targetPos = targetCFrame.Position
 
-        -- HEIGHT: Ground = on floor, Flying = in air
-        if isFlying then
-            -- Flying pets hover at fixed height above ground
-            local groundY = GetGroundHeight(targetPos)
-            targetPos = Vector3.new(targetPos.X, groundY + CONFIG.FlyHeight, targetPos.Z)
-        else
-            -- Ground pets: raycast to stay ON the ground
-            local groundY = GetGroundHeight(targetPos)
-            targetPos = Vector3.new(targetPos.X, groundY + CONFIG.GroundOffset, targetPos.Z)
-        end
+        -- Raycast to ground - ALL pets stay on ground
+        local groundY = GetGroundHeight(targetPos)
+        targetPos = Vector3.new(targetPos.X, groundY + CONFIG.FollowHeight, targetPos.Z)
 
         -- Smooth follow
         local currentCF = pet:GetPivot()
@@ -342,16 +315,10 @@ function SpawnPet(petName)
 
     local currentHRP = char:WaitForChild("HumanoidRootPart")
     
-    -- Calculate spawn position
+    -- Calculate spawn position - on ground
     local spawnPos = currentHRP.Position + Vector3.new(CONFIG.FollowDistance, 0, 0)
-    
-    if IsFlyingPet(petName) then
-        local groundY = GetGroundHeight(spawnPos)
-        spawnPos = Vector3.new(spawnPos.X, groundY + CONFIG.FlyHeight, spawnPos.Z)
-    else
-        local groundY = GetGroundHeight(spawnPos)
-        spawnPos = Vector3.new(spawnPos.X, groundY + CONFIG.GroundOffset, spawnPos.Z)
-    end
+    local groundY = GetGroundHeight(spawnPos)
+    spawnPos = Vector3.new(spawnPos.X, groundY + CONFIG.FollowHeight, spawnPos.Z)
     
     local spawnCF = CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0)
     
@@ -396,7 +363,7 @@ function SpawnPet(petName)
         end
     end)
 
-    print("✅ SPAWNED:", petName, "| Flying:", IsFlyingPet(petName), "| Anims:", hasAnims, "| Total:", #SpawnedPets)
+    print("✅ SPAWNED:", petName, "| Anims:", hasAnims, "| Total:", #SpawnedPets)
     return pet
 end
 
