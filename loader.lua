@@ -19,8 +19,8 @@ sg.Parent = player:WaitForChild("PlayerGui")
 
 -- Main frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 180)
-frame.Position = UDim2.new(0.5, -160, 0.5, -90)
+frame.Size = UDim2.new(0, 340, 0, 190)
+frame.Position = UDim2.new(0.5, -170, 0.5, -95)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 frame.BorderSizePixel = 0
 frame.Active = true
@@ -43,17 +43,9 @@ shadow.SliceCenter = Rect.new(10, 10, 118, 118)
 shadow.ZIndex = -1
 shadow.Parent = frame
 
--- Top gradient bar
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 3)
-topBar.BackgroundColor3 = Color3.fromRGB(190, 100, 150)
-topBar.BorderSizePixel = 0
-topBar.Parent = frame
-
 -- Header
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 48)
-header.Position = UDim2.new(0, 0, 0, 3)
+header.Size = UDim2.new(1, 0, 0, 50)
 header.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
 header.BorderSizePixel = 0
 header.Parent = frame
@@ -71,7 +63,7 @@ headerFix.Parent = header
 
 -- Avatar in header
 local miniAvatar = Instance.new("ImageLabel")
-miniAvatar.Size = UDim2.new(0, 28, 0, 28)
+miniAvatar.Size = UDim2.new(0, 30, 0, 30)
 miniAvatar.Position = UDim2.new(0, 14, 0, 10)
 miniAvatar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 miniAvatar.Image = AVATAR_URL
@@ -87,8 +79,8 @@ miniStroke.Parent = miniAvatar
 
 -- Title
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(0, 200, 0, 48)
-title.Position = UDim2.new(0, 50, 0, 0)
+title.Size = UDim2.new(0, 200, 0, 50)
+title.Position = UDim2.new(0, 52, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "MIKKA HUB"
 title.TextColor3 = Color3.fromRGB(220, 200, 215)
@@ -99,8 +91,8 @@ title.Parent = header
 
 -- Close
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 26, 0, 26)
-closeBtn.Position = UDim2.new(1, -36, 0, 11)
+closeBtn.Size = UDim2.new(0, 28, 0, 28)
+closeBtn.Position = UDim2.new(1, -38, 0, 11)
 closeBtn.BackgroundColor3 = Color3.fromRGB(40, 25, 30)
 closeBtn.Text = ""
 closeBtn.AutoButtonColor = false
@@ -128,20 +120,20 @@ end)
 
 -- Content
 local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -24, 0, 116)
-content.Position = UDim2.new(0, 12, 0, 54)
+content.Size = UDim2.new(1, -24, 0, 126)
+content.Position = UDim2.new(0, 12, 0, 52)
 content.BackgroundTransparency = 1
 content.Parent = frame
 
--- Left: Avatar
+-- Left: Big Avatar
 local leftSection = Instance.new("Frame")
-leftSection.Size = UDim2.new(0, 80, 1, 0)
+leftSection.Size = UDim2.new(0, 90, 1, 0)
 leftSection.BackgroundTransparency = 1
 leftSection.Parent = content
 
 local avatarFrame = Instance.new("Frame")
-avatarFrame.Size = UDim2.new(0, 64, 0, 64)
-avatarFrame.Position = UDim2.new(0.5, -32, 0, 8)
+avatarFrame.Size = UDim2.new(0, 72, 0, 72)
+avatarFrame.Position = UDim2.new(0.5, -36, 0, 6)
 avatarFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 avatarFrame.BorderSizePixel = 0
 avatarFrame.Parent = leftSection
@@ -164,8 +156,8 @@ Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(1, 0)
 
 -- Status dot
 local statusDot = Instance.new("Frame")
-statusDot.Size = UDim2.new(0, 10, 0, 10)
-statusDot.Position = UDim2.new(1, -14, 1, -14)
+statusDot.Size = UDim2.new(0, 12, 0, 12)
+statusDot.Position = UDim2.new(1, -16, 1, -16)
 statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
 statusDot.BorderSizePixel = 0
 statusDot.ZIndex = 2
@@ -180,69 +172,78 @@ statusRing.Parent = statusDot
 
 -- Username
 local username = Instance.new("TextLabel")
-username.Size = UDim2.new(1, 0, 0, 16)
-username.Position = UDim2.new(0, 0, 0, 78)
+username.Size = UDim2.new(1, 0, 0, 18)
+username.Position = UDim2.new(0, 0, 0, 84)
 username.BackgroundTransparency = 1
 username.Text = "@" .. player.Name
-username.TextColor3 = Color3.fromRGB(120, 110, 125)
-username.TextSize = 10
+username.TextColor3 = Color3.fromRGB(130, 120, 135)
+username.TextSize = 11
 username.Font = Enum.Font.Gotham
 username.TextXAlignment = Enum.TextXAlignment.Center
 username.Parent = leftSection
 
--- Right: Value + Controls
+-- Right: Number Display (BIG & CLEAN)
 local rightSection = Instance.new("Frame")
-rightSection.Size = UDim2.new(1, -88, 1, 0)
-rightSection.Position = UDim2.new(0, 88, 0, 0)
+rightSection.Size = UDim2.new(1, -98, 1, 0)
+rightSection.Position = UDim2.new(0, 98, 0, 0)
 rightSection.BackgroundTransparency = 1
 rightSection.Parent = content
 
+-- Number background card
+local numberCard = Instance.new("Frame")
+numberCard.Size = UDim2.new(1, 0, 0, 70)
+numberCard.Position = UDim2.new(0, 0, 0, 6)
+numberCard.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
+numberCard.BorderSizePixel = 0
+numberCard.Parent = rightSection
+
+Instance.new("UICorner", numberCard).CornerRadius = UDim.new(0, 12)
+
+local cardStroke = Instance.new("UIStroke")
+cardStroke.Color = Color3.fromRGB(50, 45, 55)
+cardStroke.Thickness = 1
+cardStroke.Parent = numberCard
+
+-- Big number
 local valueText = Instance.new("TextLabel")
-valueText.Size = UDim2.new(1, 0, 0, 42)
-valueText.Position = UDim2.new(0, 0, 0, 10)
+valueText.Size = UDim2.new(1, -16, 0, 40)
+valueText.Position = UDim2.new(0, 8, 0, 8)
 valueText.BackgroundTransparency = 1
 valueText.Text = tostring(sheckles.Value)
-valueText.TextColor3 = Color3.fromRGB(245, 245, 245)
+valueText.TextColor3 = Color3.fromRGB(255, 255, 255)
 valueText.TextSize = 32
 valueText.Font = Enum.Font.GothamBlack
 valueText.TextXAlignment = Enum.TextXAlignment.Left
-valueText.Parent = rightSection
+valueText.Parent = numberCard
 
+-- Label inside card
 local valueLabel = Instance.new("TextLabel")
-valueLabel.Size = UDim2.new(1, 0, 0, 16)
-valueLabel.Position = UDim2.new(0, 0, 0, 50)
+valueLabel.Size = UDim2.new(1, -16, 0, 16)
+valueLabel.Position = UDim2.new(0, 8, 0, 46)
 valueLabel.BackgroundTransparency = 1
 valueLabel.Text = "SHECKLES"
-valueLabel.TextColor3 = Color3.fromRGB(110, 100, 115)
+valueLabel.TextColor3 = Color3.fromRGB(150, 130, 145)
 valueLabel.TextSize = 10
-valueLabel.Font = Enum.Font.Gotham
+valueLabel.Font = Enum.Font.GothamBold
 valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-valueLabel.Parent = rightSection
+valueLabel.Parent = numberCard
 
--- Accent line
-local accentLine = Instance.new("Frame")
-accentLine.Size = UDim2.new(0.35, 0, 0, 2)
-accentLine.Position = UDim2.new(0, 0, 0, 68)
-accentLine.BackgroundColor3 = Color3.fromRGB(190, 100, 150)
-accentLine.BorderSizePixel = 0
-accentLine.Parent = rightSection
-
--- Controls
+-- Controls below card
 local controls = Instance.new("Frame")
-controls.Size = UDim2.new(1, 0, 0, 32)
-controls.Position = UDim2.new(0, 0, 0, 80)
+controls.Size = UDim2.new(1, 0, 0, 36)
+controls.Position = UDim2.new(0, 0, 0, 84)
 controls.BackgroundTransparency = 1
 controls.Parent = rightSection
 
 local inputBox = Instance.new("TextBox")
-inputBox.Size = UDim2.new(0.38, 0, 0, 30)
-inputBox.Position = UDim2.new(0, 0, 0, 1)
+inputBox.Size = UDim2.new(0.4, 0, 0, 32)
+inputBox.Position = UDim2.new(0, 0, 0, 2)
 inputBox.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
 inputBox.Text = "1000"
 inputBox.TextColor3 = Color3.fromRGB(200, 200, 205)
 inputBox.PlaceholderText = "Amount"
 inputBox.PlaceholderColor3 = Color3.fromRGB(70, 70, 75)
-inputBox.TextSize = 12
+inputBox.TextSize = 13
 inputBox.Font = Enum.Font.Gotham
 inputBox.ClearTextOnFocus = true
 inputBox.Parent = controls
@@ -255,12 +256,12 @@ inputStroke.Thickness = 1
 inputStroke.Parent = inputBox
 
 local addBtn = Instance.new("TextButton")
-addBtn.Size = UDim2.new(0.58, 0, 0, 30)
-addBtn.Position = UDim2.new(0.42, 0, 0, 1)
+addBtn.Size = UDim2.new(0.56, 0, 0, 32)
+addBtn.Position = UDim2.new(0.44, 0, 0, 2)
 addBtn.BackgroundColor3 = Color3.fromRGB(175, 85, 130)
 addBtn.Text = "ADD"
 addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-addBtn.TextSize = 12
+addBtn.TextSize = 13
 addBtn.Font = Enum.Font.GothamBold
 addBtn.AutoButtonColor = false
 addBtn.Parent = controls
@@ -331,10 +332,10 @@ frame.InputEnded:Connect(function(input)
     end
 end)
 
--- TOGGLE - Bottom right corner
+-- TOGGLE - Bottom Left (clearly visible, not in the way)
 local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(0, 48, 0, 48)
-toggle.Position = UDim2.new(1, -64, 1, -64)
+toggle.Size = UDim2.new(0, 52, 0, 52)
+toggle.Position = UDim2.new(0, 20, 1, -72)
 toggle.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 toggle.Text = ""
 toggle.AutoButtonColor = false
@@ -345,12 +346,12 @@ Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
 
 local toggleStroke = Instance.new("UIStroke")
 toggleStroke.Color = Color3.fromRGB(80, 70, 90)
-toggleStroke.Thickness = 1.5
+toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
 local toggleAvatar = Instance.new("ImageLabel")
-toggleAvatar.Size = UDim2.new(0, 38, 0, 38)
-toggleAvatar.Position = UDim2.new(0.5, -19, 0.5, -19)
+toggleAvatar.Size = UDim2.new(0, 42, 0, 42)
+toggleAvatar.Position = UDim2.new(0.5, -21, 0.5, -21)
 toggleAvatar.BackgroundTransparency = 1
 toggleAvatar.Image = AVATAR_URL
 toggleAvatar.ScaleType = Enum.ScaleType.Crop
@@ -359,8 +360,8 @@ toggleAvatar.Parent = toggle
 Instance.new("UICorner", toggleAvatar).CornerRadius = UDim.new(1, 0)
 
 local toggleStatus = Instance.new("Frame")
-toggleStatus.Size = UDim2.new(0, 8, 0, 8)
-toggleStatus.Position = UDim2.new(1, -11, 1, -11)
+toggleStatus.Size = UDim2.new(0, 10, 0, 10)
+toggleStatus.Position = UDim2.new(1, -13, 1, -13)
 toggleStatus.BackgroundColor3 = Color3.fromRGB(0, 210, 100)
 toggleStatus.BorderSizePixel = 0
 toggleStatus.ZIndex = 2
@@ -370,17 +371,16 @@ Instance.new("UICorner", toggleStatus).CornerRadius = UDim.new(1, 0)
 
 local toggleRing = Instance.new("UIStroke")
 toggleRing.Color = Color3.fromRGB(22, 22, 26)
-toggleRing.Thickness = 1.5
+toggleRing.Thickness = 2
 toggleRing.Parent = toggleStatus
 
--- Toggle hover
 toggle.MouseEnter:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(35, 35, 42), Size = UDim2.new(0, 52, 0, 52)}):Play()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(1, -68, 1, -68)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(35, 35, 42), Size = UDim2.new(0, 56, 0, 56)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(0, 18, 1, -76)}):Play()
 end)
 toggle.MouseLeave:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(22, 22, 26), Size = UDim2.new(0, 48, 0, 48)}):Play()
-    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(1, -64, 1, -64)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(22, 22, 26), Size = UDim2.new(0, 52, 0, 52)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(0, 20, 1, -72)}):Play()
 end)
 
 -- Close animation
@@ -393,10 +393,10 @@ closeBtn.MouseButton1Click:Connect(function()
     frame.Visible = false
     toggle.Visible = true
     toggle.Size = UDim2.new(0, 0, 0, 0)
-    toggle.Position = UDim2.new(1, -24, 1, -24)
+    toggle.Position = UDim2.new(0, 46, 1, -26)
     TweenService:Create(toggle, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 48, 0, 48),
-        Position = UDim2.new(1, -64, 1, -64)
+        Size = UDim2.new(0, 52, 0, 52),
+        Position = UDim2.new(0, 20, 1, -72)
     }):Play()
 end)
 
@@ -407,8 +407,8 @@ toggle.MouseButton1Click:Connect(function()
     frame.Size = UDim2.new(0, 0, 0, 0)
     frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 320, 0, 180),
-        Position = UDim2.new(0.5, -160, 0.5, -90)
+        Size = UDim2.new(0, 340, 0, 190),
+        Position = UDim2.new(0.5, -170, 0.5, -95)
     }):Play()
 end)
 
@@ -416,8 +416,8 @@ end)
 frame.Size = UDim2.new(0, 0, 0, 0)
 frame.Position = UDim2.new(0.5, 0, 0.5, 0)
 TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 320, 0, 180),
-    Position = UDim2.new(0.5, -160, 0.5, -90)
+    Size = UDim2.new(0, 340, 0, 190),
+    Position = UDim2.new(0.5, -170, 0.5, -95)
 }):Play()
 
 print("MIKKA HUB loaded | " .. player.Name)
