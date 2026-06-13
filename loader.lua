@@ -10,17 +10,19 @@ if not sheckles then return end
 local old = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MikkaHub")
 if old then old:Destroy() end
 
-local imageLoaded = false
+-- FORCE DOWNLOAD IMAGE
 local imagePath = ""
-
-pcall(function()
+local success = pcall(function()
     local data = game:HttpGet("https://files.catbox.moe/29dya4.png")
     writefile("mikka.png", data)
     if isfile("mikka.png") then
         imagePath = getcustomasset("mikka.png")
-        imageLoaded = true
     end
 end)
+
+if not success or imagePath == "" then
+    warn("Image download failed, trying direct URL...")
+end
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "MikkaHub"
@@ -130,25 +132,46 @@ end)
 local logoFrame = Instance.new("Frame")
 logoFrame.Size = UDim2.new(0, 56, 0, 56)
 logoFrame.Position = UDim2.new(0, 14, 0, 48)
-logoFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 32)
+logoFrame.BackgroundColor3 = Color3.fromRGB(160, 80, 120)
 logoFrame.BorderSizePixel = 0
 logoFrame.Parent = frame
 
 Instance.new("UICorner", logoFrame).CornerRadius = UDim.new(1, 0)
 
 local logoGlow = Instance.new("UIStroke")
-logoGlow.Color = Color3.fromRGB(120, 70, 100)
+logoGlow.Color = Color3.fromRGB(200, 100, 150)
 logoGlow.Thickness = 2
 logoGlow.Parent = logoFrame
 
 local logoImage = Instance.new("ImageLabel")
 logoImage.Size = UDim2.new(1, 0, 1, 0)
 logoImage.BackgroundTransparency = 1
-logoImage.Image = imageLoaded and imagePath or "https://files.catbox.moe/29dya4.png"
 logoImage.ScaleType = Enum.ScaleType.Crop
 logoImage.Parent = logoFrame
 
 Instance.new("UICorner", logoImage).CornerRadius = UDim.new(1, 0)
+
+-- SET IMAGE SOURCE - TRY LOCAL FIRST, THEN URL
+if imagePath ~= "" then
+    logoImage.Image = imagePath
+    print("Using local image: " .. imagePath)
+else
+    logoImage.Image = "https://files.catbox.moe/29dya4.png"
+    print("Using URL image")
+end
+
+-- FORCE RELOAD IF NOT LOADED
+spawn(function()
+    task.wait(2)
+    if not logoImage.IsLoaded then
+        print("Image not loaded, retrying with URL...")
+        logoImage.Image = "https://files.catbox.moe/29dya4.png"
+        task.wait(2)
+        if not logoImage.IsLoaded then
+            print("URL failed too, keeping pink circle")
+        end
+    end
+end)
 
 local display = Instance.new("TextLabel")
 display.Size = UDim2.new(1, -86, 0, 36)
@@ -260,11 +283,11 @@ frame.InputEnded:Connect(function(input)
     end
 end)
 
--- TOGGLE BUTTON - CIRCULAR LOGO (NO M EVER)
+-- TOGGLE BUTTON - CIRCULAR LOGO
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(0, 50, 0, 50)
 toggle.Position = UDim2.new(0, 14, 0.5, -25)
-toggle.BackgroundColor3 = Color3.fromRGB(22, 18, 24)
+toggle.BackgroundColor3 = Color3.fromRGB(160, 80, 120)
 toggle.Text = ""
 toggle.AutoButtonColor = false
 toggle.Visible = false
@@ -273,7 +296,7 @@ toggle.Parent = sg
 Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
 
 local toggleStroke = Instance.new("UIStroke")
-toggleStroke.Color = Color3.fromRGB(120, 60, 100)
+toggleStroke.Color = Color3.fromRGB(200, 100, 150)
 toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
@@ -282,11 +305,25 @@ local toggleLogo = Instance.new("ImageLabel")
 toggleLogo.Size = UDim2.new(0, 40, 0, 40)
 toggleLogo.Position = UDim2.new(0.5, -20, 0.5, -20)
 toggleLogo.BackgroundTransparency = 1
-toggleLogo.Image = imageLoaded and imagePath or "https://files.catbox.moe/29dya4.png"
 toggleLogo.ScaleType = Enum.ScaleType.Crop
 toggleLogo.Parent = toggle
 
 Instance.new("UICorner", toggleLogo).CornerRadius = UDim.new(1, 0)
+
+-- SET TOGGLE IMAGE
+if imagePath ~= "" then
+    toggleLogo.Image = imagePath
+else
+    toggleLogo.Image = "https://files.catbox.moe/29dya4.png"
+end
+
+-- FORCE RELOAD TOGGLE IMAGE
+spawn(function()
+    task.wait(2)
+    if not toggleLogo.IsLoaded then
+        toggleLogo.Image = "https://files.catbox.moe/29dya4.png"
+    end
+end)
 
 -- Toggle glow animation
 spawn(function()
@@ -299,12 +336,12 @@ spawn(function()
 end)
 
 toggle.MouseEnter:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 30, 45), Size = UDim2.new(0, 54, 0, 54)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(180, 100, 140), Size = UDim2.new(0, 54, 0, 54)}):Play()
     TweenService:Create(toggle, TweenInfo.new(0.2), {Position = UDim2.new(0, 12, 0.5, -27)}):Play()
 end)
 
 toggle.MouseLeave:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(22, 18, 24), Size = UDim2.new(0, 50, 0, 50)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(160, 80, 120), Size = UDim2.new(0, 50, 0, 50)}):Play()
     TweenService:Create(toggle, TweenInfo.new(0.2), {Position = UDim2.new(0, 14, 0.5, -25)}):Play()
 end)
 
@@ -341,3 +378,5 @@ TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.Easing
     Size = UDim2.new(0, 280, 0, 160),
     Position = UDim2.new(0.5, -140, 0.1, 0)
 }):Play()
+
+print("MIKKA HUB loaded. Image path: " .. (imagePath ~= "" and imagePath or "URL"))
