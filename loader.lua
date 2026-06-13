@@ -29,72 +29,70 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
 
--- TRAVELING GLOW around GUI border
-local glowContainer = Instance.new("Frame")
-glowContainer.Size = UDim2.new(1, 0, 1, 0)
-glowContainer.BackgroundTransparency = 1
-glowContainer.ZIndex = 0
-glowContainer.Parent = frame
+-- FULL AMBIENT GLOW overlay
+local glowOverlay = Instance.new("Frame")
+glowOverlay.Name = "GlowOverlay"
+glowOverlay.Size = UDim2.new(1, 0, 1, 0)
+glowOverlay.BackgroundTransparency = 1
+glowOverlay.ZIndex = 0
+glowOverlay.Parent = frame
 
--- 4 glow dots traveling the border
-local glowDots = {}
-for i = 1, 4 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 8, 0, 8)
-    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 0
-    dot.Parent = glowContainer
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    -- Glow effect
-    local dotGlow = Instance.new("ImageLabel")
-    dotGlow.Size = UDim2.new(0, 20, 0, 20)
-    dotGlow.Position = UDim2.new(0.5, -10, 0.5, -10)
-    dotGlow.BackgroundTransparency = 1
-    dotGlow.Image = "rbxassetid://1316045217"
-    dotGlow.ImageColor3 = Color3.fromRGB(220, 100, 170)
-    dotGlow.ImageTransparency = 0.6
-    dotGlow.ScaleType = Enum.ScaleType.Slice
-    dotGlow.SliceCenter = Rect.new(10, 10, 118, 118)
-    dotGlow.ZIndex = -1
-    dotGlow.Parent = dot
-    
-    table.insert(glowDots, dot)
-end
+-- Animated gradient glow
+local glowGradient = Instance.new("UIGradient")
+glowGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100, 170)),
+    ColorSequenceKeypoint.new(0.3, Color3.fromRGB(180, 80, 150)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(220, 100, 170)),
+    ColorSequenceKeypoint.new(0.7, Color3.fromRGB(160, 70, 140)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 100, 170))
+})
+glowGradient.Rotation = 45
+glowGradient.Parent = glowOverlay
 
--- Animate glow dots traveling border
+-- Glow image for soft bloom effect
+local glowImage = Instance.new("ImageLabel")
+glowImage.Name = "GlowImage"
+glowImage.Size = UDim2.new(1, 40, 1, 40)
+glowImage.Position = UDim2.new(0, -20, 0, -20)
+glowImage.BackgroundTransparency = 1
+glowImage.Image = "rbxassetid://1316045217"
+glowImage.ImageColor3 = Color3.fromRGB(220, 100, 170)
+glowImage.ImageTransparency = 0.75
+glowImage.ScaleType = Enum.ScaleType.Slice
+glowImage.SliceCenter = Rect.new(10, 10, 118, 118)
+glowImage.ZIndex = -1
+glowImage.Parent = glowOverlay
+
+-- Inner soft glow
+local innerGlow = Instance.new("ImageLabel")
+innerGlow.Name = "InnerGlow"
+innerGlow.Size = UDim2.new(1, 20, 1, 20)
+innerGlow.Position = UDim2.new(0, -10, 0, -10)
+innerGlow.BackgroundTransparency = 1
+innerGlow.Image = "rbxassetid://1316045217"
+innerGlow.ImageColor3 = Color3.fromRGB(200, 90, 160)
+innerGlow.ImageTransparency = 0.85
+innerGlow.ScaleType = Enum.ScaleType.Slice
+innerGlow.SliceCenter = Rect.new(10, 10, 118, 118)
+innerGlow.ZIndex = -1
+innerGlow.Parent = glowOverlay
+
+-- Animate gradient rotation and color shift
 spawn(function()
-    local progress = 0
-    while glowContainer.Parent do
-        progress = progress + 0.008
-        if progress > 1 then progress = 0 end
+    local rotation = 45
+    while glowOverlay.Parent do
+        rotation = rotation + 0.5
+        glowGradient.Rotation = rotation
         
-        for i, dot in ipairs(glowDots) do
-            local offset = (i - 1) * 0.25
-            local p = (progress + offset) % 1
-            
-            local x, y
-            if p < 0.25 then
-                -- Top edge left to right
-                x = p * 4
-                y = 0
-            elseif p < 0.5 then
-                -- Right edge top to bottom
-                x = 1
-                y = (p - 0.25) * 4
-            elseif p < 0.75 then
-                -- Bottom edge right to left
-                x = 1 - (p - 0.5) * 4
-                y = 1
-            else
-                -- Left edge bottom to top
-                x = 0
-                y = 1 - (p - 0.75) * 4
-            end
-            
-            dot.Position = UDim2.new(x, -4, y, -4)
-        end
+        -- Subtle color shift
+        local shift = (math.sin(tick() * 0.5) + 1) / 2
+        glowGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100 + shift * 20, 170)),
+            ColorSequenceKeypoint.new(0.3, Color3.fromRGB(180 + shift * 20, 80, 150)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(220, 100, 170 + shift * 20)),
+            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(160 + shift * 30, 70, 140)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 100 + shift * 20, 170))
+        })
         
         task.wait(0.03)
     end
@@ -290,22 +288,6 @@ avatarFrame.MouseLeave:Connect(function()
     TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 80, 115)}):Play()
 end)
 
--- Status dot
-local statusDot = Instance.new("Frame")
-statusDot.Size = UDim2.new(0, 12, 0, 12)
-statusDot.Position = UDim2.new(1, -16, 1, -16)
-statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
-statusDot.BorderSizePixel = 0
-statusDot.ZIndex = 2
-statusDot.Parent = avatarFrame
-
-Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
-
-local statusRing = Instance.new("UIStroke")
-statusRing.Color = Color3.fromRGB(18, 18, 22)
-statusRing.Thickness = 2
-statusRing.Parent = statusDot
-
 -- Username
 local username = Instance.new("TextLabel")
 username.Size = UDim2.new(1, 0, 0, 18)
@@ -494,36 +476,35 @@ toggleStroke.Color = Color3.fromRGB(80, 70, 90)
 toggleStroke.Thickness = 2
 toggleStroke.Parent = toggle
 
--- Toggle traveling glow
-local toggleGlowDots = {}
-for i = 1, 2 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 6, 0, 6)
-    dot.BackgroundColor3 = Color3.fromRGB(220, 100, 170)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 0
-    dot.Parent = toggle
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    table.insert(toggleGlowDots, dot)
-end
+-- Toggle ambient glow
+local toggleGlow = Instance.new("ImageLabel")
+toggleGlow.Name = "ToggleGlow"
+toggleGlow.Size = UDim2.new(1, 16, 1, 16)
+toggleGlow.Position = UDim2.new(0, -8, 0, -8)
+toggleGlow.BackgroundTransparency = 1
+toggleGlow.Image = "rbxassetid://1316045217"
+toggleGlow.ImageColor3 = Color3.fromRGB(220, 100, 170)
+toggleGlow.ImageTransparency = 0.7
+toggleGlow.ScaleType = Enum.ScaleType.Slice
+toggleGlow.SliceCenter = Rect.new(10, 10, 118, 118)
+toggleGlow.ZIndex = -1
+toggleGlow.Parent = toggle
 
+local toggleGradient = Instance.new("UIGradient")
+toggleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100, 170)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 80, 150)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 100, 170))
+})
+toggleGradient.Rotation = 0
+toggleGradient.Parent = toggleGlow
+
+-- Animate toggle glow
 spawn(function()
-    local progress = 0
+    local rotation = 0
     while toggle.Parent do
-        progress = progress + 0.015
-        if progress > 1 then progress = 0 end
-        
-        for i, dot in ipairs(toggleGlowDots) do
-            local offset = (i - 1) * 0.5
-            local p = (progress + offset) % 1
-            
-            local angle = p * math.pi * 2
-            local x = math.cos(angle) * 26
-            local y = math.sin(angle) * 26
-            
-            dot.Position = UDim2.new(0.5, x - 3, 0.5, y - 3)
-        end
-        
+        rotation = rotation + 1
+        toggleGradient.Rotation = rotation
         task.wait(0.03)
     end
 end)
