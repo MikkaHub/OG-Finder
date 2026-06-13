@@ -29,6 +29,28 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
 
+-- Pink corner glow (bottom right)
+local cornerGlow = Instance.new("Frame")
+cornerGlow.Size = UDim2.new(0, 120, 0, 120)
+cornerGlow.Position = UDim2.new(1, -60, 1, -60)
+cornerGlow.BackgroundColor3 = Color3.fromRGB(200, 80, 140)
+cornerGlow.BackgroundTransparency = 0.9
+cornerGlow.BorderSizePixel = 0
+cornerGlow.ZIndex = 0
+cornerGlow.Parent = frame
+
+Instance.new("UICorner", cornerGlow).CornerRadius = UDim.new(1, 0)
+
+-- Animated corner glow
+spawn(function()
+    while cornerGlow.Parent do
+        TweenService:Create(cornerGlow, TweenInfo.new(3, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.85}):Play()
+        task.wait(3)
+        TweenService:Create(cornerGlow, TweenInfo.new(3, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.95}):Play()
+        task.wait(3)
+    end
+end)
+
 -- Shadow
 local shadow = Instance.new("ImageLabel")
 shadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -125,7 +147,7 @@ content.Position = UDim2.new(0, 12, 0, 52)
 content.BackgroundTransparency = 1
 content.Parent = frame
 
--- Left: Big Avatar
+-- Left: Avatar with clean animations
 local leftSection = Instance.new("Frame")
 leftSection.Size = UDim2.new(0, 90, 1, 0)
 leftSection.BackgroundTransparency = 1
@@ -140,11 +162,36 @@ avatarFrame.Parent = leftSection
 
 Instance.new("UICorner", avatarFrame).CornerRadius = UDim.new(1, 0)
 
+-- Animated avatar border
 local avatarStroke = Instance.new("UIStroke")
 avatarStroke.Color = Color3.fromRGB(90, 70, 100)
 avatarStroke.Thickness = 2
 avatarStroke.Parent = avatarFrame
 
+-- Subtle rotating ring around avatar
+local ring = Instance.new("Frame")
+ring.Size = UDim2.new(0, 80, 0, 80)
+ring.Position = UDim2.new(0.5, -40, 0, 2)
+ring.BackgroundTransparency = 1
+ring.Parent = leftSection
+
+local ringArc = Instance.new("Frame")
+ringArc.Size = UDim2.new(0, 12, 0, 2)
+ringArc.Position = UDim2.new(0.5, -6, 0, 0)
+ringArc.BackgroundColor3 = Color3.fromRGB(200, 100, 150)
+ringArc.BorderSizePixel = 0
+ringArc.Parent = ring
+
+Instance.new("UICorner", ringArc).CornerRadius = UDim.new(0, 1)
+
+spawn(function()
+    while ring.Parent do
+        TweenService:Create(ring, TweenInfo.new(4, Enum.EasingStyle.Linear), {Rotation = ring.Rotation + 360}):Play()
+        task.wait(4)
+    end
+end)
+
+-- Avatar image
 local avatarImage = Instance.new("ImageLabel")
 avatarImage.Size = UDim2.new(1, 0, 1, 0)
 avatarImage.BackgroundTransparency = 1
@@ -153,6 +200,16 @@ avatarImage.ScaleType = Enum.ScaleType.Crop
 avatarImage.Parent = avatarFrame
 
 Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(1, 0)
+
+-- Hover scale animation on avatar
+avatarFrame.MouseEnter:Connect(function()
+    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 76, 0, 76), Position = UDim2.new(0.5, -38, 0, 4)}):Play()
+    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(200, 120, 170)}):Play()
+end)
+avatarFrame.MouseLeave:Connect(function()
+    TweenService:Create(avatarFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 72, 0, 72), Position = UDim2.new(0.5, -36, 0, 6)}):Play()
+    TweenService:Create(avatarStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(90, 70, 100)}):Play()
+end)
 
 -- Status dot
 local statusDot = Instance.new("Frame")
@@ -173,7 +230,7 @@ statusRing.Parent = statusDot
 -- Username
 local username = Instance.new("TextLabel")
 username.Size = UDim2.new(1, 0, 0, 18)
-username.Position = UDim2.new(0, 0, 0, 84)
+username.Position = UDim2.new(0, 0, 0, 88)
 username.BackgroundTransparency = 1
 username.Text = "@" .. player.Name
 username.TextColor3 = Color3.fromRGB(130, 120, 135)
@@ -182,14 +239,14 @@ username.Font = Enum.Font.Gotham
 username.TextXAlignment = Enum.TextXAlignment.Center
 username.Parent = leftSection
 
--- Right: Number Display (BIG & CLEAN)
+-- Right: Number Display
 local rightSection = Instance.new("Frame")
 rightSection.Size = UDim2.new(1, -98, 1, 0)
 rightSection.Position = UDim2.new(0, 98, 0, 0)
 rightSection.BackgroundTransparency = 1
 rightSection.Parent = content
 
--- Number background card
+-- Number card
 local numberCard = Instance.new("Frame")
 numberCard.Size = UDim2.new(1, 0, 0, 70)
 numberCard.Position = UDim2.new(0, 0, 0, 6)
@@ -207,7 +264,7 @@ cardStroke.Parent = numberCard
 -- Big number
 local valueText = Instance.new("TextLabel")
 valueText.Size = UDim2.new(1, -16, 0, 40)
-valueText.Position = UDim2.new(0, 8, 0, 8)
+valueText.Position = UDim2.new(0, 10, 0, 8)
 valueText.BackgroundTransparency = 1
 valueText.Text = tostring(sheckles.Value)
 valueText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -216,10 +273,9 @@ valueText.Font = Enum.Font.GothamBlack
 valueText.TextXAlignment = Enum.TextXAlignment.Left
 valueText.Parent = numberCard
 
--- Label inside card
 local valueLabel = Instance.new("TextLabel")
 valueLabel.Size = UDim2.new(1, -16, 0, 16)
-valueLabel.Position = UDim2.new(0, 8, 0, 46)
+valueLabel.Position = UDim2.new(0, 10, 0, 46)
 valueLabel.BackgroundTransparency = 1
 valueLabel.Text = "SHECKLES"
 valueLabel.TextColor3 = Color3.fromRGB(150, 130, 145)
@@ -228,7 +284,7 @@ valueLabel.Font = Enum.Font.GothamBold
 valueLabel.TextXAlignment = Enum.TextXAlignment.Left
 valueLabel.Parent = numberCard
 
--- Controls below card
+-- Controls
 local controls = Instance.new("Frame")
 controls.Size = UDim2.new(1, 0, 0, 36)
 controls.Position = UDim2.new(0, 0, 0, 84)
@@ -332,7 +388,7 @@ frame.InputEnded:Connect(function(input)
     end
 end)
 
--- TOGGLE - Bottom Left (clearly visible, not in the way)
+-- TOGGLE - Bottom Left
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(0, 52, 0, 52)
 toggle.Position = UDim2.new(0, 20, 1, -72)
