@@ -599,5 +599,3 @@ TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.Easing
     Size = UDim2.new(0, 340, 0, 190),
     Position = UDim2.new(0.5, -170, 0.5, -95)
 }):Play()
-
-print("MIKKA HUB loaded | " .. player.Name)
