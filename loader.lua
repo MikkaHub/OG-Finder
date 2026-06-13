@@ -17,97 +17,143 @@ sg.Name = "MikkaHub"
 sg.ResetOnSpawn = false
 sg.Parent = player:WaitForChild("PlayerGui")
 
+-- Main frame with slight tilt feel
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 170)
-frame.Position = UDim2.new(0.5, -150, 0.1, 0)
-frame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+frame.Size = UDim2.new(0, 320, 0, 180)
+frame.Position = UDim2.new(0.5, -160, 0.1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.ClipsDescendants = true
 frame.Parent = sg
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(50, 35, 45)
-stroke.Thickness = 1
-stroke.Transparency = 0.5
-stroke.Parent = frame
+-- Double border effect
+local outerStroke = Instance.new("UIStroke")
+outerStroke.Color = Color3.fromRGB(30, 25, 35)
+outerStroke.Thickness = 1
+outerStroke.Transparency = 0.6
+outerStroke.Parent = frame
 
-local accentLine = Instance.new("Frame")
-accentLine.Size = UDim2.new(1, 0, 0, 2)
-accentLine.BackgroundColor3 = Color3.fromRGB(180, 90, 130)
-accentLine.BorderSizePixel = 0
-accentLine.Parent = frame
+local innerStroke = Instance.new("UIStroke")
+innerStroke.Color = Color3.fromRGB(60, 40, 70)
+innerStroke.Thickness = 1
+innerStroke.Transparency = 0.8
+innerStroke.Parent = frame
 
+-- Top bar with subtle gradient
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 3)
+topBar.BackgroundColor3 = Color3.fromRGB(200, 80, 130)
+topBar.BorderSizePixel = 0
+topBar.Parent = frame
+
+-- Header with avatar inline
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 38)
-header.Position = UDim2.new(0, 0, 0, 2)
-header.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+header.Size = UDim2.new(1, 0, 0, 48)
+header.Position = UDim2.new(0, 0, 0, 3)
+header.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 header.BorderSizePixel = 0
 header.Parent = frame
 
-Instance.new("UICorner", header).CornerRadius = UDim.new(0, 0)
+-- Small avatar in header
+local miniAvatar = Instance.new("ImageLabel")
+miniAvatar.Size = UDim2.new(0, 28, 0, 28)
+miniAvatar.Position = UDim2.new(0, 12, 0, 10)
+miniAvatar.BackgroundColor3 = Color3.fromRGB(40, 30, 40)
+miniAvatar.Image = AVATAR_URL
+miniAvatar.ScaleType = Enum.ScaleType.Crop
+miniAvatar.Parent = header
 
-local headerTitle = Instance.new("TextLabel")
-headerTitle.Size = UDim2.new(1, -50, 1, 0)
-headerTitle.Position = UDim2.new(0, 14, 0, 0)
-headerTitle.BackgroundTransparency = 1
-headerTitle.Text = "MIKKA HUB"
-headerTitle.TextColor3 = Color3.fromRGB(210, 180, 195)
-headerTitle.TextSize = 14
-headerTitle.Font = Enum.Font.GothamBold
-headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-headerTitle.Parent = header
+Instance.new("UICorner", miniAvatar).CornerRadius = UDim.new(0, 6)
 
+local miniStroke = Instance.new("UIStroke")
+miniStroke.Color = Color3.fromRGB(80, 50, 70)
+miniStroke.Thickness = 1
+miniStroke.Parent = miniAvatar
+
+-- Title next to avatar
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(0, 200, 0, 48)
+titleText.Position = UDim2.new(0, 48, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "MIKKA HUB"
+titleText.TextColor3 = Color3.fromRGB(220, 200, 210)
+titleText.TextSize = 15
+titleText.Font = Enum.Font.GothamBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = header
+
+-- Subtitle
+local subTitle = Instance.new("TextLabel")
+subTitle.Size = UDim2.new(0, 200, 0, 14)
+subTitle.Position = UDim2.new(0, 48, 0, 30)
+subTitle.BackgroundTransparency = 1
+subTitle.Text = "v2.0  |  " .. player.Name
+subTitle.TextColor3 = Color3.fromRGB(100, 80, 95)
+subTitle.TextSize = 9
+subTitle.Font = Enum.Font.Gotham
+subTitle.TextXAlignment = Enum.TextXAlignment.Left
+subTitle.Parent = header
+
+-- Close X
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 24, 0, 24)
-closeBtn.Position = UDim2.new(1, -32, 0, 7)
-closeBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 25)
+closeBtn.Size = UDim2.new(0, 22, 0, 22)
+closeBtn.Position = UDim2.new(1, -30, 0, 13)
+closeBtn.BackgroundTransparency = 1
 closeBtn.Text = ""
 closeBtn.AutoButtonColor = false
 closeBtn.Parent = header
 
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
-
-local closeIcon = Instance.new("TextLabel")
-closeIcon.Size = UDim2.new(1, 0, 1, 0)
-closeIcon.BackgroundTransparency = 1
-closeIcon.Text = "×"
-closeIcon.TextColor3 = Color3.fromRGB(140, 100, 115)
-closeIcon.TextSize = 18
-closeIcon.Font = Enum.Font.GothamBold
-closeIcon.Parent = closeBtn
+local closeX = Instance.new("TextLabel")
+closeX.Size = UDim2.new(1, 0, 1, 0)
+closeX.BackgroundTransparency = 1
+closeX.Text = "×"
+closeX.TextColor3 = Color3.fromRGB(120, 90, 105)
+closeX.TextSize = 20
+closeX.Font = Enum.Font.GothamBold
+closeX.Parent = closeBtn
 
 closeBtn.MouseEnter:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(200, 60, 90)}):Play()
-    closeIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeX.TextColor3 = Color3.fromRGB(255, 80, 100)
+    TweenService:Create(closeX, TweenInfo.new(0.1), {Rotation = 90}):Play()
 end)
 closeBtn.MouseLeave:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(30, 20, 25)}):Play()
-    closeIcon.TextColor3 = Color3.fromRGB(140, 100, 115)
+    closeX.TextColor3 = Color3.fromRGB(120, 90, 105)
+    TweenService:Create(closeX, TweenInfo.new(0.1), {Rotation = 0}):Play()
 end)
 
+-- Divider line
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -24, 0, 1)
+divider.Position = UDim2.new(0, 12, 0, 51)
+divider.BackgroundColor3 = Color3.fromRGB(35, 30, 40)
+divider.BorderSizePixel = 0
+divider.Parent = frame
+
+-- Main content area
 local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -20, 0, 110)
-content.Position = UDim2.new(0, 10, 0, 44)
+content.Size = UDim2.new(1, -24, 0, 110)
+content.Position = UDim2.new(0, 12, 0, 56)
 content.BackgroundTransparency = 1
 content.Parent = frame
 
--- AVATAR (Roblox headshot)
+-- Big avatar with glow
 local avatarFrame = Instance.new("Frame")
-avatarFrame.Size = UDim2.new(0, 52, 0, 52)
-avatarFrame.Position = UDim2.new(0, 0, 0, 4)
-avatarFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+avatarFrame.Size = UDim2.new(0, 64, 0, 64)
+avatarFrame.Position = UDim2.new(0, 0, 0, 8)
+avatarFrame.BackgroundColor3 = Color3.fromRGB(25, 20, 28)
 avatarFrame.BorderSizePixel = 0
 avatarFrame.Parent = content
 
-Instance.new("UICorner", avatarFrame).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", avatarFrame).CornerRadius = UDim.new(0, 12)
 
-local avatarStroke = Instance.new("UIStroke")
-avatarStroke.Color = Color3.fromRGB(60, 40, 55)
-avatarStroke.Thickness = 1.5
-avatarStroke.Parent = avatarFrame
+local avatarGlow = Instance.new("UIStroke")
+avatarGlow.Color = Color3.fromRGB(100, 60, 90)
+avatarGlow.Thickness = 2
+avatarGlow.Transparency = 0.5
+avatarGlow.Parent = avatarFrame
 
 local avatarImage = Instance.new("ImageLabel")
 avatarImage.Size = UDim2.new(1, 0, 1, 0)
@@ -116,60 +162,65 @@ avatarImage.Image = AVATAR_URL
 avatarImage.ScaleType = Enum.ScaleType.Crop
 avatarImage.Parent = avatarFrame
 
-Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", avatarImage).CornerRadius = UDim.new(0, 12)
 
--- Online status dot
+-- Status dot with pulse
 local statusDot = Instance.new("Frame")
 statusDot.Size = UDim2.new(0, 10, 0, 10)
-statusDot.Position = UDim2.new(1, -12, 1, -12)
-statusDot.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+statusDot.Position = UDim2.new(1, -14, 1, -14)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
 statusDot.BorderSizePixel = 0
 statusDot.ZIndex = 2
 statusDot.Parent = avatarFrame
 
 Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
 
-local statusStroke = Instance.new("UIStroke")
-statusStroke.Color = Color3.fromRGB(15, 15, 18)
-statusStroke.Thickness = 2
-statusStroke.Parent = statusDot
+local statusRing = Instance.new("UIStroke")
+statusRing.Color = Color3.fromRGB(12, 12, 16)
+statusRing.Thickness = 2
+statusRing.Parent = statusDot
 
--- Username label
-local usernameLabel = Instance.new("TextLabel")
-usernameLabel.Size = UDim2.new(1, -64, 0, 14)
-usernameLabel.Position = UDim2.new(0, 64, 0, 4)
-usernameLabel.BackgroundTransparency = 1
-usernameLabel.Text = "@" .. player.Name
-usernameLabel.TextColor3 = Color3.fromRGB(140, 120, 135)
-usernameLabel.TextSize = 10
-usernameLabel.Font = Enum.Font.Gotham
-usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
-usernameLabel.Parent = content
+-- Pulse animation
+spawn(function()
+    while statusDot.Parent do
+        TweenService:Create(statusDot, TweenInfo.new(1, Enum.EasingStyle.Sine), {Size = UDim2.new(0, 12, 0, 12), Position = UDim2.new(1, -15, 1, -15)}):Play()
+        task.wait(1)
+        TweenService:Create(statusDot, TweenInfo.new(1, Enum.EasingStyle.Sine), {Size = UDim2.new(0, 10, 0, 10), Position = UDim2.new(1, -14, 1, -14)}):Play()
+        task.wait(1)
+    end
+end)
 
--- Value section
+-- Value display
 local valueSection = Instance.new("Frame")
-valueSection.Size = UDim2.new(1, -64, 0, 40)
-valueSection.Position = UDim2.new(0, 64, 0, 18)
+valueSection.Size = UDim2.new(1, -80, 0, 70)
+valueSection.Position = UDim2.new(0, 76, 0, 8)
 valueSection.BackgroundTransparency = 1
 valueSection.Parent = content
 
 local valueText = Instance.new("TextLabel")
-valueText.Size = UDim2.new(1, 0, 0, 32)
-valueText.Position = UDim2.new(0, 0, 0, 0)
+valueText.Size = UDim2.new(1, 0, 0, 36)
+valueText.Position = UDim2.new(0, 0, 0, 4)
 valueText.BackgroundTransparency = 1
 valueText.Text = tostring(sheckles.Value)
 valueText.TextColor3 = Color3.fromRGB(240, 240, 240)
-valueText.TextSize = 26
+valueText.TextSize = 28
 valueText.Font = Enum.Font.GothamBlack
 valueText.TextXAlignment = Enum.TextXAlignment.Left
 valueText.Parent = valueSection
 
+local valueLine = Instance.new("Frame")
+valueLine.Size = UDim2.new(0.4, 0, 0, 2)
+valueLine.Position = UDim2.new(0, 0, 0, 38)
+valueLine.BackgroundColor3 = Color3.fromRGB(180, 80, 130)
+valueLine.BorderSizePixel = 0
+valueLine.Parent = valueSection
+
 local valueLabel = Instance.new("TextLabel")
-valueLabel.Size = UDim2.new(1, 0, 0, 14)
-valueLabel.Position = UDim2.new(0, 0, 0, 30)
+valueLabel.Size = UDim2.new(1, 0, 0, 16)
+valueLabel.Position = UDim2.new(0, 0, 0, 44)
 valueLabel.BackgroundTransparency = 1
 valueLabel.Text = "SHECKLES"
-valueLabel.TextColor3 = Color3.fromRGB(110, 90, 105)
+valueLabel.TextColor3 = Color3.fromRGB(100, 80, 95)
 valueLabel.TextSize = 10
 valueLabel.Font = Enum.Font.Gotham
 valueLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -177,61 +228,61 @@ valueLabel.Parent = valueSection
 
 -- Controls
 local controls = Instance.new("Frame")
-controls.Size = UDim2.new(1, 0, 0, 34)
-controls.Position = UDim2.new(0, 0, 0, 70)
+controls.Size = UDim2.new(1, 0, 0, 32)
+controls.Position = UDim2.new(0, 0, 0, 78)
 controls.BackgroundTransparency = 1
 controls.Parent = content
 
 local inputBox = Instance.new("TextBox")
-inputBox.Size = UDim2.new(0.42, 0, 0, 30)
+inputBox.Size = UDim2.new(0.38, 0, 0, 28)
 inputBox.Position = UDim2.new(0, 0, 0, 2)
-inputBox.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+inputBox.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 inputBox.Text = "1000"
-inputBox.TextColor3 = Color3.fromRGB(200, 200, 200)
+inputBox.TextColor3 = Color3.fromRGB(180, 180, 180)
 inputBox.PlaceholderText = "Amount"
-inputBox.PlaceholderColor3 = Color3.fromRGB(70, 70, 75)
-inputBox.TextSize = 13
+inputBox.PlaceholderColor3 = Color3.fromRGB(60, 60, 65)
+inputBox.TextSize = 12
 inputBox.Font = Enum.Font.Gotham
 inputBox.ClearTextOnFocus = true
 inputBox.Parent = controls
 
-Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 6)
 
-local inputStroke = Instance.new("UIStroke")
-inputStroke.Color = Color3.fromRGB(45, 40, 50)
-inputStroke.Thickness = 1
-inputStroke.Parent = inputBox
+local inputLine = Instance.new("UIStroke")
+inputLine.Color = Color3.fromRGB(50, 40, 55)
+inputLine.Thickness = 1
+inputLine.Parent = inputBox
 
-local addBtn = Instance.new("TextButton")
-addBtn.Size = UDim2.new(0.54, 0, 0, 30)
-addBtn.Position = UDim2.new(0.46, 0, 0, 2)
-addBtn.BackgroundColor3 = Color3.fromRGB(170, 80, 125)
+addBtn = Instance.new("TextButton")
+addBtn.Size = UDim2.new(0.58, 0, 0, 28)
+addBtn.Position = UDim2.new(0.42, 0, 0, 2)
+addBtn.BackgroundColor3 = Color3.fromRGB(160, 70, 115)
 addBtn.Text = "ADD"
 addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-addBtn.TextSize = 13
+addBtn.TextSize = 12
 addBtn.Font = Enum.Font.GothamBold
 addBtn.AutoButtonColor = false
 addBtn.Parent = controls
 
-Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0, 6)
 
 addBtn.MouseEnter:Connect(function()
-    TweenService:Create(addBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(200, 100, 150)}):Play()
-    inputStroke.Color = Color3.fromRGB(80, 60, 75)
+    TweenService:Create(addBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(190, 90, 140)}):Play()
+    inputLine.Color = Color3.fromRGB(80, 60, 80)
 end)
 addBtn.MouseLeave:Connect(function()
-    TweenService:Create(addBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(170, 80, 125)}):Play()
-    inputStroke.Color = Color3.fromRGB(45, 40, 50)
+    TweenService:Create(addBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(160, 70, 115)}):Play()
+    inputLine.Color = Color3.fromRGB(50, 40, 55)
 end)
 
 addBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        TweenService:Create(addBtn, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(140, 60, 100), Size = UDim2.new(0.52, 0, 0, 28)}):Play()
+        TweenService:Create(addBtn, TweenInfo.new(0.06), {BackgroundColor3 = Color3.fromRGB(130, 50, 90), Size = UDim2.new(0.56, 0, 0, 26)}):Play()
     end
 end)
 addBtn.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        TweenService:Create(addBtn, TweenInfo.new(0.12, Enum.EasingStyle.Back), {BackgroundColor3 = Color3.fromRGB(170, 80, 125), Size = UDim2.new(0.54, 0, 0, 30)}):Play()
+        TweenService:Create(addBtn, TweenInfo.new(0.1, Enum.EasingStyle.Back), {BackgroundColor3 = Color3.fromRGB(160, 70, 115), Size = UDim2.new(0.58, 0, 0, 28)}):Play()
     end
 end)
 
@@ -239,11 +290,11 @@ end)
 local function addSheckles(amount)
     amount = tonumber(amount) or 1000
     local target = sheckles.Value + amount
-    TweenService:Create(valueText, TweenInfo.new(0.15), {TextTransparency = 0.3}):Play()
-    task.wait(0.1)
+    TweenService:Create(valueText, TweenInfo.new(0.12), {TextTransparency = 0.3}):Play()
+    task.wait(0.08)
     sheckles.Value = target
     valueText.Text = tostring(target)
-    TweenService:Create(valueText, TweenInfo.new(0.2), {TextTransparency = 0}):Play()
+    TweenService:Create(valueText, TweenInfo.new(0.15), {TextTransparency = 0}):Play()
 end
 
 addBtn.MouseButton1Click:Connect(function()
@@ -279,82 +330,81 @@ frame.InputEnded:Connect(function(input)
     end
 end)
 
--- Toggle button with avatar
+-- Toggle with avatar
 local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(0, 44, 0, 44)
-toggle.Position = UDim2.new(0, 12, 0.5, -22)
-toggle.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+toggle.Size = UDim2.new(0, 42, 0, 42)
+toggle.Position = UDim2.new(0, 14, 0.5, -21)
+toggle.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 toggle.Text = ""
 toggle.AutoButtonColor = false
 toggle.Visible = false
 toggle.Parent = sg
 
-Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 10)
 
 local toggleStroke = Instance.new("UIStroke")
-toggleStroke.Color = Color3.fromRGB(100, 60, 85)
+toggleStroke.Color = Color3.fromRGB(80, 50, 70)
 toggleStroke.Thickness = 1.5
 toggleStroke.Parent = toggle
 
 local toggleAvatar = Instance.new("ImageLabel")
-toggleAvatar.Size = UDim2.new(0, 36, 0, 36)
-toggleAvatar.Position = UDim2.new(0.5, -18, 0.5, -18)
+toggleAvatar.Size = UDim2.new(0, 34, 0, 34)
+toggleAvatar.Position = UDim2.new(0.5, -17, 0.5, -17)
 toggleAvatar.BackgroundTransparency = 1
 toggleAvatar.Image = AVATAR_URL
 toggleAvatar.ScaleType = Enum.ScaleType.Crop
 toggleAvatar.Parent = toggle
 
-Instance.new("UICorner", toggleAvatar).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", toggleAvatar).CornerRadius = UDim.new(0, 8)
 
--- Toggle status dot
 local toggleStatus = Instance.new("Frame")
-toggleStatus.Size = UDim2.new(0, 8, 0, 8)
-toggleStatus.Position = UDim2.new(1, -10, 1, -10)
-toggleStatus.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+toggleStatus.Size = UDim2.new(0, 7, 0, 7)
+toggleStatus.Position = UDim2.new(1, -9, 1, -9)
+toggleStatus.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
 toggleStatus.BorderSizePixel = 0
 toggleStatus.ZIndex = 2
 toggleStatus.Parent = toggle
 
 Instance.new("UICorner", toggleStatus).CornerRadius = UDim.new(1, 0)
 
-local toggleStatusStroke = Instance.new("UIStroke")
-toggleStatusStroke.Color = Color3.fromRGB(20, 20, 24)
-toggleStatusStroke.Thickness = 1.5
-toggleStatusStroke.Parent = toggleStatus
+local toggleRing = Instance.new("UIStroke")
+toggleRing.Color = Color3.fromRGB(18, 18, 22)
+toggleRing.Thickness = 1.5
+toggleRing.Parent = toggleStatus
 
--- Toggle glow
+-- Toggle pulse
 spawn(function()
     while toggle.Parent do
-        TweenService:Create(toggleStroke, TweenInfo.new(2, Enum.EasingStyle.Sine), {Transparency = 0.3}):Play()
-        task.wait(2)
-        TweenService:Create(toggleStroke, TweenInfo.new(2, Enum.EasingStyle.Sine), {Transparency = 0.7}):Play()
-        task.wait(2)
+        TweenService:Create(toggleStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {Transparency = 0.3}):Play()
+        task.wait(1.5)
+        TweenService:Create(toggleStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {Transparency = 0.7}):Play()
+        task.wait(1.5)
     end
 end)
 
 toggle.MouseEnter:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(35, 25, 35), Size = UDim2.new(0, 48, 0, 48)}):Play()
-    TweenService:Create(toggle, TweenInfo.new(0.15), {Position = UDim2.new(0, 10, 0.5, -24)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(30, 25, 35), Size = UDim2.new(0, 46, 0, 46)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(0, 12, 0.5, -23)}):Play()
 end)
 
 toggle.MouseLeave:Connect(function()
-    TweenService:Create(toggle, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(20, 20, 24), Size = UDim2.new(0, 44, 0, 44)}):Play()
-    TweenService:Create(toggle, TweenInfo.new(0.15), {Position = UDim2.new(0, 12, 0.5, -22)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(18, 18, 22), Size = UDim2.new(0, 42, 0, 42)}):Play()
+    TweenService:Create(toggle, TweenInfo.new(0.12), {Position = UDim2.new(0, 14, 0.5, -21)}):Play()
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+    TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
         Size = UDim2.new(0, 0, 0, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0)
     }):Play()
-    task.wait(0.25)
+    task.wait(0.2)
     frame.Visible = false
     toggle.Visible = true
     toggle.Size = UDim2.new(0, 0, 0, 0)
-    toggle.Position = UDim2.new(0, 34, 0.5, 0)
-    TweenService:Create(toggle, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 44, 0, 44),
-        Position = UDim2.new(0, 12, 0.5, -22)
+    toggle.Position = UDim2.new(0, 35, 0.5, 0)
+    TweenService:Create(toggle, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 42, 0, 42),
+        Position = UDim2.new(0, 14, 0.5, -21)
     }):Play()
 end)
 
@@ -363,18 +413,18 @@ toggle.MouseButton1Click:Connect(function()
     frame.Visible = true
     frame.Size = UDim2.new(0, 0, 0, 0)
     frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 300, 0, 170),
-        Position = UDim2.new(0.5, -150, 0.1, 0)
+    TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 320, 0, 180),
+        Position = UDim2.new(0.5, -160, 0.1, 0)
     }):Play()
 end)
 
 -- Open animation
 frame.Size = UDim2.new(0, 0, 0, 0)
 frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 300, 0, 170),
-    Position = UDim2.new(0.5, -150, 0.1, 0)
+TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 320, 0, 180),
+    Position = UDim2.new(0.5, -160, 0.1, 0)
 }):Play()
 
-print("MIKKA HUB loaded. Avatar: " .. player.Name)
+print("MIKKA HUB loaded | " .. player.Name)
