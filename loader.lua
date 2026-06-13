@@ -17,7 +17,6 @@ sg.Name = "MikkaHub"
 sg.ResetOnSpawn = false
 sg.Parent = player:WaitForChild("PlayerGui")
 
--- Bubbly main frame
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 340, 0, 200)
 frame.Position = UDim2.new(0.5, -170, 0.1, 0)
@@ -29,14 +28,12 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 24)
 
--- Soft glow border
 local glow = Instance.new("UIStroke")
 glow.Color = Color3.fromRGB(200, 120, 170)
 glow.Thickness = 2
 glow.Transparency = 0.5
 glow.Parent = frame
 
--- Pulsing glow animation
 spawn(function()
     while frame.Parent do
         TweenService:Create(glow, TweenInfo.new(2, Enum.EasingStyle.Sine), {Transparency = 0.2}):Play()
@@ -46,7 +43,6 @@ spawn(function()
     end
 end)
 
--- Top bar
 local topBar = Instance.new("Frame")
 topBar.Size = UDim2.new(1, 0, 0, 50)
 topBar.BackgroundColor3 = Color3.fromRGB(35, 28, 42)
@@ -62,7 +58,6 @@ topFix.BackgroundColor3 = Color3.fromRGB(35, 28, 42)
 topFix.BorderSizePixel = 0
 topFix.Parent = topBar
 
--- Sparkle icon
 local sparkle = Instance.new("TextLabel")
 sparkle.Size = UDim2.new(0, 30, 0, 30)
 sparkle.Position = UDim2.new(0, 14, 0, 10)
@@ -72,7 +67,6 @@ sparkle.TextSize = 22
 sparkle.Font = Enum.Font.GothamBold
 sparkle.Parent = topBar
 
--- Sparkle bounce
 spawn(function()
     while sparkle.Parent do
         TweenService:Create(sparkle, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 14, 0, 6)}):Play()
@@ -82,7 +76,6 @@ spawn(function()
     end
 end)
 
--- Title
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0, 200, 0, 50)
 titleText.Position = UDim2.new(0, 48, 0, 0)
@@ -94,7 +87,6 @@ titleText.Font = Enum.Font.GothamBlack
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = topBar
 
--- Close button
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 32, 0, 32)
 closeBtn.Position = UDim2.new(1, -40, 0, 9)
@@ -123,71 +115,123 @@ closeBtn.MouseLeave:Connect(function()
     closeIcon.TextColor3 = Color3.fromRGB(220, 160, 180)
 end)
 
--- Content area
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -28, 0, 130)
 content.Position = UDim2.new(0, 14, 0, 58)
 content.BackgroundTransparency = 1
 content.Parent = frame
 
--- Avatar with orbiting particles
 local avatarContainer = Instance.new("Frame")
 avatarContainer.Size = UDim2.new(0, 80, 0, 80)
 avatarContainer.Position = UDim2.new(0, 10, 0, 10)
 avatarContainer.BackgroundTransparency = 1
 avatarContainer.Parent = content
 
--- Orbit ring 1
+-- Orbit ring 1 - realistic glowing orbs with trails
 local orbit1 = Instance.new("Frame")
-orbit1.Size = UDim2.new(0, 90, 0, 90)
-orbit1.Position = UDim2.new(0.5, -45, 0.5, -45)
+orbit1.Size = UDim2.new(0, 100, 0, 100)
+orbit1.Position = UDim2.new(0.5, -50, 0.5, -50)
 orbit1.BackgroundTransparency = 1
 orbit1.Parent = avatarContainer
 
--- Orbit dots
 for i = 1, 3 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 6, 0, 6)
-    dot.BackgroundColor3 = Color3.fromRGB(255, 150, 200)
-    dot.BorderSizePixel = 0
-    dot.Parent = orbit1
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    -- Trail effect
+    local trail = Instance.new("Frame")
+    trail.Size = UDim2.new(0, 8, 0, 8)
+    trail.BackgroundColor3 = Color3.fromRGB(255, 150, 200)
+    trail.BackgroundTransparency = 0.7
+    trail.BorderSizePixel = 0
+    trail.Parent = orbit1
+    Instance.new("UICorner", trail).CornerRadius = UDim.new(1, 0)
+    
+    -- Main orb
+    local orb = Instance.new("Frame")
+    orb.Size = UDim2.new(0, 10, 0, 10)
+    orb.BackgroundColor3 = Color3.fromRGB(255, 200, 230)
+    orb.BorderSizePixel = 0
+    orb.ZIndex = 2
+    orb.Parent = orbit1
+    Instance.new("UICorner", orb).CornerRadius = UDim.new(1, 0)
+    
+    -- Inner glow
+    local inner = Instance.new("Frame")
+    inner.Size = UDim2.new(0, 4, 0, 4)
+    inner.Position = UDim2.new(0.5, -2, 0.5, -2)
+    inner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    inner.BorderSizePixel = 0
+    inner.ZIndex = 3
+    inner.Parent = orb
+    Instance.new("UICorner", inner).CornerRadius = UDim.new(1, 0)
     
     spawn(function()
         local angle = (i / 3) * math.pi * 2
-        while dot.Parent do
-            angle = angle + 0.05
-            local x = math.cos(angle) * 45
-            local y = math.sin(angle) * 45
-            dot.Position = UDim2.new(0.5, x - 3, 0.5, y - 3)
+        while orb.Parent do
+            angle = angle + 0.04
+            local x = math.cos(angle) * 48
+            local y = math.sin(angle) * 48
+            
+            trail.Position = orb.Position
+            orb.Position = UDim2.new(0.5, x - 5, 0.5, y - 5)
+            
+            -- Fade trail based on distance
+            local dist = math.sqrt(x^2 + y^2)
+            trail.BackgroundTransparency = 0.3 + (dist / 100)
+            
             task.wait(0.03)
         end
     end)
 end
 
--- Orbit ring 2 (slower, opposite)
+-- Orbit ring 2 - slower, larger orbs
 local orbit2 = Instance.new("Frame")
-orbit2.Size = UDim2.new(0, 100, 0, 100)
-orbit2.Position = UDim2.new(0.5, -50, 0.5, -50)
+orbit2.Size = UDim2.new(0, 110, 0, 110)
+orbit2.Position = UDim2.new(0.5, -55, 0.5, -55)
 orbit2.BackgroundTransparency = 1
 orbit2.Parent = avatarContainer
 
-for i = 1, 4 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 4, 0, 4)
-    dot.BackgroundColor3 = Color3.fromRGB(200, 100, 160)
-    dot.BackgroundTransparency = 0.5
-    dot.BorderSizePixel = 0
-    dot.Parent = orbit2
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+for i = 1, 2 do
+    local trail = Instance.new("Frame")
+    trail.Size = UDim2.new(0, 12, 0, 12)
+    trail.BackgroundColor3 = Color3.fromRGB(200, 100, 160)
+    trail.BackgroundTransparency = 0.8
+    trail.BorderSizePixel = 0
+    trail.Parent = orbit2
+    Instance.new("UICorner", trail).CornerRadius = UDim.new(1, 0)
+    
+    local orb = Instance.new("Frame")
+    orb.Size = UDim2.new(0, 14, 0, 14)
+    orb.BackgroundColor3 = Color3.fromRGB(220, 140, 190)
+    orb.BorderSizePixel = 0
+    orb.ZIndex = 2
+    orb.Parent = orbit2
+    Instance.new("UICorner", orb).CornerRadius = UDim.new(1, 0)
+    
+    local inner = Instance.new("Frame")
+    inner.Size = UDim2.new(0, 6, 0, 6)
+    inner.Position = UDim2.new(0.5, -3, 0.5, -3)
+    inner.BackgroundColor3 = Color3.fromRGB(255, 220, 240)
+    inner.BorderSizePixel = 0
+    inner.ZIndex = 3
+    inner.Parent = orb
+    Instance.new("UICorner", inner).CornerRadius = UDim.new(1, 0)
+    
+    -- Outer glow ring
+    local glowRing = Instance.new("UIStroke")
+    glowRing.Color = Color3.fromRGB(255, 180, 220)
+    glowRing.Thickness = 2
+    glowRing.Transparency = 0.5
+    glowRing.Parent = orb
     
     spawn(function()
-        local angle = (i / 4) * math.pi * 2
-        while dot.Parent do
-            angle = angle - 0.03
-            local x = math.cos(angle) * 50
-            local y = math.sin(angle) * 50
-            dot.Position = UDim2.new(0.5, x - 2, 0.5, y - 2)
+        local angle = (i / 2) * math.pi * 2
+        while orb.Parent do
+            angle = angle - 0.025
+            local x = math.cos(angle) * 55
+            local y = math.sin(angle) * 55
+            
+            trail.Position = orb.Position
+            orb.Position = UDim2.new(0.5, x - 7, 0.5, y - 7)
+            
             task.wait(0.03)
         end
     end)
@@ -235,7 +279,6 @@ statusRing.Color = Color3.fromRGB(25, 20, 30)
 statusRing.Thickness = 2
 statusRing.Parent = statusDot
 
--- Status pulse
 spawn(function()
     while statusDot.Parent do
         TweenService:Create(statusDot, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(1, -17, 1, -17)}):Play()
@@ -274,26 +317,6 @@ valueLabel.Font = Enum.Font.Gotham
 valueLabel.TextXAlignment = Enum.TextXAlignment.Left
 valueLabel.Parent = valueSection
 
--- Heart decoration
-local heart = Instance.new("TextLabel")
-heart.Size = UDim2.new(0, 20, 0, 20)
-heart.Position = UDim2.new(1, -20, 0, 8)
-heart.BackgroundTransparency = 1
-heart.Text = "💗"
-heart.TextSize = 16
-heart.Font = Enum.Font.GothamBold
-heart.Parent = valueSection
-
--- Heart beat
-spawn(function()
-    while heart.Parent do
-        TweenService:Create(heart, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -24, 0, 6)}):Play()
-        task.wait(0.4)
-        TweenService:Create(heart, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(1, -20, 0, 8)}):Play()
-        task.wait(0.4)
-    end
-end)
-
 -- Controls
 local controls = Instance.new("Frame")
 controls.Size = UDim2.new(1, 0, 0, 36)
@@ -325,7 +348,7 @@ local addBtn = Instance.new("TextButton")
 addBtn.Size = UDim2.new(0.56, 0, 0, 32)
 addBtn.Position = UDim2.new(0.44, 0, 0, 2)
 addBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 150)
-addBtn.Text = "ADD 💗"
+addBtn.Text = "ADD"
 addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 addBtn.TextSize = 13
 addBtn.Font = Enum.Font.GothamBlack
@@ -398,7 +421,7 @@ frame.InputEnded:Connect(function(input)
     end
 end)
 
--- Toggle button with avatar and orbit
+-- Toggle button with avatar and realistic orbs
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(0, 50, 0, 50)
 toggle.Position = UDim2.new(0, 16, 0.5, -25)
@@ -416,7 +439,7 @@ toggleGlow.Thickness = 2
 toggleGlow.Transparency = 0.5
 toggleGlow.Parent = toggle
 
--- Toggle orbit
+-- Toggle orbit with realistic orbs
 local toggleOrbit = Instance.new("Frame")
 toggleOrbit.Size = UDim2.new(0, 58, 0, 58)
 toggleOrbit.Position = UDim2.new(0.5, -29, 0.5, -29)
@@ -424,20 +447,39 @@ toggleOrbit.BackgroundTransparency = 1
 toggleOrbit.Parent = toggle
 
 for i = 1, 2 do
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 5, 0, 5)
-    dot.BackgroundColor3 = Color3.fromRGB(255, 180, 220)
-    dot.BorderSizePixel = 0
-    dot.Parent = toggleOrbit
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    local trail = Instance.new("Frame")
+    trail.Size = UDim2.new(0, 6, 0, 6)
+    trail.BackgroundColor3 = Color3.fromRGB(255, 180, 220)
+    trail.BackgroundTransparency = 0.6
+    trail.BorderSizePixel = 0
+    trail.Parent = toggleOrbit
+    Instance.new("UICorner", trail).CornerRadius = UDim.new(1, 0)
+    
+    local orb = Instance.new("Frame")
+    orb.Size = UDim2.new(0, 8, 0, 8)
+    orb.BackgroundColor3 = Color3.fromRGB(255, 220, 240)
+    orb.BorderSizePixel = 0
+    orb.Parent = toggleOrbit
+    Instance.new("UICorner", orb).CornerRadius = UDim.new(1, 0)
+    
+    local inner = Instance.new("Frame")
+    inner.Size = UDim2.new(0, 3, 0, 3)
+    inner.Position = UDim2.new(0.5, -1, 0.5, -1)
+    inner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    inner.BorderSizePixel = 0
+    inner.Parent = orb
+    Instance.new("UICorner", inner).CornerRadius = UDim.new(1, 0)
     
     spawn(function()
         local angle = (i / 2) * math.pi * 2
-        while dot.Parent do
+        while orb.Parent do
             angle = angle + 0.06
             local x = math.cos(angle) * 29
             local y = math.sin(angle) * 29
-            dot.Position = UDim2.new(0.5, x - 2, 0.5, y - 2)
+            
+            trail.Position = orb.Position
+            orb.Position = UDim2.new(0.5, x - 4, 0.5, y - 4)
+            
             task.wait(0.03)
         end
     end)
@@ -467,7 +509,6 @@ toggle.MouseEnter:Connect(function()
     TweenService:Create(toggle, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 30, 45), Size = UDim2.new(0, 54, 0, 54)}):Play()
     TweenService:Create(toggle, TweenInfo.new(0.15), {Position = UDim2.new(0, 14, 0.5, -27)}):Play()
 end)
-
 toggle.MouseLeave:Connect(function()
     TweenService:Create(toggle, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(25, 20, 30), Size = UDim2.new(0, 50, 0, 50)}):Play()
     TweenService:Create(toggle, TweenInfo.new(0.15), {Position = UDim2.new(0, 16, 0.5, -25)}):Play()
