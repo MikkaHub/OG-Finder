@@ -1,7 +1,5 @@
 -- discord.gg/syncrypt
-getgenv()._ = "this script was made by 2zvh. https://2zvh.xyz/"
--- rest of the script below
-pcall(setclipboard, "https://discord.gg/xgmxFtCEVt")
+
 local t1 = {}
 
 local obj = setmetatable({}, {
@@ -172,7 +170,7 @@ if ok and result == "pass" then
 		TextLabel2.BackgroundTransparency = 1
 		TextLabel2.Text = p6
 		TextLabel2.TextColor3 = Color3.fromRGB(175, 175, 190)
-		TextLabel2.TextSize = 12
+		TextLabel2.TextSize = 14
 		TextLabel2.Font = Enum.Font.Gotham
 		TextLabel2.TextXAlignment = Enum.TextXAlignment.Left
 		TextLabel2.Parent = CanvasGroup
@@ -187,14 +185,16 @@ if ok and result == "pass" then
 		TweenService:Create(CanvasGroup, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.new(0, 0, 0, 0), GroupTransparency = 0 }):Play()
 		TweenService:Create(Frame4, TweenInfo.new(v22, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) }):Play()
 		task.wait(v22)
+		if not Frame2.Parent then return end
 		TweenService:Create(CanvasGroup, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Position = UDim2.new(1, 300, 0, 0), GroupTransparency = 1 }):Play()
 		task.wait(0.35)
+		if not Frame2.Parent then return end
 		TweenService:Create(Frame2, TweenInfo.new(0.2, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 280, 0, 0) }):Play()
 		task.wait(0.2)
 		Frame2:Destroy()
 	end
 
-	local visible = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local visible = true
 
 	local function v37(p9, p10)
 		local UICorner = Instance.new("UICorner")
@@ -256,64 +256,81 @@ if ok and result == "pass" then
 	local Frame2 = Instance.new("Frame")
 	Frame2.Name = "Panel"
 	Frame2.AnchorPoint = Vector2.new(0, 1)
-	Frame2.Size = UDim2.new(0, 170, 0, 182)
+	Frame2.Size = UDim2.new(0, 280, 0, 322)
 	Frame2.Position = UDim2.new(0, 20, 1, -66)
 	Frame2.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 	Frame2.BorderSizePixel = 0
 	Frame2.Visible = visible
 	Frame2.Parent = ScreenGui
-	v37(Frame2, 8)
+	v37(Frame2, 14)
 	v39(Frame2)
 	local TextLabel = Instance.new("TextLabel")
 	TextLabel.Size = UDim2.new(1, -24, 0, 14)
-	TextLabel.Position = UDim2.new(0, 12, 0, 8)
+	TextLabel.Position = UDim2.new(0, 16, 0, 18)
 	TextLabel.BackgroundTransparency = 1
-	TextLabel.Text = "2zvh"
+	TextLabel.Text = "2zvh  /  CONTROL PANEL"
 	TextLabel.TextColor3 = Color3.fromRGB(130, 80, 255)
 	TextLabel.TextSize = 13
 	TextLabel.Font = Enum.Font.GothamBold
 	TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 	TextLabel.Parent = Frame2
-	local v49 = createTextButton("−", UDim2.new(0, 32, 0, 32), UDim2.new(0, 12, 0, 28), Frame2)
-	local v50 = createTextButton("+", UDim2.new(0, 32, 0, 32), UDim2.new(0, 126, 0, 28), Frame2)
+	local function sectionLabel(text, y)
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Position = UDim2.new(0, 16, 0, y)
+		label.Size = UDim2.new(1, -32, 0, 20)
+		label.Font = Enum.Font.Gotham
+		label.TextSize = 12
+		label.TextColor3 = Color3.fromRGB(175, 175, 190)
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = text
+		label.Parent = Frame2
+	end
+	sectionLabel("INTERACTION RADIUS  /  1–60 STUDS", 48)
+	sectionLabel("INTERFACE SIZE", 122)
+	local v49 = createTextButton("−", UDim2.new(0, 44, 0, 42), UDim2.new(0, 16, 0, 74), Frame2)
+	local v50 = createTextButton("+", UDim2.new(0, 44, 0, 42), UDim2.new(1, -60, 0, 74), Frame2)
 	local TextLabel2 = Instance.new("TextLabel")
-	TextLabel2.Size = UDim2.new(0, 74, 0, 32)
-	TextLabel2.Position = UDim2.new(0, 48, 0, 28)
+	TextLabel2.Size = UDim2.new(1, -128, 0, 42)
+	TextLabel2.Position = UDim2.new(0, 64, 0, 74)
 	TextLabel2.BackgroundTransparency = 1
 	TextLabel2.Text = getgenv().hitbox .. " studs"
 	TextLabel2.TextColor3 = Color3.fromRGB(244, 244, 252)
-	TextLabel2.TextSize = 12
+	TextLabel2.TextSize = 14
 	TextLabel2.Font = Enum.Font.Gotham
 	TextLabel2.Parent = Frame2
-	local v52 = createTextButton("−", UDim2.new(0, 32, 0, 32), UDim2.new(0, 12, 0, 66), Frame2)
-	local v53 = createTextButton("+", UDim2.new(0, 32, 0, 32), UDim2.new(0, 126, 0, 66), Frame2)
+	local v52 = createTextButton("−", UDim2.new(0, 44, 0, 42), UDim2.new(0, 16, 0, 148), Frame2)
+	local v53 = createTextButton("+", UDim2.new(0, 44, 0, 42), UDim2.new(1, -60, 0, 148), Frame2)
 	local TextLabel3 = Instance.new("TextLabel")
-	TextLabel3.Size = UDim2.new(0, 74, 0, 32)
-	TextLabel3.Position = UDim2.new(0, 48, 0, 66)
+	TextLabel3.Size = UDim2.new(1, -128, 0, 42)
+	TextLabel3.Position = UDim2.new(0, 64, 0, 148)
 	TextLabel3.BackgroundTransparency = 1
 	TextLabel3.Text = "UI: " .. math.floor(UIScale.Scale * 100 + 0.5) .. "%"
 	TextLabel3.TextColor3 = Color3.fromRGB(244, 244, 252)
-	TextLabel3.TextSize = 12
+	TextLabel3.TextSize = 14
 	TextLabel3.Font = Enum.Font.Gotham
 	TextLabel3.Parent = Frame2
-	local v55 = createTextButton("hitbox: ON", UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, 104), Frame2)
+	local v55 = createTextButton("hitbox: ON", UDim2.new(1, -32, 0, 44), UDim2.new(0, 16, 0, 206), Frame2)
 	v55.TextColor3 = Color3.fromRGB(70, 230, 140)
-	local v56 = createTextButton("range: OFF", UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, 142), Frame2)
+	local v56 = createTextButton("range: OFF", UDim2.new(1, -32, 0, 44), UDim2.new(0, 16, 0, 258), Frame2)
 	v56.TextColor3 = Color3.fromRGB(255, 80, 100)
-	local v57 = createTextButton("≡", UDim2.new(0, 36, 0, 36), UDim2.new(0, 20, 1, -20), ScreenGui)
+	local v57 = createTextButton("Menu", UDim2.new(0, 76, 0, 40), UDim2.new(0, 20, 1, -20), ScreenGui)
 	v57.AnchorPoint = Vector2.new(0, 1)
-	v57.TextSize = 18
+	v57.TextSize = 14
 	local v58 = createTextButton("made by 2zvh | discord.gg/xgmxFtCEVt", UDim2.new(0, 250, 0, 26), UDim2.new(1, -20, 0, 20), ScreenGui)
 	v58.AnchorPoint = Vector2.new(1, 0)
 	v58.TextSize = 11
 	v58.Font = Enum.Font.Gotham
 	v58.TextColor3 = Color3.fromRGB(175, 175, 190)
 
-	v58.MouseButton1Click:Connect(function()
-		pcall(setclipboard, "https://discord.gg/xgmxFtCEVt")
+	v58.Activated:Connect(function()
+		local copied = pcall(function()
+			assert(type(setclipboard) == "function")
+			setclipboard("https://discord.gg/xgmxFtCEVt")
+		end)
 
 		task.spawn(function()
-			v21("2zvh", "discord link copied", Color3.fromRGB(70, 230, 140), 2)
+			v21("2zvh", copied and "Discord link copied" or "discord.gg/xgmxFtCEVt", Color3.fromRGB(70, 230, 140), 2)
 		end)
 	end)
 
@@ -349,35 +366,36 @@ if ok and result == "pass" then
 		v56.TextColor3 = v63 and Color3.fromRGB(255, 80, 100) or Color3.fromRGB(70, 230, 140)
 	end
 
-	v49.MouseButton1Click:Connect(function()
+	v49.Activated:Connect(function()
 		v59(-5)
 	end)
 
-	v50.MouseButton1Click:Connect(function()
+	v50.Activated:Connect(function()
 		v59(5)
 	end)
 
-	v52.MouseButton1Click:Connect(function()
+	v52.Activated:Connect(function()
 		v61(-0.1)
 	end)
 
-	v53.MouseButton1Click:Connect(function()
+	v53.Activated:Connect(function()
 		v61(0.1)
 	end)
 
-	v55.MouseButton1Click:Connect(v60)
-	v56.MouseButton1Click:Connect(v62)
+	v55.Activated:Connect(v60)
+	v56.Activated:Connect(v62)
 
-	v57.MouseButton1Click:Connect(function()
+	v57.Activated:Connect(function()
 		Frame2.Visible = not Frame2.Visible
 	end)
 
-	local function v64(p18)
+	local function v64(p18, handle)
 		local u65
 		local Position
 		local Position2
 
-		p18.InputBegan:Connect(function(input)
+		handle.Active = true
+		handle.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				u65 = true
 				Position = input.Position
@@ -397,7 +415,7 @@ if ok and result == "pass" then
 		end)
 	end
 
-	v64(Frame2)
+	v64(Frame2, TextLabel)
 	local Physics = require(ReplicatedStorage.Common.Physics)
 	local canInteract = Physics.canInteract
 
@@ -431,11 +449,7 @@ if ok and result == "pass" then
 		return true
 	end
 
-	if getgenv()._ ~= "this script was made by 2zvh. https://2zvh.xyz/" then
-		LocalPlayer:Kick("Error: Credits were removed from the script.")
-		return
-	end
-	print("Credits are valid, welcome, " .. LocalPlayer.Name .. ".")
+	-- Author attribution is displayed in the GUI; it never disconnects the player.
 	local tagged = CollectionService:GetTagged("Ball")
 
 	CollectionService:GetInstanceAddedSignal("Ball"):Connect(function(p22)
@@ -497,3 +511,4 @@ if ok and result == "pass" then
 else
 	print("detected")
 end
+
