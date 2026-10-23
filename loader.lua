@@ -1,5 +1,6 @@
 -- discord.gg/syncrypt
-
+getgenv()._ = "this script was made by 2zvh. https://2zvh.xyz/"
+-- rest of the script below
 pcall(setclipboard, "https://discord.gg/xgmxFtCEVt")
 local t1 = {}
 
