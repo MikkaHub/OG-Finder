@@ -1,3 +1,89 @@
+-- Required attribution. A missing or changed value stops startup without kicking.
+local SCRIPT_CREDITS = "Credits to Miz0"
+
+do
+	local requiredCredits = "Credits to Miz0"
+	if SCRIPT_CREDITS ~= requiredCredits then
+		warn("Startup stopped: Credits to Miz0 must be present.")
+		return
+	end
+
+	local players = game:GetService("Players")
+	local player = players.LocalPlayer
+	if not player then
+		warn("This script must run on the client.")
+		return
+	end
+	local playerGui = player:WaitForChild("PlayerGui")
+	local previous = playerGui:FindFirstChild("Miz0CreditsIntro")
+	if previous then previous:Destroy() end
+
+	local intro = Instance.new("ScreenGui")
+	intro.Name = "Miz0CreditsIntro"
+	intro.IgnoreGuiInset = true
+	intro.ResetOnSpawn = false
+	intro.DisplayOrder = 10000
+	intro.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local backdrop = Instance.new("TextButton")
+	backdrop.Size = UDim2.fromScale(1, 1)
+	backdrop.BackgroundColor3 = Color3.fromRGB(10, 17, 25)
+	backdrop.BorderSizePixel = 0
+	backdrop.Text = ""
+	backdrop.AutoButtonColor = false
+	backdrop.Active = true
+	backdrop.Parent = intro
+
+	local caption = Instance.new("TextLabel")
+	caption.AnchorPoint = Vector2.new(0.5, 0.5)
+	caption.Position = UDim2.fromScale(0.5, 0.42)
+	caption.Size = UDim2.fromScale(0.85, 0.05)
+	caption.BackgroundTransparency = 1
+	caption.Font = Enum.Font.Gotham
+	caption.Text = "ACKNOWLEDGEMENT"
+	caption.TextSize = 13
+	caption.TextColor3 = Color3.fromRGB(151, 171, 191)
+	caption.Parent = backdrop
+
+	local credit = Instance.new("TextLabel")
+	credit.AnchorPoint = Vector2.new(0.5, 0.5)
+	credit.Position = UDim2.fromScale(0.5, 0.5)
+	credit.Size = UDim2.fromScale(0.85, 0.12)
+	credit.BackgroundTransparency = 1
+	credit.Font = Enum.Font.GothamBold
+	credit.Text = SCRIPT_CREDITS
+	credit.TextColor3 = Color3.fromRGB(72, 219, 191)
+	credit.TextScaled = true
+	credit.Parent = backdrop
+	local textLimit = Instance.new("UITextSizeConstraint")
+	textLimit.MinTextSize = 16
+	textLimit.MaxTextSize = 42
+	textLimit.Parent = credit
+
+	local subtitle = caption:Clone()
+	subtitle.Position = UDim2.fromScale(0.5, 0.6)
+	subtitle.Text = "Starting Control Center..."
+	subtitle.Parent = backdrop
+	intro.Parent = playerGui
+
+	-- Require the credit screen to remain intact throughout the startup interval.
+	local valid = true
+	local textConnection = credit:GetPropertyChangedSignal("Text"):Connect(function()
+		if credit.Text ~= requiredCredits then valid = false end
+	end)
+	task.wait(2.5)
+	valid = valid and intro.Parent == playerGui and intro.Enabled
+		and backdrop.Parent == intro and backdrop.Visible
+		and credit.Parent == backdrop and credit.Visible
+		and credit.Text == requiredCredits
+	textConnection:Disconnect()
+	intro:Destroy()
+	if not valid then
+		warn("Startup stopped: the required credit screen was removed or changed.")
+		return
+	end
+end
+
 local t1 = {}
 
 local obj = setmetatable({}, {
@@ -149,7 +235,7 @@ if ok and result == "pass" then
 	}, panel)
 	local title = label(header, "CONTROL CENTER", 20, 18, 260, 24, 20)
 	title.Font = Enum.Font.GothamBold
-	label(header, "Interaction & display", 20, 44, 260, 18, 12, colors.muted)
+	label(header, SCRIPT_CREDITS, 20, 44, 260, 18, 12, colors.muted)
 	local minimize = button(panel, "—", 300, 18, 40, 40)
 	local tabs = {
 		button(panel, "Controls", 20, 82, 156, 40),
@@ -397,4 +483,5 @@ if ok and result == "pass" then
 else
 	print("detected")
 end
+
 
