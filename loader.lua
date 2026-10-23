@@ -1,821 +1,498 @@
--- ═══════════════════════════════════════════════════════════════
---  GAG 2 - NATIVE INVENTORY PET SPAWNER
---  Targets: PlayerGui.BackpackGui.Backpack.Inventory.SideBar.Pets
---           PlayerGui.EquipPet
---  Injects pets into REAL GAG 2 inventory, then equips with animations
--- ═══════════════════════════════════════════════════════════════
+-- discord.gg/syncrypt
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+pcall(setclipboard, "https://discord.gg/xgmxFtCEVt")
+local t1 = {}
 
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
+local obj = setmetatable({}, {
+	__index = function(p1, p2)
+		return p2 == "MS911" and t1 or "detected"
+	end, __metatable = "Locked",
+	__tostring = function()
+		return "pass"
+	end,
+})
 
--- ═══════════════════════════════════════════════════════════════
---  CONFIG
--- ═══════════════════════════════════════════════════════════════
+local function v3()
+	local v4 = debug.traceback()
+	if string.find(v4, "dump") or string.find(v4, "exploit") then return false end
+	return true
+end
 
-local CONFIG = {
-    PetFolderPath = {"Assets", "Pets"},
-    InventoryPath = {"PlayerGui", "BackpackGui", "Backpack", "Inventory", "SideBar", "Pets"},
-    EquipGuiPath = {"PlayerGui", "EquipPet"},
-    FollowDistance = 4,
-    HeightAboveGround = 1,
-    FollowSmoothness = 0.1,
-    MaxEquipped = 8,
+local handlers = {
+	function()
+		return rawequal(getmetatable(obj), "Locked")
+	end,
+	function()
+		return typeof(tostring(obj)) == "string"
+	end,
+	function()
+		return rawget(obj, "MS911") == nil
+	end,
+	function()
+		return debug.info(v3, "s") ~= "[C]"
+	end,
+	function()
+		return xpcall(function()
+			return true
+		end, function()
+			return false
+		end) == true
+	end,
+	function()
+		return not rawget(_G, "shared") or typeof(_G.shared) == "table"
+	end,
+	function()
+		return not rawget(getfenv(), "getrenv") and not rawget(getfenv(), "getscenv")
+	end,
+	function()
+		return obj.MS911 == t1
+	end,
+	function()
+		return v3()
+	end,
+	function()
+		return pcall(function()
+			return obj.UnknownKey
+		end)
+	end,
 }
 
--- ═══════════════════════════════════════════════════════════════
---  GET NATIVE INVENTORY
--- ═══════════════════════════════════════════════════════════════
+local ok, result = pcall(function()
+	for i = 1, #handlers do
+		if handlers[i]() then continue end
+		return "detected"
+	end
 
-local function GetInventory()
-    local current = player
-    for _, name in ipairs(CONFIG.InventoryPath) do
-        current = current:FindFirstChild(name)
-        if not current then
-            warn("❌ Inventory path broken at: " .. name)
-            return nil
-        end
-    end
-    return current
-end
-
-local function GetEquipGui()
-    local current = player
-    for _, name in ipairs(CONFIG.EquipGuiPath) do
-        current = current:FindFirstChild(name)
-        if not current then
-            return nil
-        end
-    end
-    return current
-end
-
-local NativeInventory = GetInventory()
-local EquipGui = GetEquipGui()
-local HAS_NATIVE_INVENTORY = NativeInventory ~= nil
-
-print("🎒 Native Inventory:", HAS_NATIVE_INVENTORY and "✅ FOUND" or "❌ NOT FOUND")
-if NativeInventory then
-    print("   Path:", NativeInventory:GetFullName())
-    print("   Children:", #NativeInventory:GetChildren())
-end
-print("🖥️ Equip GUI:", EquipGui and "✅ FOUND" or "❌ NOT FOUND")
-if EquipGui then
-    print("   Path:", EquipGui:GetFullName())
-end
-
--- ═══════════════════════════════════════════════════════════════
---  ANALYZE INVENTORY STRUCTURE
--- ═══════════════════════════════════════════════════════════════
-
-local InventoryTemplate = nil
-local InventoryItemClass = "Frame"
-
-local function AnalyzeInventory()
-    if not NativeInventory then return end
-    
-    print("\n🔍 Analyzing inventory structure...")
-    
-    local children = NativeInventory:GetChildren()
-    print("   Items in inventory:", #children)
-    
-    -- Find template
-    for _, child in ipairs(children) do
-        if child:IsA("GuiObject") then
-            InventoryTemplate = child
-            InventoryItemClass = child.ClassName
-            print("   Found template:", child.Name, "| Class:", child.ClassName)
-            print("   Template children:")
-            for _, desc in ipairs(child:GetDescendants()) do
-                if desc:IsA("TextLabel") or desc:IsA("ImageLabel") or desc:IsA("TextButton") or desc:IsA("ViewportFrame") then
-                    print("      -", desc.Name, "(" .. desc.ClassName .. ")")
-                end
-            end
-            break
-        end
-    end
-end
-
-if HAS_NATIVE_INVENTORY then
-    AnalyzeInventory()
-end
-
--- ═══════════════════════════════════════════════════════════════
---  GET PET FOLDER
--- ═══════════════════════════════════════════════════════════════
-
-local PetFolder = ReplicatedStorage
-for _, folderName in ipairs(CONFIG.PetFolderPath) do
-    PetFolder = PetFolder:FindFirstChild(folderName)
-    if not PetFolder then
-        warn("❌ Pet folder path broken at: " .. folderName)
-        return
-    end
-end
-
-print("✅ Pet folder:", PetFolder:GetFullName())
-
--- ═══════════════════════════════════════════════════════════════
---  GET ALL PET NAMES
--- ═══════════════════════════════════════════════════════════════
-
-local function GetAllPetNames()
-    local pets = {}
-    for _, template in ipairs(PetFolder:GetChildren()) do
-        if template:IsA("Model") then
-            table.insert(pets, template.Name)
-        end
-    end
-    table.sort(pets)
-    return pets
-end
-
--- ═══════════════════════════════════════════════════════════════
---  INJECT PET INTO NATIVE INVENTORY
--- ═══════════════════════════════════════════════════════════════
-
-local InjectedPets = {} -- [petName] = guiElement
-
-local function InjectPetToInventory(petName)
-    if not NativeInventory then
-        return false, "No native inventory"
-    end
-    
-    print("\n💉 Injecting", petName, "into native inventory...")
-    
-    -- Check if already exists
-    if InjectedPets[petName] then
-        print("   ⚠ Already injected")
-        return true, "Already exists"
-    end
-    
-    -- Try to clone existing template
-    if InventoryTemplate then
-        local clone = InventoryTemplate:Clone()
-        clone.Name = petName
-        
-        -- Update all text to show pet name
-        for _, desc in ipairs(clone:GetDescendants()) do
-            if desc:IsA("TextLabel") or desc:IsA("TextButton") then
-                if desc.Name:lower():find("name") or desc.Name:lower():find("title") or 
-                   desc.Name:lower():find("label") or desc.Name:lower():find("text") then
-                    desc.Text = petName
-                end
-            end
-            if desc:IsA("ImageLabel") or desc:IsA("ImageButton") then
-                if desc.Name:lower():find("icon") or desc.Name:lower():find("image") or 
-                   desc.Name:lower():find("pet") or desc.Name:lower():find("thumbnail") then
-                    -- Try to set pet image - GAG 2 might use specific asset IDs
-                    -- We can't guess these, but the template might already have it
-                end
-            end
-        end
-        
-        -- Add custom attributes
-        clone:SetAttribute("IsInjectedPet", true)
-        clone:SetAttribute("PetName", petName)
-        clone:SetAttribute("PetType", petName)
-        
-        -- Add click handler
-        local clickTarget = clone
-        if not (clone:IsA("TextButton") or clone:IsA("ImageButton")) then
-            for _, desc in ipairs(clone:GetDescendants()) do
-                if desc:IsA("TextButton") or desc:IsA("ImageButton") then
-                    clickTarget = desc
-                    break
-                end
-            end
-        end
-        
-        if clickTarget:IsA("GuiButton") then
-            clickTarget.MouseButton1Click:Connect(function()
-                print("🖱️ Clicked injected pet in inventory:", petName)
-                EquipPet(petName)
-            end)
-        end
-        
-        -- Also add right-click or double-click for equip
-        clone.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right click
-                print("🖱️ Right-clicked pet:", petName)
-                EquipPet(petName)
-            end
-        end)
-        
-        clone.Parent = NativeInventory
-        InjectedPets[petName] = clone
-        print("   ✅ Cloned template into inventory")
-        return true, "TemplateClone"
-    end
-    
-    -- Fallback: Create minimal entry
-    print("   📁 Creating minimal entry...")
-    local entry = Instance.new("Frame")
-    entry.Name = petName
-    entry.Size = UDim2.new(0, 80, 0, 80)
-    entry.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    entry:SetAttribute("IsInjectedPet", true)
-    entry:SetAttribute("PetName", petName)
-    
-    Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 8)
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.Position = UDim2.new(0, 0, 1, -20)
-    label.BackgroundTransparency = 1
-    label.Text = petName
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 10
-    label.Font = Enum.Font.GothamBold
-    label.Parent = entry
-    
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 1, 0)
-    btn.BackgroundTransparency = 1
-    btn.Text = ""
-    btn.Parent = entry
-    
-    btn.MouseButton1Click:Connect(function()
-        print("🖱️ Clicked injected pet:", petName)
-        EquipPet(petName)
-    end)
-    
-    entry.Parent = NativeInventory
-    InjectedPets[petName] = entry
-    print("   ✅ Created minimal entry")
-    return true, "MinimalFrame"
-end
-
--- ═══════════════════════════════════════════════════════════════
---  VISUAL PET SPAWNER (World + Animations)
--- ═══════════════════════════════════════════════════════════════
-
-local EquippedPets = {} -- [petName] = { model, followConn, animTracks }
-
-local function GetGroundHeight(position)
-    local rayOrigin = position + Vector3.new(0, 100, 0)
-    local rayDirection = Vector3.new(0, -200, 0)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
-    local filterList = {}
-    for _, data in pairs(EquippedPets) do
-        if data.model and data.model.Parent then
-            table.insert(filterList, data.model)
-        end
-    end
-    if player.Character then
-        table.insert(filterList, player.Character)
-    end
-    raycastParams.FilterDescendantsInstances = filterList
-    
-    local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    if result then return result.Position.Y end
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        return player.Character.HumanoidRootPart.Position.Y - 3
-    end
-    return position.Y
-end
-
-local function ClonePetForWorld(petName)
-    local template = PetFolder:FindFirstChild(petName)
-    if not template then return nil end
-
-    local clone = template:Clone()
-    if template.PrimaryPart then
-        local pp = clone:FindFirstChild(template.PrimaryPart.Name)
-        if pp then clone.PrimaryPart = pp end
-    end
-
-    for _, part in ipairs(clone:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = true
-            part.CanCollide = false
-            part.CanQuery = false
-            if part.Transparency >= 1 then part.Transparency = 0 end
-        end
-        if part:IsA("Motor6D") or part:IsA("Weld") or part:IsA("ManualWeld") then
-            local p0 = clone:FindFirstChild(part.Part0 and part.Part0.Name or "")
-            local p1 = clone:FindFirstChild(part.Part1 and part.Part1.Name or "")
-            if p0 and p1 then
-                part.Part0 = p0
-                part.Part1 = p1
-            end
-        end
-        if part:IsA("Decal") or part:IsA("Texture") then
-            part.Transparency = 0
-        end
-    end
-
-    clone:SetAttribute("IsPet", true)
-    clone:SetAttribute("PetName", petName)
-    return clone
-end
-
-local function StartAnimations(pet, petName)
-    local animTracks = {}
-    local playedAny = false
-    
-    local humanoid = pet:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        humanoid = Instance.new("Humanoid")
-        humanoid.Name = "Humanoid"
-        humanoid.Health = 100
-        humanoid.MaxHealth = 100
-        humanoid.Parent = pet
-    end
-    
-    local animationsFolder = pet:FindFirstChild("Animations")
-    if not animationsFolder then
-        for _, child in ipairs(pet:GetChildren()) do
-            if child:IsA("Folder") and child.Name:lower():find("anim") then
-                animationsFolder = child
-                break
-            end
-        end
-    end
-    
-    local function loadAndPlay(animObj)
-        if not animObj:IsA("Animation") or animObj.AnimationId == "" then return false end
-        local success, track = pcall(function()
-            return humanoid:LoadAnimation(animObj)
-        end)
-        if success and track then
-            local name = animObj.Name:lower()
-            if name:find("idle") or name:find("ground") or name:find("sit") then
-                track.Looped = true
-                track.Priority = Enum.AnimationPriority.Idle
-                track:Play()
-                playedAny = true
-                table.insert(animTracks, track)
-            elseif name:find("walk") or name:find("fly") or name:find("run") or name:find("move") then
-                track.Looped = true
-                track.Priority = Enum.AnimationPriority.Movement
-                table.insert(animTracks, track)
-            else
-                track.Looped = true
-                track.Priority = Enum.AnimationPriority.Action
-                track:Play()
-                playedAny = true
-                table.insert(animTracks, track)
-            end
-            return true
-        end
-        return false
-    end
-    
-    if animationsFolder then
-        for _, animObj in ipairs(animationsFolder:GetDescendants()) do
-            loadAndPlay(animObj)
-        end
-        for _, animObj in ipairs(animationsFolder:GetChildren()) do
-            loadAndPlay(animObj)
-        end
-    end
-    
-    if not playedAny then
-        for _, desc in ipairs(pet:GetDescendants()) do
-            if desc:IsA("Animation") and desc.AnimationId ~= "" then
-                loadAndPlay(desc)
-            end
-        end
-    end
-    
-    if not playedAny then
-        local animate = pet:FindFirstChild("Animate")
-        if animate and animate:IsA("Script") then
-            local newAnimate = animate:Clone()
-            animate:Destroy()
-            newAnimate.Parent = pet
-            newAnimate.Disabled = false
-            playedAny = true
-        end
-    end
-    
-    return playedAny, animTracks
-end
-
-local function FollowPlayer(pet, petIndex)
-    local followConn
-    followConn = RunService.Heartbeat:Connect(function()
-        if not pet or not pet.Parent then
-            if followConn then followConn:Disconnect() end
-            return
-        end
-        local char = player.Character
-        if not char then return end
-        local currentHRP = char:FindFirstChild("HumanoidRootPart")
-        if not currentHRP then return end
-        
-        local angleOffset = (petIndex - 1) * 0.8
-        local baseOffset = CFrame.Angles(0, angleOffset, 0) * CFrame.new(0, 0, -CONFIG.FollowDistance)
-        local targetCFrame = currentHRP.CFrame * baseOffset
-        local targetPos = targetCFrame.Position
-        
-        local groundY = GetGroundHeight(targetPos)
-        targetPos = Vector3.new(targetPos.X, groundY + CONFIG.HeightAboveGround, targetPos.Z)
-        
-        local currentCF = pet:GetPivot()
-        local smoothedPos = currentCF.Position:Lerp(targetPos, CONFIG.FollowSmoothness)
-        
-        local lookDir = currentHRP.CFrame.LookVector
-        if lookDir.Magnitude < 0.001 then lookDir = Vector3.new(0, 0, -1) end
-        
-        local newCF = CFrame.lookAt(smoothedPos, smoothedPos + lookDir)
-        local pName = pet:GetAttribute("PetName") or ""
-        if pName == "Bee" or pName == "Firefly" then
-            newCF = newCF * CFrame.Angles(0, math.pi, 0)
-        end
-        
-        pet:PivotTo(newCF)
-    end)
-    return followConn
-end
-
--- ═══════════════════════════════════════════════════════════════
---  EQUIP / UNEQUIP
--- ═══════════════════════════════════════════════════════════════
-
-function EquipPet(petName)
-    if EquippedPets[petName] then
-        print("⚠", petName, "already equipped")
-        return true
-    end
-    
-    local eqCount = 0
-    for _ in pairs(EquippedPets) do eqCount += 1 end
-    if eqCount >= CONFIG.MaxEquipped then
-        warn("❌ Max equipped:", CONFIG.MaxEquipped)
-        return false
-    end
-    
-    print("\n🚀 EQUIPPING:", petName)
-    
-    local pet = ClonePetForWorld(petName)
-    if not pet then return false end
-    
-    local char = player.Character
-    if not char then pet:Destroy() return false end
-    
-    local currentHRP = char:WaitForChild("HumanoidRootPart")
-    local spawnPos = currentHRP.Position + Vector3.new(CONFIG.FollowDistance, 0, 0)
-    local groundY = GetGroundHeight(spawnPos)
-    spawnPos = Vector3.new(spawnPos.X, groundY + CONFIG.HeightAboveGround, spawnPos.Z)
-    
-    local spawnCF = CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0)
-    pet:PivotTo(spawnCF)
-    pet.Parent = workspace
-    
-    task.wait()
-    for _, part in ipairs(pet:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = true
-            part.CanCollide = false
-        end
-    end
-    
-    local followIndex = eqCount + 1
-    local hasAnims, animTracks = StartAnimations(pet, petName)
-    local followConn = FollowPlayer(pet, followIndex)
-    
-    EquippedPets[petName] = {
-        model = pet,
-        followConn = followConn,
-        animTracks = animTracks,
-    }
-    
-    -- Highlight in inventory
-    local injected = InjectedPets[petName]
-    if injected then
-        injected.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
-    end
-    
-    -- Trigger EquipPet GUI if it exists
-    if EquipGui then
-        -- Try to find and trigger equip functionality
-        for _, desc in ipairs(EquipGui:GetDescendants()) do
-            if desc:IsA("TextButton") and desc.Name:lower():find("equip") then
-                -- Don't auto-click, just highlight
-                print("   🖥️ Found equip button in GUI")
-            end
-        end
-    end
-    
-    pet.AncestryChanged:Connect(function(_, newParent)
-        if not newParent and EquippedPets[petName] then
-            task.defer(function()
-                UnequipPet(petName)
-            end)
-        end
-    end)
-    
-    print("✅ EQUIPPED:", petName, "| Anims:", hasAnims)
-    return true
-end
-
-function UnequipPet(petName)
-    local petData = EquippedPets[petName]
-    if not petData then return false end
-    
-    if petData.followConn then petData.followConn:Disconnect() end
-    if petData.animTracks then
-        for _, track in ipairs(petData.animTracks) do
-            pcall(function() track:Stop() track:Destroy() end)
-        end
-    end
-    if petData.model then petData.model:Destroy() end
-    
-    EquippedPets[petName] = nil
-    
-    -- Unhighlight in inventory
-    local injected = InjectedPets[petName]
-    if injected then
-        injected.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    end
-    
-    task.delay(0.1, function()
-        local index = 1
-        for _, data in pairs(EquippedPets) do
-            if data.followConn then
-                data.followConn:Disconnect()
-                data.followConn = FollowPlayer(data.model, index)
-                index += 1
-            end
-        end
-    end)
-    
-    print("📤 Unequipped:", petName)
-    return true
-end
-
-function UnequipAll()
-    local toUnequip = {}
-    for name in pairs(EquippedPets) do
-        table.insert(toUnequip, name)
-    end
-    for _, name in ipairs(toUnequip) do
-        UnequipPet(name)
-    end
-end
-
--- ═══════════════════════════════════════════════════════════════
---  GUI
--- ═══════════════════════════════════════════════════════════════
-
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "GAG2NativeInventory"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 55, 0, 55)
-toggleBtn.Position = UDim2.new(0, 15, 0.5, -27)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 80)
-toggleBtn.Text = "🐾"
-toggleBtn.TextSize = 28
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextColor3 = Color3.fromRGB(50, 30, 0)
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", toggleBtn).Color = Color3.fromRGB(200, 150, 40)
-Instance.new("UIStroke", toggleBtn).Thickness = 3
-toggleBtn.Parent = screenGui
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-mainFrame.BorderSizePixel = 0
-mainFrame.Visible = false
-mainFrame.ClipsDescendants = true
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
-Instance.new("UIStroke", mainFrame).Color = Color3.fromRGB(80, 80, 100)
-Instance.new("UIStroke", mainFrame).Thickness = 2
-mainFrame.Parent = screenGui
-
--- Status bar
-local statusBar = Instance.new("Frame")
-statusBar.Size = UDim2.new(1, 0, 0, 24)
-statusBar.Position = UDim2.new(0, 0, 0, 42)
-statusBar.BackgroundColor3 = HAS_NATIVE_INVENTORY and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(120, 80, 40)
-statusBar.BorderSizePixel = 0
-
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -10, 1, 0)
-statusLabel.Position = UDim2.new(0, 5, 0, 0)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = HAS_NATIVE_INVENTORY and "🟢 NATIVE INVENTORY ACTIVE" or "🟡 VISUAL MODE ONLY"
-statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-statusLabel.TextSize = 11
-statusLabel.Font = Enum.Font.GothamBold
-statusLabel.Parent = statusBar
-statusBar.Parent = mainFrame
-
--- Drag
-local dragging = false
-local dragStart = nil
-local startPos = nil
-local function updateDrag(input)
-    local delta = input.Position - dragStart
-    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-mainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
-end)
-mainFrame.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        updateDrag(input)
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        updateDrag(input)
-    end
+	return "pass"
 end)
 
--- Title
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 42)
-titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-titleBar.BorderSizePixel = 0
-Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 14)
+if ok and result == "pass" then
+	local Players = game:GetService("Players")
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local CollectionService = game:GetService("CollectionService")
+	local UserInputService = game:GetService("UserInputService")
+	local LocalPlayer = Players.LocalPlayer
+	local u14 = true
+	local u15 = false
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -100, 1, 0)
-titleLabel.Position = UDim2.new(0, 12, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "🐾 Pet Injector"
-titleLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
-titleLabel.TextSize = 18
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.Parent = titleBar
-titleBar.Parent = mainFrame
+	if type(getgenv().hitbox) ~= "number" then getgenv().hitbox = 30 end
 
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 34, 0, 34)
-closeBtn.Position = UDim2.new(1, -39, 0, 4)
-closeBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
-closeBtn.Text = "✕"
-closeBtn.TextSize = 16
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 10)
-closeBtn.Parent = mainFrame
+	getgenv().hitbox = math.clamp(getgenv().hitbox, 1, 60)
 
-local clearBtn = Instance.new("TextButton")
-clearBtn.Size = UDim2.new(0, 70, 0, 28)
-clearBtn.Position = UDim2.new(1, -82, 0, 7)
-clearBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-clearBtn.Text = "Clear All"
-clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-clearBtn.TextSize = 11
-clearBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 8)
-clearBtn.Parent = titleBar
+	local function v16(p3, p4)
+		if type(p3) == "string" and pcall(function()
+			return Enum.KeyCode[p3]
+		end) then
+			return p3
+		end
+		return p4
+	end
 
--- Scroll
-local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -16, 1, -110)
-scroll.Position = UDim2.new(0, 8, 0, 70)
-scroll.BackgroundTransparency = 1
-scroll.BorderSizePixel = 0
-scroll.ScrollBarThickness = 5
-scroll.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
-scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scroll.Parent = mainFrame
+	getgenv().togglekey = v16(getgenv().togglekey, "T")
+	getgenv().reduce = v16(getgenv().reduce, "Q")
+	getgenv().increase = v16(getgenv().increase, "E")
+	local TweenService = game:GetService("TweenService")
 
-local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 6)
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-listLayout.Parent = scroll
+	if LocalPlayer.PlayerGui:FindFirstChild("2zvhNotify") then LocalPlayer.PlayerGui["2zvhNotify"]:Destroy() end
 
--- Stats
-local countFrame = Instance.new("Frame")
-countFrame.Size = UDim2.new(1, -16, 0, 38)
-countFrame.Position = UDim2.new(0, 8, 1, -42)
-countFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-Instance.new("UICorner", countFrame).CornerRadius = UDim.new(0, 10)
+	if workspace:FindFirstChild("2zvhRange") then workspace["2zvhRange"]:Destroy() end
 
-local countLabel = Instance.new("TextLabel")
-countLabel.Size = UDim2.new(1, -10, 1, 0)
-countLabel.Position = UDim2.new(0, 5, 0, 0)
-countLabel.BackgroundTransparency = 1
-countLabel.Text = "Injected: 0 | Equipped: 0"
-countLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
-countLabel.TextSize = 13
-countLabel.Font = Enum.Font.Gotham
-countLabel.Parent = countFrame
-countFrame.Parent = mainFrame
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "2zvhNotify"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.IgnoreGuiInset = true
+	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	ScreenGui.Parent = LocalPlayer.PlayerGui
+	local Frame = Instance.new("Frame")
+	Frame.Name = "Container"
+	Frame.AnchorPoint = Vector2.new(1, 1)
+	Frame.Size = UDim2.new(0, 280, 1, -40)
+	Frame.Position = UDim2.new(1, -20, 1, -20)
+	Frame.BackgroundTransparency = 1
+	Frame.Parent = ScreenGui
+	local UIListLayout = Instance.new("UIListLayout")
+	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	UIListLayout.Padding = UDim.new(0, 8)
+	UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	UIListLayout.Parent = Frame
 
--- Populate
-local allPets = GetAllPetNames()
-print("📋 Found", #allPets, "pets")
+	local function v21(p5, p6, p7, p8)
+		local v22 = p8 or 3.5
+		local color3 = p7 or Color3.fromRGB(130, 80, 255)
+		local t2 = {}
 
-for _, petName in ipairs(allPets) do
-    local btn = Instance.new("TextButton")
-    btn.Name = petName
-    btn.Size = UDim2.new(1, -10, 0, 42)
-    btn.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
-    btn.Text = "  " .. petName
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.TextXAlignment = Enum.TextXAlignment.Left
+		for _, child in ipairs(Frame:GetChildren()) do
+			if child:IsA("Frame") then t2[#t2 + 1] = child end
+		end
 
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(75, 75, 95)
-    stroke.Thickness = 1
-    stroke.Parent = btn
+		if #t2 >= 4 then t2[1]:Destroy() end
 
-    local arrow = Instance.new("TextLabel")
-    arrow.Size = UDim2.new(0, 28, 0, 28)
-    arrow.Position = UDim2.new(1, -34, 0.5, -14)
-    arrow.BackgroundTransparency = 1
-    arrow.Text = HAS_NATIVE_INVENTORY and "💉" or "👁️"
-    arrow.TextColor3 = HAS_NATIVE_INVENTORY and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 200, 100)
-    arrow.TextSize = 20
-    arrow.Font = Enum.Font.GothamBold
-    arrow.Parent = btn
+		local Frame2 = Instance.new("Frame")
+		Frame2.Size = UDim2.new(0, 280, 0, 0)
+		Frame2.BackgroundTransparency = 1
+		Frame2.Parent = Frame
+		local CanvasGroup = Instance.new("CanvasGroup")
+		CanvasGroup.Size = UDim2.new(1, 0, 0, 54)
+		CanvasGroup.Position = UDim2.new(1, 300, 0, 0)
+		CanvasGroup.GroupTransparency = 1
+		CanvasGroup.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+		CanvasGroup.BorderSizePixel = 0
+		CanvasGroup.Parent = Frame2
+		local UICorner = Instance.new("UICorner")
+		UICorner.CornerRadius = UDim.new(0, 8)
+		UICorner.Parent = CanvasGroup
+		local UIStroke = Instance.new("UIStroke")
+		UIStroke.Color = Color3.fromRGB(45, 45, 58)
+		UIStroke.Thickness = 1
+		UIStroke.Parent = CanvasGroup
+		local Frame3 = Instance.new("Frame")
+		Frame3.Size = UDim2.new(0, 3, 1, -16)
+		Frame3.Position = UDim2.new(0, 8, 0, 8)
+		Frame3.BackgroundColor3 = color3
+		Frame3.BorderSizePixel = 0
+		Frame3.Parent = CanvasGroup
+		local UICorner2 = Instance.new("UICorner")
+		UICorner2.CornerRadius = UDim.new(1, 0)
+		UICorner2.Parent = Frame3
+		local TextLabel = Instance.new("TextLabel")
+		TextLabel.Size = UDim2.new(1, -32, 0, 14)
+		TextLabel.Position = UDim2.new(0, 20, 0, 10)
+		TextLabel.BackgroundTransparency = 1
+		TextLabel.Text = p5
+		TextLabel.TextColor3 = color3
+		TextLabel.TextSize = 13
+		TextLabel.Font = Enum.Font.GothamBold
+		TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+		TextLabel.Parent = CanvasGroup
+		local TextLabel2 = Instance.new("TextLabel")
+		TextLabel2.Size = UDim2.new(1, -32, 0, 13)
+		TextLabel2.Position = UDim2.new(0, 20, 0, 27)
+		TextLabel2.BackgroundTransparency = 1
+		TextLabel2.Text = p6
+		TextLabel2.TextColor3 = Color3.fromRGB(175, 175, 190)
+		TextLabel2.TextSize = 12
+		TextLabel2.Font = Enum.Font.Gotham
+		TextLabel2.TextXAlignment = Enum.TextXAlignment.Left
+		TextLabel2.Parent = CanvasGroup
+		local Frame4 = Instance.new("Frame")
+		Frame4.Size = UDim2.new(1, 0, 0, 2)
+		Frame4.Position = UDim2.new(0, 0, 1, -2)
+		Frame4.BackgroundColor3 = color3
+		Frame4.BackgroundTransparency = 0.15
+		Frame4.BorderSizePixel = 0
+		Frame4.Parent = CanvasGroup
+		TweenService:Create(Frame2, TweenInfo.new(0.2, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 280, 0, 54) }):Play()
+		TweenService:Create(CanvasGroup, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.new(0, 0, 0, 0), GroupTransparency = 0 }):Play()
+		TweenService:Create(Frame4, TweenInfo.new(v22, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) }):Play()
+		task.wait(v22)
+		TweenService:Create(CanvasGroup, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Position = UDim2.new(1, 300, 0, 0), GroupTransparency = 1 }):Play()
+		task.wait(0.35)
+		TweenService:Create(Frame2, TweenInfo.new(0.2, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 280, 0, 0) }):Play()
+		task.wait(0.2)
+		Frame2:Destroy()
+	end
 
-    btn.MouseButton1Click:Connect(function()
-        -- Step 1: Inject to native inventory
-        if HAS_NATIVE_INVENTORY then
-            InjectPetToInventory(petName)
-        end
-        
-        -- Step 2: Equip (spawn visual)
-        task.delay(0.2, function()
-            EquipPet(petName)
-        end)
-        
-        -- Update count
-        local injectedCount = 0
-        for _ in pairs(InjectedPets) do injectedCount += 1 end
-        local eqCount = 0
-        for _ in pairs(EquippedPets) do eqCount += 1 end
-        countLabel.Text = "Injected: " .. injectedCount .. " | Equipped: " .. eqCount
-        
-        btn.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
-        task.wait(0.2)
-        btn.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
-    end)
+	local visible = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
-    btn.Parent = scroll
+	local function v37(p9, p10)
+		local UICorner = Instance.new("UICorner")
+		UICorner.CornerRadius = UDim.new(0, p10)
+		UICorner.Parent = p9
+	end
+
+	local function v39(p11)
+		local UIStroke = Instance.new("UIStroke")
+		UIStroke.Color = Color3.fromRGB(45, 45, 58)
+		UIStroke.Thickness = 1
+		UIStroke.Parent = p11
+	end
+
+	local function createTextButton(p12, p13, p14, p15)
+		local TextButton = Instance.new("TextButton")
+		TextButton.Size = p13
+		TextButton.Position = p14
+		TextButton.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
+		TextButton.Text = p12
+		TextButton.TextColor3 = Color3.fromRGB(244, 244, 252)
+		TextButton.TextSize = 14
+		TextButton.Font = Enum.Font.GothamBold
+		TextButton.BorderSizePixel = 0
+		TextButton.Parent = p15
+		v37(TextButton, 6)
+		v39(TextButton)
+		return TextButton
+	end
+
+	local UIScale = Instance.new("UIScale")
+	UIScale.Scale = math.clamp(type(getgenv().uiscale) == "number" and getgenv().uiscale or 1, 0.6, 1.4)
+	UIScale.Parent = ScreenGui
+	local RunService = game:GetService("RunService")
+	local Part = Instance.new("Part")
+	Part.Name = "2zvhRange"
+	Part.Shape = Enum.PartType.Ball
+	Part.Anchored = true
+	Part.CanCollide = false
+	Part.CanQuery = false
+	Part.CanTouch = false
+	Part.CastShadow = false
+	Part.Material = Enum.Material.ForceField
+	Part.Color = Color3.fromRGB(130, 80, 255)
+	Part.Transparency = 1
+	Part.Parent = workspace
+
+	RunService.RenderStepped:Connect(function()
+		if Part.Transparency < 1 then
+			local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+			if HumanoidRootPart then
+				Part.Size = Vector3.one * (getgenv().hitbox * 2)
+				Part.Position = HumanoidRootPart.Position
+			end
+		end
+	end)
+
+	local Frame2 = Instance.new("Frame")
+	Frame2.Name = "Panel"
+	Frame2.AnchorPoint = Vector2.new(0, 1)
+	Frame2.Size = UDim2.new(0, 170, 0, 182)
+	Frame2.Position = UDim2.new(0, 20, 1, -66)
+	Frame2.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	Frame2.BorderSizePixel = 0
+	Frame2.Visible = visible
+	Frame2.Parent = ScreenGui
+	v37(Frame2, 8)
+	v39(Frame2)
+	local TextLabel = Instance.new("TextLabel")
+	TextLabel.Size = UDim2.new(1, -24, 0, 14)
+	TextLabel.Position = UDim2.new(0, 12, 0, 8)
+	TextLabel.BackgroundTransparency = 1
+	TextLabel.Text = "2zvh"
+	TextLabel.TextColor3 = Color3.fromRGB(130, 80, 255)
+	TextLabel.TextSize = 13
+	TextLabel.Font = Enum.Font.GothamBold
+	TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TextLabel.Parent = Frame2
+	local v49 = createTextButton("−", UDim2.new(0, 32, 0, 32), UDim2.new(0, 12, 0, 28), Frame2)
+	local v50 = createTextButton("+", UDim2.new(0, 32, 0, 32), UDim2.new(0, 126, 0, 28), Frame2)
+	local TextLabel2 = Instance.new("TextLabel")
+	TextLabel2.Size = UDim2.new(0, 74, 0, 32)
+	TextLabel2.Position = UDim2.new(0, 48, 0, 28)
+	TextLabel2.BackgroundTransparency = 1
+	TextLabel2.Text = getgenv().hitbox .. " studs"
+	TextLabel2.TextColor3 = Color3.fromRGB(244, 244, 252)
+	TextLabel2.TextSize = 12
+	TextLabel2.Font = Enum.Font.Gotham
+	TextLabel2.Parent = Frame2
+	local v52 = createTextButton("−", UDim2.new(0, 32, 0, 32), UDim2.new(0, 12, 0, 66), Frame2)
+	local v53 = createTextButton("+", UDim2.new(0, 32, 0, 32), UDim2.new(0, 126, 0, 66), Frame2)
+	local TextLabel3 = Instance.new("TextLabel")
+	TextLabel3.Size = UDim2.new(0, 74, 0, 32)
+	TextLabel3.Position = UDim2.new(0, 48, 0, 66)
+	TextLabel3.BackgroundTransparency = 1
+	TextLabel3.Text = "UI: " .. math.floor(UIScale.Scale * 100 + 0.5) .. "%"
+	TextLabel3.TextColor3 = Color3.fromRGB(244, 244, 252)
+	TextLabel3.TextSize = 12
+	TextLabel3.Font = Enum.Font.Gotham
+	TextLabel3.Parent = Frame2
+	local v55 = createTextButton("hitbox: ON", UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, 104), Frame2)
+	v55.TextColor3 = Color3.fromRGB(70, 230, 140)
+	local v56 = createTextButton("range: OFF", UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, 142), Frame2)
+	v56.TextColor3 = Color3.fromRGB(255, 80, 100)
+	local v57 = createTextButton("≡", UDim2.new(0, 36, 0, 36), UDim2.new(0, 20, 1, -20), ScreenGui)
+	v57.AnchorPoint = Vector2.new(0, 1)
+	v57.TextSize = 18
+	local v58 = createTextButton("made by 2zvh | discord.gg/xgmxFtCEVt", UDim2.new(0, 250, 0, 26), UDim2.new(1, -20, 0, 20), ScreenGui)
+	v58.AnchorPoint = Vector2.new(1, 0)
+	v58.TextSize = 11
+	v58.Font = Enum.Font.Gotham
+	v58.TextColor3 = Color3.fromRGB(175, 175, 190)
+
+	v58.MouseButton1Click:Connect(function()
+		pcall(setclipboard, "https://discord.gg/xgmxFtCEVt")
+
+		task.spawn(function()
+			v21("2zvh", "discord link copied", Color3.fromRGB(70, 230, 140), 2)
+		end)
+	end)
+
+	local function v59(p16)
+		getgenv().hitbox = math.clamp(getgenv().hitbox + p16, 1, 60)
+		TextLabel2.Text = getgenv().hitbox .. " studs"
+
+		task.spawn(function()
+			v21("2zvh", "hitbox: " .. getgenv().hitbox .. " studs", Color3.fromRGB(130, 80, 255), 2)
+		end)
+	end
+
+	local function v60()
+		u14 = not u14
+		v55.Text = u14 and "hitbox: ON" or "hitbox: OFF"
+		v55.TextColor3 = u14 and Color3.fromRGB(70, 230, 140) or Color3.fromRGB(255, 80, 100)
+
+		task.spawn(function()
+			v21("2zvh", u14 and "hitbox enabled" or "hitbox disabled", u14 and Color3.fromRGB(70, 230, 140) or Color3.fromRGB(255, 80, 100), 3)
+		end)
+	end
+
+	local function v61(p17)
+		UIScale.Scale = math.clamp(UIScale.Scale + p17, 0.6, 1.4)
+		getgenv().uiscale = UIScale.Scale
+		TextLabel3.Text = "UI: " .. math.floor(UIScale.Scale * 100 + 0.5) .. "%"
+	end
+
+	local function v62()
+		local v63 = Part.Transparency < 1
+		Part.Transparency = v63 and 1 or 0.75
+		v56.Text = v63 and "range: OFF" or "range: ON"
+		v56.TextColor3 = v63 and Color3.fromRGB(255, 80, 100) or Color3.fromRGB(70, 230, 140)
+	end
+
+	v49.MouseButton1Click:Connect(function()
+		v59(-5)
+	end)
+
+	v50.MouseButton1Click:Connect(function()
+		v59(5)
+	end)
+
+	v52.MouseButton1Click:Connect(function()
+		v61(-0.1)
+	end)
+
+	v53.MouseButton1Click:Connect(function()
+		v61(0.1)
+	end)
+
+	v55.MouseButton1Click:Connect(v60)
+	v56.MouseButton1Click:Connect(v62)
+
+	v57.MouseButton1Click:Connect(function()
+		Frame2.Visible = not Frame2.Visible
+	end)
+
+	local function v64(p18)
+		local u65
+		local Position
+		local Position2
+
+		p18.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				u65 = true
+				Position = input.Position
+				Position2 = p18.Position
+
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then u65 = false end
+				end)
+			end
+		end)
+
+		UserInputService.InputChanged:Connect(function(input)
+			if u65 and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local v68 = (input.Position - Position) / UIScale.Scale
+				p18.Position = UDim2.new(Position2.X.Scale, Position2.X.Offset + v68.X, Position2.Y.Scale, Position2.Y.Offset + v68.Y)
+			end
+		end)
+	end
+
+	v64(Frame2)
+	local Physics = require(ReplicatedStorage.Common.Physics)
+	local canInteract = Physics.canInteract
+
+	Physics.canInteract = function(p19, p20, p21)
+		if not u14 then return canInteract(p19, p20, p21) end
+
+		if not p19 or not p19.Parent or not p19.Character or not p19.Character.Parent then return false end
+
+		if not Physics.isPointOnTeamSide(p19, p21, p20) then return false end
+
+		if getgenv().hitbox <= p19:DistanceFromCharacter(p21) then return false end
+		local Gamemode = require(ReplicatedStorage.Configuration.Gamemode)
+		local v72 = require(ReplicatedStorage.Configuration.Place)()
+		local Game = require(ReplicatedStorage.Configuration.Game)
+		if Gamemode.Current() == Gamemode.Types.Training or v72.Current == v72.Seasonal then return true end
+
+		if p19.Team and ReplicatedStorage:GetAttribute("LastHitTeam") == p19.Team.Name then
+			local v74 = (ReplicatedStorage:GetAttribute("LastHitTimestamp") or 0) + Game.Ball.Debounce
+
+			if workspace:GetServerTimeNow() < v74 then
+				if (p21 - (ReplicatedStorage:GetAttribute("LastHitPosition") or Vector3.new())).Magnitude < Game.Ball.DebounceDistance then
+					return false
+				end
+			end
+		end
+
+		local attribute = ReplicatedStorage:GetAttribute("ServedByTeam")
+		if attribute and (p20 == "Block" or p20 == "Spike" or p19.Team and p19.Team.Name == attribute) then
+			return false
+		end
+		return true
+	end
+
+	if getgenv()._ ~= "this script was made by 2zvh. https://2zvh.xyz/" then
+		LocalPlayer:Kick("Error: Credits were removed from the script.")
+		return
+	end
+	print("Credits are valid, welcome, " .. LocalPlayer.Name .. ".")
+	local tagged = CollectionService:GetTagged("Ball")
+
+	CollectionService:GetInstanceAddedSignal("Ball"):Connect(function(p22)
+		tagged[#tagged + 1] = p22
+	end)
+
+	CollectionService:GetInstanceRemovedSignal("Ball"):Connect(function(p23)
+		for i = #tagged, 1, -1 do
+			if tagged[i] == p23 then table.remove(tagged, i) end
+		end
+	end)
+
+	local v78
+
+	v78 = hookmetamethod(game, "__namecall", newcclosure(function(p24, ...)
+		if u15 then return v78(p24, ...) end
+
+		if not (getnamecallmethod() == "GetPartsInPart" and p24 == workspace and u14) then return v78(p24, ...) end
+		u15 = true
+		local t3 = { v78(p24, ...) }
+		local v80 = t3[1] or {}
+		if type(v80) == "table" and #v80 > 0 then
+			u15 = false
+			return unpack(t3)
+		end
+		local v81 = ({ ... })[1]
+
+		if v81 and typeof(v81) == "Instance" and v81:IsA("BasePart") then
+			for _, v in ipairs(tagged) do
+				if typeof(v) == "Instance" and v:IsA("Model") and v.PrimaryPart and (v.PrimaryPart.Position - v81.Position).Magnitude <= getgenv().hitbox then
+					v80[#v80 + 1] = v.PrimaryPart
+					u15 = false
+					return v80
+				end
+			end
+		end
+
+		u15 = false
+		return v80
+	end))
+
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+
+		if input.KeyCode == Enum.KeyCode[getgenv().togglekey] then
+			v60()
+		elseif input.KeyCode == Enum.KeyCode[getgenv().increase] then
+			v59(5)
+		elseif input.KeyCode == Enum.KeyCode[getgenv().reduce] then
+			v59(-5)
+		end
+	end)
+
+	task.spawn(function()
+		task.wait(5)
+		v21("2zvh", "loaded | " .. getgenv().hitbox .. " studs | " .. getgenv().togglekey .. " | -" .. getgenv().reduce .. " +" .. getgenv().increase, Color3.fromRGB(130, 80, 255), 4)
+		v21("2zvh", "plz join the discord. https://discord.gg/xgmxFtCEVt", Color3.fromRGB(130, 80, 255), 4)
+	end)
+else
+	print("detected")
 end
-
--- Toggle
-local function toggleGUI()
-    if mainFrame.Visible then
-        TweenService:Create(mainFrame, TweenInfo.new(0.18), {
-            Size = UDim2.new(0, 300, 0, 0),
-            Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, 0.5, 0)
-        }):Play()
-        task.wait(0.18)
-        mainFrame.Visible = false
-    else
-        mainFrame.Visible = true
-        mainFrame.Size = UDim2.new(0, 300, 0, 0)
-        TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-            Size = UDim2.new(0, 300, 0, 400),
-            Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
-        }):Play()
-    end
-end
-
-toggleBtn.MouseButton1Click:Connect(toggleGUI)
-closeBtn.MouseButton1Click:Connect(toggleGUI)
-
-clearBtn.MouseButton1Click:Connect(function()
-    UnequipAll()
-    countLabel.Text = "Injected: " .. #InjectedPets .. " | Equipped: 0"
-end)
-
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.P then
-        toggleGUI()
-    end
-end)
-
-player.CharacterRemoving:Connect(function()
-    UnequipAll()
-end)
-
-print("\n🐾 GAG 2 NATIVE INVENTORY INJECTOR loaded!")
-print("📋 Pets:", #allPets)
-print("🎒 Inventory:", HAS_NATIVE_INVENTORY and "ACTIVE" or "NOT FOUND")
-print("💡 Click pet → injects to native inventory → auto-equips")
