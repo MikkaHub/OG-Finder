@@ -1,5 +1,3 @@
--- discord.gg/syncrypt
-
 local t1 = {}
 
 local obj = setmetatable({}, {
@@ -91,331 +89,225 @@ if ok and result == "pass" then
 	getgenv().reduce = v16(getgenv().reduce, "Q")
 	getgenv().increase = v16(getgenv().increase, "E")
 	local TweenService = game:GetService("TweenService")
-
-	if LocalPlayer.PlayerGui:FindFirstChild("2zvhNotify") then LocalPlayer.PlayerGui["2zvhNotify"]:Destroy() end
-
-	if workspace:FindFirstChild("2zvhRange") then workspace["2zvhRange"]:Destroy() end
-
-	local ScreenGui = Instance.new("ScreenGui")
-	ScreenGui.Name = "2zvhNotify"
-	ScreenGui.ResetOnSpawn = false
-	ScreenGui.IgnoreGuiInset = true
-	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	ScreenGui.Parent = LocalPlayer.PlayerGui
-	local Frame = Instance.new("Frame")
-	Frame.Name = "Container"
-	Frame.AnchorPoint = Vector2.new(1, 1)
-	Frame.Size = UDim2.new(0, 280, 1, -40)
-	Frame.Position = UDim2.new(1, -20, 1, -20)
-	Frame.BackgroundTransparency = 1
-	Frame.Parent = ScreenGui
-	local UIListLayout = Instance.new("UIListLayout")
-	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	UIListLayout.Padding = UDim.new(0, 8)
-	UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-	UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	UIListLayout.Parent = Frame
-
-	local function v21(p5, p6, p7, p8)
-		local v22 = p8 or 3.5
-		local color3 = p7 or Color3.fromRGB(130, 80, 255)
-		local t2 = {}
-
-		for _, child in ipairs(Frame:GetChildren()) do
-			if child:IsA("Frame") then t2[#t2 + 1] = child end
-		end
-
-		if #t2 >= 4 then t2[1]:Destroy() end
-
-		local Frame2 = Instance.new("Frame")
-		Frame2.Size = UDim2.new(0, 280, 0, 0)
-		Frame2.BackgroundTransparency = 1
-		Frame2.Parent = Frame
-		local CanvasGroup = Instance.new("CanvasGroup")
-		CanvasGroup.Size = UDim2.new(1, 0, 0, 54)
-		CanvasGroup.Position = UDim2.new(1, 300, 0, 0)
-		CanvasGroup.GroupTransparency = 1
-		CanvasGroup.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-		CanvasGroup.BorderSizePixel = 0
-		CanvasGroup.Parent = Frame2
-		local UICorner = Instance.new("UICorner")
-		UICorner.CornerRadius = UDim.new(0, 8)
-		UICorner.Parent = CanvasGroup
-		local UIStroke = Instance.new("UIStroke")
-		UIStroke.Color = Color3.fromRGB(45, 45, 58)
-		UIStroke.Thickness = 1
-		UIStroke.Parent = CanvasGroup
-		local Frame3 = Instance.new("Frame")
-		Frame3.Size = UDim2.new(0, 3, 1, -16)
-		Frame3.Position = UDim2.new(0, 8, 0, 8)
-		Frame3.BackgroundColor3 = color3
-		Frame3.BorderSizePixel = 0
-		Frame3.Parent = CanvasGroup
-		local UICorner2 = Instance.new("UICorner")
-		UICorner2.CornerRadius = UDim.new(1, 0)
-		UICorner2.Parent = Frame3
-		local TextLabel = Instance.new("TextLabel")
-		TextLabel.Size = UDim2.new(1, -32, 0, 14)
-		TextLabel.Position = UDim2.new(0, 20, 0, 10)
-		TextLabel.BackgroundTransparency = 1
-		TextLabel.Text = p5
-		TextLabel.TextColor3 = color3
-		TextLabel.TextSize = 13
-		TextLabel.Font = Enum.Font.GothamBold
-		TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-		TextLabel.Parent = CanvasGroup
-		local TextLabel2 = Instance.new("TextLabel")
-		TextLabel2.Size = UDim2.new(1, -32, 0, 13)
-		TextLabel2.Position = UDim2.new(0, 20, 0, 27)
-		TextLabel2.BackgroundTransparency = 1
-		TextLabel2.Text = p6
-		TextLabel2.TextColor3 = Color3.fromRGB(175, 175, 190)
-		TextLabel2.TextSize = 14
-		TextLabel2.Font = Enum.Font.Gotham
-		TextLabel2.TextXAlignment = Enum.TextXAlignment.Left
-		TextLabel2.Parent = CanvasGroup
-		local Frame4 = Instance.new("Frame")
-		Frame4.Size = UDim2.new(1, 0, 0, 2)
-		Frame4.Position = UDim2.new(0, 0, 1, -2)
-		Frame4.BackgroundColor3 = color3
-		Frame4.BackgroundTransparency = 0.15
-		Frame4.BorderSizePixel = 0
-		Frame4.Parent = CanvasGroup
-		TweenService:Create(Frame2, TweenInfo.new(0.2, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 280, 0, 54) }):Play()
-		TweenService:Create(CanvasGroup, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.new(0, 0, 0, 0), GroupTransparency = 0 }):Play()
-		TweenService:Create(Frame4, TweenInfo.new(v22, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) }):Play()
-		task.wait(v22)
-		if not Frame2.Parent then return end
-		TweenService:Create(CanvasGroup, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Position = UDim2.new(1, 300, 0, 0), GroupTransparency = 1 }):Play()
-		task.wait(0.35)
-		if not Frame2.Parent then return end
-		TweenService:Create(Frame2, TweenInfo.new(0.2, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 280, 0, 0) }):Play()
-		task.wait(0.2)
-		Frame2:Destroy()
-	end
-
-	local visible = true
-
-	local function v37(p9, p10)
-		local UICorner = Instance.new("UICorner")
-		UICorner.CornerRadius = UDim.new(0, p10)
-		UICorner.Parent = p9
-	end
-
-	local function v39(p11)
-		local UIStroke = Instance.new("UIStroke")
-		UIStroke.Color = Color3.fromRGB(45, 45, 58)
-		UIStroke.Thickness = 1
-		UIStroke.Parent = p11
-	end
-
-	local function createTextButton(p12, p13, p14, p15)
-		local TextButton = Instance.new("TextButton")
-		TextButton.Size = p13
-		TextButton.Position = p14
-		TextButton.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
-		TextButton.Text = p12
-		TextButton.TextColor3 = Color3.fromRGB(244, 244, 252)
-		TextButton.TextSize = 14
-		TextButton.Font = Enum.Font.GothamBold
-		TextButton.BorderSizePixel = 0
-		TextButton.Parent = p15
-		v37(TextButton, 6)
-		v39(TextButton)
-		return TextButton
-	end
-
-	local UIScale = Instance.new("UIScale")
-	UIScale.Scale = math.clamp(type(getgenv().uiscale) == "number" and getgenv().uiscale or 1, 0.6, 1.4)
-	UIScale.Parent = ScreenGui
 	local RunService = game:GetService("RunService")
-	local Part = Instance.new("Part")
-	Part.Name = "2zvhRange"
-	Part.Shape = Enum.PartType.Ball
-	Part.Anchored = true
-	Part.CanCollide = false
-	Part.CanQuery = false
-	Part.CanTouch = false
-	Part.CastShadow = false
-	Part.Material = Enum.Material.ForceField
-	Part.Color = Color3.fromRGB(130, 80, 255)
-	Part.Transparency = 1
-	Part.Parent = workspace
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+	local old = playerGui:FindFirstChild("ControlDashboard")
+	if old then old:Destroy() end
+	local oldRange = workspace:FindFirstChild("InteractionRange")
+	if oldRange then oldRange:Destroy() end
 
-	RunService.RenderStepped:Connect(function()
+	local colors = {
+		background = Color3.fromRGB(16, 23, 33),
+		card = Color3.fromRGB(25, 35, 48),
+		border = Color3.fromRGB(45, 60, 77),
+		text = Color3.fromRGB(237, 244, 250),
+		muted = Color3.fromRGB(151, 171, 191),
+		accent = Color3.fromRGB(72, 219, 191),
+	}
+	local function make(class, properties, parent)
+		local item = Instance.new(class)
+		for key, value in pairs(properties) do item[key] = value end
+		item.Parent = parent
+		return item
+	end
+	local function round(item, radius)
+		make("UICorner", {CornerRadius = UDim.new(0, radius or 12)}, item)
+	end
+	local function label(parent, text, x, y, w, h, size, color)
+		return make("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(x, y),
+			Size = UDim2.fromOffset(w, h), Text = text,
+			TextColor3 = color or colors.text, TextSize = size or 14,
+			Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left,
+		}, parent)
+	end
+	local function button(parent, text, x, y, w, h)
+		local b = make("TextButton", {
+			Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h),
+			BackgroundColor3 = colors.border, BorderSizePixel = 0,
+			Text = text, TextColor3 = colors.text, TextSize = 14,
+			Font = Enum.Font.GothamBold, AutoButtonColor = true,
+		}, parent)
+		round(b, 10)
+		return b
+	end
+	local ScreenGui = make("ScreenGui", {
+		Name = "ControlDashboard", ResetOnSpawn = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	}, playerGui)
+	local panel = make("Frame", {
+		Name = "Dashboard", Size = UDim2.fromOffset(360, 470),
+		Position = UDim2.fromOffset(24, 70),
+		BackgroundColor3 = colors.background, BorderSizePixel = 0,
+	}, ScreenGui)
+	round(panel, 18)
+	make("UIStroke", {Color = colors.border, Thickness = 1}, panel)
+	local scale = make("UIScale", {Scale = 1}, panel)
+	local requestedScale = math.clamp(type(getgenv().uiscale) == "number" and getgenv().uiscale or 1, 0.6, 1.4)
+	local header = make("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(292, 72), Active = true,
+	}, panel)
+	local title = label(header, "CONTROL CENTER", 20, 18, 260, 24, 20)
+	title.Font = Enum.Font.GothamBold
+	label(header, "Interaction & display", 20, 44, 260, 18, 12, colors.muted)
+	local minimize = button(panel, "—", 300, 18, 40, 40)
+	local tabs = {
+		button(panel, "Controls", 20, 82, 156, 40),
+		button(panel, "Appearance", 184, 82, 156, 40),
+	}
+	local pages = {}
+	for i = 1, 2 do
+		pages[i] = make("Frame", {
+			Size = UDim2.fromOffset(320, 280), Position = UDim2.fromOffset(20, 138),
+			BackgroundTransparency = 1, Visible = i == 1,
+		}, panel)
+	end
+	local function card(parent, y, height)
+		local f = make("Frame", {
+			Size = UDim2.fromOffset(320, height), Position = UDim2.fromOffset(0, y),
+			BackgroundColor3 = colors.card, BorderSizePixel = 0,
+		}, parent)
+		round(f)
+		return f
+	end
+	local radiusCard = card(pages[1], 0, 130)
+	label(radiusCard, "INTERACTION RADIUS", 16, 12, 280, 20, 11, colors.muted)
+	local radiusValue = label(radiusCard, "", 72, 40, 176, 42, 28)
+	radiusValue.Font = Enum.Font.GothamBold
+	radiusValue.TextXAlignment = Enum.TextXAlignment.Center
+	local minus = button(radiusCard, "−", 16, 42, 44, 44)
+	local plus = button(radiusCard, "+", 260, 42, 44, 44)
+	local track = make("Frame", {
+		Position = UDim2.fromOffset(16, 105), Size = UDim2.fromOffset(288, 5),
+		BackgroundColor3 = colors.border, BorderSizePixel = 0,
+	}, radiusCard)
+	round(track)
+	local fill = make("Frame", {
+		Size = UDim2.fromScale(0.5, 1), BackgroundColor3 = colors.accent, BorderSizePixel = 0,
+	}, track)
+	round(fill)
+	local interactionCard = card(pages[1], 142, 62)
+	label(interactionCard, "Hitbox", 16, 10, 190, 20, 15)
+	label(interactionCard, "Enable interaction adjustment", 16, 32, 210, 16, 10, colors.muted)
+	local toggle = button(interactionCard, "", 238, 9, 66, 44)
+	local rangeCard = card(pages[1], 216, 62)
+	label(rangeCard, "Range preview", 16, 10, 190, 20, 15)
+	label(rangeCard, "Show the radius around you", 16, 32, 210, 16, 10, colors.muted)
+	local rangeToggle = button(rangeCard, "", 238, 9, 66, 44)
+	local scaleCard = card(pages[2], 0, 116)
+	label(scaleCard, "INTERFACE SCALE", 16, 12, 280, 20, 11, colors.muted)
+	local scaleMinus = button(scaleCard, "−", 16, 48, 44, 44)
+	local scalePlus = button(scaleCard, "+", 260, 48, 44, 44)
+	local scaleValue = label(scaleCard, "", 70, 48, 180, 44, 24)
+	scaleValue.TextXAlignment = Enum.TextXAlignment.Center
+	local shortcuts = card(pages[2], 128, 150)
+	label(shortcuts, "KEYBOARD SHORTCUTS", 16, 12, 280, 20, 11, colors.muted)
+	label(shortcuts, getgenv().togglekey .. "   Toggle hitbox", 16, 44, 288, 22, 14)
+	label(shortcuts, getgenv().reduce .. "   Decrease radius", 16, 76, 288, 22, 14)
+	label(shortcuts, getgenv().increase .. "   Increase radius", 16, 108, 288, 22, 14)
+	local status = label(panel, "Ready", 20, 432, 320, 20, 11, colors.muted)
+	local launcher = button(ScreenGui, "Controls", 16, 16, 100, 42)
+	launcher.Visible = false
+	local function setOpen(open)
+		panel.Visible = open
+		launcher.Visible = not open
+	end
+	minimize.Activated:Connect(function() setOpen(false) end)
+	launcher.Activated:Connect(function() setOpen(true) end)
+	local function selectTab(index)
+		for i, tab in ipairs(tabs) do
+			pages[i].Visible = i == index
+			tab.BackgroundColor3 = i == index and colors.accent or colors.card
+			tab.TextColor3 = i == index and colors.background or colors.muted
+		end
+	end
+	tabs[1].Activated:Connect(function() selectTab(1) end)
+	tabs[2].Activated:Connect(function() selectTab(2) end)
+	selectTab(1)
+
+	local Part = make("Part", {
+		Name = "InteractionRange", Shape = Enum.PartType.Ball, Anchored = true,
+		CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
+		Material = Enum.Material.ForceField, Color = colors.accent, Transparency = 1,
+	}, workspace)
+	local renderConnection = RunService.RenderStepped:Connect(function()
 		if Part.Transparency < 1 then
-			local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-			if HumanoidRootPart then
+			local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if root then
 				Part.Size = Vector3.one * (getgenv().hitbox * 2)
-				Part.Position = HumanoidRootPart.Position
+				Part.Position = root.Position
 			end
 		end
 	end)
-
-	local Frame2 = Instance.new("Frame")
-	Frame2.Name = "Panel"
-	Frame2.AnchorPoint = Vector2.new(0, 1)
-	Frame2.Size = UDim2.new(0, 280, 0, 322)
-	Frame2.Position = UDim2.new(0, 20, 1, -66)
-	Frame2.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-	Frame2.BorderSizePixel = 0
-	Frame2.Visible = visible
-	Frame2.Parent = ScreenGui
-	v37(Frame2, 14)
-	v39(Frame2)
-	local TextLabel = Instance.new("TextLabel")
-	TextLabel.Size = UDim2.new(1, -24, 0, 14)
-	TextLabel.Position = UDim2.new(0, 16, 0, 18)
-	TextLabel.BackgroundTransparency = 1
-	TextLabel.Text = "2zvh  /  CONTROL PANEL"
-	TextLabel.TextColor3 = Color3.fromRGB(130, 80, 255)
-	TextLabel.TextSize = 13
-	TextLabel.Font = Enum.Font.GothamBold
-	TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-	TextLabel.Parent = Frame2
-	local function sectionLabel(text, y)
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.Position = UDim2.new(0, 16, 0, y)
-		label.Size = UDim2.new(1, -32, 0, 20)
-		label.Font = Enum.Font.Gotham
-		label.TextSize = 12
-		label.TextColor3 = Color3.fromRGB(175, 175, 190)
-		label.TextXAlignment = Enum.TextXAlignment.Left
-		label.Text = text
-		label.Parent = Frame2
+	local function switchState(b, on)
+		b.Text = on and "ON" or "OFF"
+		b.BackgroundColor3 = on and colors.accent or colors.border
+		b.TextColor3 = on and colors.background or colors.muted
 	end
-	sectionLabel("INTERACTION RADIUS  /  1–60 STUDS", 48)
-	sectionLabel("INTERFACE SIZE", 122)
-	local v49 = createTextButton("−", UDim2.new(0, 44, 0, 42), UDim2.new(0, 16, 0, 74), Frame2)
-	local v50 = createTextButton("+", UDim2.new(0, 44, 0, 42), UDim2.new(1, -60, 0, 74), Frame2)
-	local TextLabel2 = Instance.new("TextLabel")
-	TextLabel2.Size = UDim2.new(1, -128, 0, 42)
-	TextLabel2.Position = UDim2.new(0, 64, 0, 74)
-	TextLabel2.BackgroundTransparency = 1
-	TextLabel2.Text = getgenv().hitbox .. " studs"
-	TextLabel2.TextColor3 = Color3.fromRGB(244, 244, 252)
-	TextLabel2.TextSize = 14
-	TextLabel2.Font = Enum.Font.Gotham
-	TextLabel2.Parent = Frame2
-	local v52 = createTextButton("−", UDim2.new(0, 44, 0, 42), UDim2.new(0, 16, 0, 148), Frame2)
-	local v53 = createTextButton("+", UDim2.new(0, 44, 0, 42), UDim2.new(1, -60, 0, 148), Frame2)
-	local TextLabel3 = Instance.new("TextLabel")
-	TextLabel3.Size = UDim2.new(1, -128, 0, 42)
-	TextLabel3.Position = UDim2.new(0, 64, 0, 148)
-	TextLabel3.BackgroundTransparency = 1
-	TextLabel3.Text = "UI: " .. math.floor(UIScale.Scale * 100 + 0.5) .. "%"
-	TextLabel3.TextColor3 = Color3.fromRGB(244, 244, 252)
-	TextLabel3.TextSize = 14
-	TextLabel3.Font = Enum.Font.Gotham
-	TextLabel3.Parent = Frame2
-	local v55 = createTextButton("hitbox: ON", UDim2.new(1, -32, 0, 44), UDim2.new(0, 16, 0, 206), Frame2)
-	v55.TextColor3 = Color3.fromRGB(70, 230, 140)
-	local v56 = createTextButton("range: OFF", UDim2.new(1, -32, 0, 44), UDim2.new(0, 16, 0, 258), Frame2)
-	v56.TextColor3 = Color3.fromRGB(255, 80, 100)
-	local v57 = createTextButton("Menu", UDim2.new(0, 76, 0, 40), UDim2.new(0, 20, 1, -20), ScreenGui)
-	v57.AnchorPoint = Vector2.new(0, 1)
-	v57.TextSize = 14
-	local v58 = createTextButton("made by 2zvh | discord.gg/xgmxFtCEVt", UDim2.new(0, 250, 0, 26), UDim2.new(1, -20, 0, 20), ScreenGui)
-	v58.AnchorPoint = Vector2.new(1, 0)
-	v58.TextSize = 11
-	v58.Font = Enum.Font.Gotham
-	v58.TextColor3 = Color3.fromRGB(175, 175, 190)
-
-	v58.Activated:Connect(function()
-		local copied = pcall(function()
-			assert(type(setclipboard) == "function")
-			setclipboard("https://discord.gg/xgmxFtCEVt")
-		end)
-
-		task.spawn(function()
-			v21("2zvh", copied and "Discord link copied" or "discord.gg/xgmxFtCEVt", Color3.fromRGB(70, 230, 140), 2)
-		end)
-	end)
-
-	local function v59(p16)
-		getgenv().hitbox = math.clamp(getgenv().hitbox + p16, 1, 60)
-		TextLabel2.Text = getgenv().hitbox .. " studs"
-
-		task.spawn(function()
-			v21("2zvh", "hitbox: " .. getgenv().hitbox .. " studs", Color3.fromRGB(130, 80, 255), 2)
-		end)
+	local function refresh()
+		radiusValue.Text = tostring(getgenv().hitbox) .. " studs"
+		fill.Size = UDim2.fromScale((getgenv().hitbox - 1) / 59, 1)
+		switchState(toggle, u14)
+		switchState(rangeToggle, Part.Transparency < 1)
 	end
-
+	local function fit()
+		local viewport = ScreenGui.AbsoluteSize
+		scale.Scale = math.min(requestedScale, math.max(0.1, (viewport.X - 24) / 360), math.max(0.1, (viewport.Y - 24) / 470))
+		local x = math.clamp(panel.Position.X.Offset, 12, math.max(12, viewport.X - 360 * scale.Scale - 12))
+		local y = math.clamp(panel.Position.Y.Offset, 12, math.max(12, viewport.Y - 470 * scale.Scale - 12))
+		panel.Position = UDim2.fromOffset(x, y)
+		scaleValue.Text = math.floor(scale.Scale * 100 + 0.5) .. "%"
+	end
+	local function v59(delta)
+		getgenv().hitbox = math.clamp(getgenv().hitbox + delta, 1, 60)
+		refresh()
+		status.Text = "Radius updated · " .. getgenv().hitbox .. " studs"
+	end
 	local function v60()
 		u14 = not u14
-		v55.Text = u14 and "hitbox: ON" or "hitbox: OFF"
-		v55.TextColor3 = u14 and Color3.fromRGB(70, 230, 140) or Color3.fromRGB(255, 80, 100)
-
-		task.spawn(function()
-			v21("2zvh", u14 and "hitbox enabled" or "hitbox disabled", u14 and Color3.fromRGB(70, 230, 140) or Color3.fromRGB(255, 80, 100), 3)
-		end)
+		refresh()
+		status.Text = u14 and "Hitbox enabled" or "Hitbox disabled"
 	end
-
-	local function v61(p17)
-		UIScale.Scale = math.clamp(UIScale.Scale + p17, 0.6, 1.4)
-		getgenv().uiscale = UIScale.Scale
-		TextLabel3.Text = "UI: " .. math.floor(UIScale.Scale * 100 + 0.5) .. "%"
+	local function changeScale(delta)
+		requestedScale = math.clamp(requestedScale + delta, 0.6, 1.4)
+		getgenv().uiscale = requestedScale
+		fit()
 	end
-
-	local function v62()
-		local v63 = Part.Transparency < 1
-		Part.Transparency = v63 and 1 or 0.75
-		v56.Text = v63 and "range: OFF" or "range: ON"
-		v56.TextColor3 = v63 and Color3.fromRGB(255, 80, 100) or Color3.fromRGB(70, 230, 140)
-	end
-
-	v49.Activated:Connect(function()
-		v59(-5)
+	minus.Activated:Connect(function() v59(-5) end)
+	plus.Activated:Connect(function() v59(5) end)
+	toggle.Activated:Connect(v60)
+	rangeToggle.Activated:Connect(function()
+		Part.Transparency = Part.Transparency < 1 and 1 or 0.75
+		refresh()
 	end)
-
-	v50.Activated:Connect(function()
-		v59(5)
+	scaleMinus.Activated:Connect(function() changeScale(-0.1) end)
+	scalePlus.Activated:Connect(function() changeScale(0.1) end)
+	local dragInput, dragStart, panelStart
+	header.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput, dragStart, panelStart = input, input.Position, panel.Position
+		end
 	end)
-
-	v52.Activated:Connect(function()
-		v61(-0.1)
+	local dragConnection = UserInputService.InputChanged:Connect(function(input)
+		if not dragInput then return end
+		if input == dragInput or (dragInput.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement) then
+			local delta = input.Position - dragStart
+			panel.Position = UDim2.fromOffset(panelStart.X.Offset + delta.X, panelStart.Y.Offset + delta.Y)
+			fit()
+		end
 	end)
-
-	v53.Activated:Connect(function()
-		v61(0.1)
+	local endConnection = UserInputService.InputEnded:Connect(function(input)
+		if input == dragInput then dragInput = nil end
 	end)
-
-	v55.Activated:Connect(v60)
-	v56.Activated:Connect(v62)
-
-	v57.Activated:Connect(function()
-		Frame2.Visible = not Frame2.Visible
+	ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	ScreenGui.Destroying:Connect(function()
+		renderConnection:Disconnect()
+		dragConnection:Disconnect()
+		endConnection:Disconnect()
+		Part:Destroy()
 	end)
-
-	local function v64(p18, handle)
-		local u65
-		local Position
-		local Position2
-
-		handle.Active = true
-		handle.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				u65 = true
-				Position = input.Position
-				Position2 = p18.Position
-
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then u65 = false end
-				end)
-			end
-		end)
-
-		UserInputService.InputChanged:Connect(function(input)
-			if u65 and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-				local v68 = (input.Position - Position) / UIScale.Scale
-				p18.Position = UDim2.new(Position2.X.Scale, Position2.X.Offset + v68.X, Position2.Y.Scale, Position2.Y.Offset + v68.Y)
-			end
-		end)
-	end
-
-	v64(Frame2, TextLabel)
+	refresh()
+	task.defer(fit)
 	local Physics = require(ReplicatedStorage.Common.Physics)
 	local canInteract = Physics.canInteract
 
@@ -449,7 +341,6 @@ if ok and result == "pass" then
 		return true
 	end
 
-	-- Author attribution is displayed in the GUI; it never disconnects the player.
 	local tagged = CollectionService:GetTagged("Ball")
 
 	CollectionService:GetInstanceAddedSignal("Ball"):Connect(function(p22)
@@ -503,11 +394,6 @@ if ok and result == "pass" then
 		end
 	end)
 
-	task.spawn(function()
-		task.wait(5)
-		v21("2zvh", "loaded | " .. getgenv().hitbox .. " studs | " .. getgenv().togglekey .. " | -" .. getgenv().reduce .. " +" .. getgenv().increase, Color3.fromRGB(130, 80, 255), 4)
-		v21("2zvh", "plz join the discord. https://discord.gg/xgmxFtCEVt", Color3.fromRGB(130, 80, 255), 4)
-	end)
 else
 	print("detected")
 end
