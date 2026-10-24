@@ -33,14 +33,15 @@ end
 function Miz0UI:SetDensity(_) end
 function Miz0UI:CreateWindow(opts)
     local player=game:GetService('Players').LocalPlayer
-    local gui=new('ScreenGui',{Name='Miz0MM2',ResetOnSpawn=false,IgnoreGuiInset=true,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},player:WaitForChild('PlayerGui'))
+    local pg=player:WaitForChild('PlayerGui')
+    local previous=pg:FindFirstChild('Miz0MM2')
+    if previous then previous:Destroy() end
+    local gui=new('ScreenGui',{Name='Miz0MM2',ResetOnSpawn=false,IgnoreGuiInset=true,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},pg)
     local camera=workspace.CurrentCamera
     local viewport=camera and camera.ViewportSize or Vector2.new(900,600)
     local portrait=viewport.Y>viewport.X
     local width=math.max(245,math.min(viewport.X-24,portrait and 370 or 790))
     local height=math.max(260,math.min(viewport.Y-30,portrait and 550 or 540))
-    local previous=player.PlayerGui:FindFirstChild('Miz0MM2')
-    if previous then previous:Destroy() end
     local root=new('Frame',{Name='Window',Size=UDim2.fromOffset(width,height),Position=UDim2.new(.5,-width/2,.5,-height/2),BackgroundColor3=UIColors.bg,BorderSizePixel=0,Active=true},gui)
     corner(root,14)
     local bg=new('ImageLabel',{Name='Miz0FullBackground',BackgroundTransparency=1,Size=UDim2.fromScale(1,1),Image='',ScaleType=Enum.ScaleType.Fit,ZIndex=0},root)
@@ -110,6 +111,16 @@ function Miz0UI:CreateWindow(opts)
                 update()
                 b.MouseButton1Click:Connect(function() value=not value;update();if c.Callback then task.spawn(c.Callback,value) end end)
                 return {Set=function(_,v) value=not not v;update();if c.Callback then c.Callback(value) end end}
+            end
+            function section:AddBanner(c)
+                local kind=tostring(c.Type or 'Info')
+                local message=tostring(c.Text or c.Content or '')
+                local accent=kind=='Warning' and Color3.fromRGB(255,174,56) or UIColors.red
+                local banner=new('TextLabel',{Name='Miz0Banner',Text=(kind=='Warning' and '⚠  ' or '✦  ')..message,TextColor3=UIColors.text,BackgroundColor3=Color3.fromRGB(46,30,50),Font=Enum.Font.GothamMedium,TextSize=12,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,AutomaticSize=Enum.AutomaticSize.Y,Size=UDim2.new(1,-8,0,38)},holder)
+                corner(banner,9)
+                new('UIStroke',{Color=accent,Transparency=.25,Thickness=1},banner)
+                new('UIPadding',{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,9),PaddingBottom=UDim.new(0,9)},banner)
+                return {SetText=function(_,v)banner.Text=tostring(v)end}
             end
             function section:AddParagraph(c)
                 local h=label(c.Title or '',holder,22);h.TextColor3=UIColors.red
