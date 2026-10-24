@@ -1,3 +1,5 @@
+-- Miz0 Galaxy V15: Project Reverse API, cache and USD-source integration removed.
+-- WindUI uses only https://i.ibb.co/N2q7Lr9C/8.jpg as its window background.
 -- MIZ0 GALAXY V14: single original image INSIDE WindUI only; no floating gallery.
 -- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
 -- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
@@ -8,14 +10,14 @@
 -- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
 -- First original picture only, enlarged in a FIT image frame (no cropping).
 local PHOTO_URLS = {
-    "https://i.ibb.co/nMfk2Cbb/images.jpg",
+    "https://i.ibb.co/N2q7Lr9C/8.jpg",
 }
 local PHOTOS = {""}
 local function fetchPhoto(url, index)
     local assetFn = getcustomasset or getsynasset
     local requestFn = request or http_request or (syn and syn.request)
     if type(assetFn)~="function" or type(requestFn)~="function" or type(writefile)~="function" then return "" end
-    local path="miz0_galaxy_photo_"..index..".jpg"
+    local path="miz0_galaxy_v15_photo_"..index..".jpg"
     local ok,result=pcall(function()
         if not (type(isfile)=="function" and isfile(path)) then
             local r=requestFn({Url=url,Method="GET"})
@@ -1707,57 +1709,10 @@ local u255 = false
 local n6 = 6
 local u257 = false
 
-local function loadUsdValues()
-	pcall(function()
-		if not isfolder("ValueData") then
-			makefolder("ValueData")
-		end
-	end)
-
-	if isfile and isfile("ValueData/mm2_values.json") then
-		local ok, result = pcall(readfile, "ValueData/mm2_values.json")
-
-		if ok and result ~= "" then
-			local ok2, result2 = pcall(HttpService.JSONDecode, HttpService, result)
-
-			if ok2 and result2 then
-				if tick() - (result2._time or 0) < 3600 then
-					return result2.data
-				end
-			end
-		end
-	end
-
-	local ok, result = pcall(game.HttpGet, game, "https://api.project-reverse.org/valuables/get-game-valuables?game=mm2")
-
-	if ok then
-		local data = HttpService:JSONDecode(result)
-
-		pcall(function()
-			writefile("ValueData/mm2_values.json", HttpService:JSONEncode({
-				data = data.data,
-				_time = tick()
-			}))
-		end)
-
-		return data.data
-	end
-
-	local ok2, result2 = pcall(function()
-		return HttpService:JSONDecode(readfile("ValueData/mm2_values.json"))
-	end)
-
-	return ok2 and result2 and result2.data or {}
-end
+-- Project Reverse integration removed. USD prices are unavailable without an independent source.
+-- Preserve the expected return shape so inventory/trading controls continue to run.
 local function mapUsdValues()
-	local t10 = {}
-	local v270 = loadUsdValues() or {}
-
-	for _, v in pairs(v270) do
-		t10[v.name] = v.price
-	end
-
-	return t10
+    return {}
 end
 local function loadSupremeValues()
 	local n7 = 0
@@ -2022,12 +1977,12 @@ end
 
 task.spawn(function()
 	u252 = loadSupremeValues() or {}
-	u253 = mapUsdValues()
+	u253 = {} -- Project Reverse USD feed removed
 	u251 = u252
 end)
 
 local function selectValueSource()
-	u251 = s1 == "USD" and (u253 or {}) or u252 or {}
+	u251 = u252 or {}
 end
 
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI", 9e9)
@@ -3461,12 +3416,11 @@ do
 
 	v529:AddParagraph({
 		Title = "Trade Helper",
-		Content = "This tab shows item values in trades (USD or Supreme), calculates total value, and helps you choose profitable offers."
+		Content = "This tab shows Supreme item values in trades, calculates total value, and helps you choose offers."
 	})
 	v529:AddDropdown({
 		Text = "Item Price Display",
 		Options = {
-			"USD",
 			"Supreme"
 		},
 		Default = "Supreme",
@@ -3546,7 +3500,7 @@ do
 
 	v532:AddParagraph({
 		Title = "What is this?",
-		Content = "Analyzes your inventory, sorts items by value, and shows the total USD value."
+		Content = "Analyzes your inventory. USD price analysis is unavailable because the Project Reverse source was removed."
 	})
 
 	local v533 = v532:AddParagraph({
