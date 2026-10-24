@@ -1,6 +1,7 @@
+-- MIZ0 GALAXY v7 | custom photo hero, premium galaxy controls, responsive mobile and desktop layout.
 -- Miz0 Haunted: native GUI, no external UI library. The gameplay body follows unchanged.
 local Miz0UI = {}
-local C = {base=Color3.fromRGB(17,12,25),panel=Color3.fromRGB(28,20,39),button=Color3.fromRGB(43,30,55),hover=Color3.fromRGB(69,43,67),orange=Color3.fromRGB(255,130,37),white=Color3.fromRGB(249,240,231),muted=Color3.fromRGB(190,178,194)}
+local C = {base=Color3.fromRGB(6,7,16),panel=Color3.fromRGB(14,17,31),button=Color3.fromRGB(24,28,47),hover=Color3.fromRGB(43,43,77),orange=Color3.fromRGB(168,118,255),white=Color3.fromRGB(244,246,255),muted=Color3.fromRGB(161,170,201)}
 local function make(kind, props, parent)
     local o=Instance.new(kind)
     for k,v in pairs(props or {}) do o[k]=v end
@@ -15,10 +16,12 @@ local function text(o,t,h,color)
     return make('TextLabel',{BackgroundTransparency=1,Text=tostring(t or ''),TextColor3=color or C.white,Font=Enum.Font.GothamMedium,TextSize=13,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,Size=UDim2.new(1,0,0,h or 26),ZIndex=6},o)
 end
 local function click(o,t,h)
-    local b=make('TextButton',{Text=tostring(t or ''),TextColor3=C.white,Font=Enum.Font.GothamMedium,TextSize=13,BackgroundColor3=C.button,BorderSizePixel=0,Size=UDim2.new(1,0,0,h or 38),AutoButtonColor=false,ZIndex=6},o)
-    round(b,10);outline(b,C.orange,.67)
-    b.MouseEnter:Connect(function() b.BackgroundColor3=C.hover end)
-    b.MouseLeave:Connect(function() b.BackgroundColor3=C.button end)
+    local b=make('TextButton',{Text=tostring(t or ''),TextColor3=C.white,Font=Enum.Font.GothamSemibold,TextSize=13,BackgroundColor3=C.button,BorderSizePixel=0,Size=UDim2.new(1,0,0,h or 42),AutoButtonColor=false,ZIndex=6},o)
+    round(b,12)
+    local stroke=outline(b,C.orange,.74)
+    make('UIGradient',{Color=ColorSequence.new(Color3.fromRGB(34,39,67),Color3.fromRGB(16,20,35)),Rotation=90},b)
+    b.MouseEnter:Connect(function() stroke.Transparency=.18; b.TextColor3=Color3.fromRGB(231,216,255) end)
+    b.MouseLeave:Connect(function() stroke.Transparency=.74; b.TextColor3=C.white end)
     return b
 end
 local function invoke(fn,...)
@@ -60,27 +63,79 @@ function Miz0UI:CreateWindow(o)
     local prior=pg:FindFirstChild('Miz0HauntedV6')
     if prior then prior:Destroy() end
     local gui=make('ScreenGui',{Name='Miz0HauntedV6',ResetOnSpawn=false,IgnoreGuiInset=true,ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=35},pg)
-    local screen=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(900,600)
-    local portrait=screen.Y>screen.X
-    local w=math.min(math.max(250,screen.X-22),portrait and 410 or 790)
-    local h=math.min(math.max(270,screen.Y-28),portrait and 580 or 510)
+    local camera=workspace.CurrentCamera
+    local screen=camera and camera.ViewportSize or Vector2.new(900,600)
+    local touch=UIS.TouchEnabled
+    local function bounds(v)
+        local portrait=v.Y>v.X
+        local margin=touch and 12 or 28
+        return math.max(250,math.min(v.X-margin*2,portrait and 410 or 800)),math.max(280,math.min(v.Y-margin*2,portrait and 630 or 550)),portrait
+    end
+    local w,h,portrait=bounds(screen)
     local root=make('Frame',{Name='Miz0Window',AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),Size=UDim2.fromOffset(w,h),BackgroundColor3=C.base,BorderSizePixel=0,ClipsDescendants=true},gui)
-    round(root,16);outline(root,C.orange,.1)
-    local bg=make('ImageLabel',{Name='FullPhoto',Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Image='',ScaleType=Enum.ScaleType.Fit,ZIndex=1},root)
-    local tint=make('Frame',{Name='Tint',Size=UDim2.fromScale(1,1),BackgroundColor3=C.base,BackgroundTransparency=.36,BorderSizePixel=0,ZIndex=2},root)
-    local top=make('Frame',{Name='Header',Size=UDim2.new(1,0,0,53),BackgroundColor3=C.base,BackgroundTransparency=.12,BorderSizePixel=0,ZIndex=3},root)
-    make('Frame',{Position=UDim2.new(0,0,1,-2),Size=UDim2.new(1,0,0,2),BackgroundColor3=C.orange,BorderSizePixel=0,ZIndex=4},top)
-    local heading=text(top,'🎃  MIZ0   /   HAUNTED',42,C.white)
-    heading.Position=UDim2.fromOffset(15,3);heading.Size=UDim2.new(1,-110,0,42);heading.Font=Enum.Font.GothamBold;heading.TextSize=portrait and 14 or 19;heading.ZIndex=4
-    local minimize=make('TextButton',{Text='−',TextSize=24,Font=Enum.Font.GothamBold,TextColor3=C.white,BackgroundColor3=C.button,Size=UDim2.fromOffset(38,34),Position=UDim2.new(1,-47,0,9),ZIndex=5},top)
-    round(minimize,9);outline(minimize,C.orange,.35)
-    local side=portrait and 104 or 165
-    local nav=make('ScrollingFrame',{Name='Navigation',Position=UDim2.fromOffset(9,62),Size=UDim2.new(0,side,1,-71),BackgroundColor3=C.panel,BackgroundTransparency=.16,BorderSizePixel=0,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollBarThickness=2,ZIndex=3},root)
-    round(nav,10);pad(nav,5,7);layout(nav,7)
-    local content=make('Frame',{Name='Pages',Position=UDim2.fromOffset(side+20,62),Size=UDim2.new(1,-side-29,1,-71),BackgroundTransparency=1,ZIndex=3},root)
-    local badge=make('TextButton',{Name='Miz0Reopen',Text='MIZ0 SCRIPT',Font=Enum.Font.GothamBold,TextSize=12,TextColor3=C.white,BackgroundColor3=C.panel,Size=UDim2.fromOffset(160,54),Position=UDim2.fromOffset(12,90),Visible=false,ZIndex=20},gui)
-    round(badge,12);outline(badge,C.orange,.05)
-    local badgeImage=make('ImageLabel',{Name='Photo',Size=UDim2.fromOffset(45,45),Position=UDim2.fromOffset(4,4),BackgroundTransparency=1,ScaleType=Enum.ScaleType.Fit,ZIndex=21},badge)
+    round(root,17);outline(root,C.orange,.32)
+    local galaxy=make('Frame',{Name='Galaxy',Size=UDim2.fromScale(1,1),BackgroundColor3=C.base,BorderSizePixel=0,ZIndex=1},root)
+    make('UIGradient',{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(5,8,20)),ColorSequenceKeypoint.new(.48,Color3.fromRGB(20,13,41)),ColorSequenceKeypoint.new(1,Color3.fromRGB(7,9,20))}),Rotation=120},galaxy)
+    -- Decorative stars stay behind the actual controls and never intercept touches.
+    for i=1,27 do
+        local x=((i*37)%97)/100
+        local y=((i*61)%89)/100
+        local star=make('Frame',{Name='Star',Size=UDim2.fromOffset(i%4==0 and 3 or 2,i%4==0 and 3 or 2),Position=UDim2.fromScale(x,y),BackgroundColor3=i%3==0 and Color3.fromRGB(181,144,255) or Color3.fromRGB(155,175,222),BackgroundTransparency=.25+(i%4)*.13,BorderSizePixel=0,ZIndex=2},galaxy)
+        round(star,5)
+    end
+    -- Full uncropped image at the TOP, not behind the whole menu.
+    local heroHeight=portrait and 118 or 142
+    local hero=make('Frame',{Name='PhotoHeader',Position=UDim2.fromOffset(10,10),Size=UDim2.new(1,-20,0,heroHeight),BackgroundColor3=Color3.fromRGB(9,10,24),BorderSizePixel=0,ClipsDescendants=true,ZIndex=3},root)
+    round(hero,13);outline(hero,C.orange,.63)
+    local bg=make('ImageLabel',{Name='FullPhoto',Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Image='',ScaleType=Enum.ScaleType.Fit,ZIndex=4},hero)
+    local shade=make('Frame',{Name='PhotoShade',Position=UDim2.new(0,0,1,-45),Size=UDim2.new(1,0,0,45),BackgroundColor3=Color3.fromRGB(6,8,20),BackgroundTransparency=.28,BorderSizePixel=0,ZIndex=5},hero)
+    local heading=text(hero,'✦  MIZ0  /  GALAXY',30,C.white)
+    heading.Position=UDim2.new(0,12,1,-40);heading.Size=UDim2.new(1,-76,0,30);heading.Font=Enum.Font.GothamBold;heading.TextSize=portrait and 14 or 18;heading.ZIndex=6
+    local minimize=make('TextButton',{Text='−',TextSize=23,Font=Enum.Font.GothamBold,TextColor3=C.white,BackgroundColor3=C.button,Size=UDim2.fromOffset(34,32),Position=UDim2.new(1,-42,0,8),ZIndex=7},hero)
+    round(minimize,10);outline(minimize,C.orange,.35)
+    local nav=make('ScrollingFrame',{Name='Navigation',BackgroundColor3=C.panel,BackgroundTransparency=.08,BorderSizePixel=0,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.X,ScrollBarThickness=2,ZIndex=4},root)
+    round(nav,12)
+    local content=make('Frame',{Name='Pages',BackgroundTransparency=1,ZIndex=4},root)
+    local function applyLayout(v)
+        local nw,nh,isPortrait=bounds(v)
+        portrait=isPortrait
+        root.Size=UDim2.fromOffset(nw,nh)
+        heroHeight=portrait and 118 or 142
+        hero.Size=UDim2.new(1,-20,0,heroHeight)
+        heading.TextSize=portrait and 14 or 18
+        local offset=heroHeight+20
+        if portrait then
+            nav.Position=UDim2.fromOffset(10,offset)
+            nav.Size=UDim2.new(1,-20,0,53)
+            nav.AutomaticCanvasSize=Enum.AutomaticSize.X
+            nav.ScrollingDirection=Enum.ScrollingDirection.X
+            content.Position=UDim2.fromOffset(10,offset+61)
+            content.Size=UDim2.new(1,-20,1,-offset-71)
+        else
+            nav.Position=UDim2.fromOffset(10,offset)
+            nav.Size=UDim2.new(0,160,1,-offset-10)
+            nav.AutomaticCanvasSize=Enum.AutomaticSize.Y
+            nav.ScrollingDirection=Enum.ScrollingDirection.Y
+            content.Position=UDim2.fromOffset(179,offset)
+            content.Size=UDim2.new(1,-189,1,-offset-10)
+        end
+    end
+    local navLayout=layout(nav,6)
+    pad(nav,5,5)
+    local function navSizing()
+        navLayout.FillDirection=portrait and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
+    end
+    applyLayout(screen);navSizing()
+    if camera then camera:GetPropertyChangedSignal('ViewportSize'):Connect(function()
+        if not gui.Parent then return end
+        applyLayout(camera.ViewportSize);navSizing()
+        for _,child in ipairs(nav:GetChildren()) do
+            if child:IsA('TextButton') then child.Size=portrait and UDim2.fromOffset(112,40) or UDim2.new(1,-2,0,40) end
+        end
+    end) end
+    local badge=make('TextButton',{Name='Miz0Reopen',Text='  MIZ0  ✦',Font=Enum.Font.GothamBold,TextSize=13,TextColor3=C.white,BackgroundColor3=C.panel,Size=UDim2.fromOffset(130,54),Position=UDim2.fromOffset(12,90),Visible=false,ZIndex=20},gui)
+    round(badge,13);outline(badge,C.orange,.1)
+    local badgeImage=make('ImageLabel',{Name='Photo',Size=UDim2.fromOffset(46,46),Position=UDim2.fromOffset(4,4),BackgroundTransparency=1,ScaleType=Enum.ScaleType.Fit,ZIndex=21},badge)
     badge.TextXAlignment=Enum.TextXAlignment.Right
     minimize.MouseButton1Click:Connect(function()root.Visible=false;badge.Visible=true end)
     badge.MouseButton1Click:Connect(function()root.Visible=true;badge.Visible=false end)
@@ -92,7 +147,8 @@ function Miz0UI:CreateWindow(o)
     function window:Destroy() if gui then gui:Destroy() end end
     function window:CreateTab(cfg)
         local name=tostring(cfg.Name or 'Features')
-        local navButton=click(nav,'☾  '..name,39)
+        local navButton=click(nav,'✧  '..name,40)
+        navButton.Size=portrait and UDim2.fromOffset(112,40) or UDim2.new(1,-2,0,40)
         navButton.TextSize=portrait and 11 or 13
         navButton.ZIndex=4
         local page=make('ScrollingFrame',{Name=name,Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollBarThickness=3,Visible=false,ZIndex=3},content)
@@ -100,22 +156,22 @@ function Miz0UI:CreateWindow(o)
         local tab={}
         function tab:CreateSection(cfg2)
             local name2=type(cfg2)=='table' and cfg2.Name or cfg2
-            local holder=make('Frame',{BackgroundColor3=C.panel,BackgroundTransparency=.12,BorderSizePixel=0,Size=UDim2.new(1,-5,0,0),AutomaticSize=Enum.AutomaticSize.Y,ZIndex=4},page)
-            round(holder,12);outline(holder,C.orange,.78);pad(holder,10,10);layout(holder,8)
+            local holder=make('Frame',{BackgroundColor3=C.panel,BackgroundTransparency=.08,BorderSizePixel=0,Size=UDim2.new(1,-5,0,0),AutomaticSize=Enum.AutomaticSize.Y,ZIndex=4},page)
+            round(holder,14);outline(holder,C.orange,.78);pad(holder,10,11);layout(holder,9)
             local title=text(holder,'✦  '..tostring(name2 or 'Controls'),26,C.orange)
             title.Font=Enum.Font.GothamBold;title.ZIndex=4
             local sec={}
             function sec:AddButton(c)
-                local b=click(holder,'✦  '..tostring(c.Text or 'Action'),39)
+                local b=click(holder,'✦    '..tostring(c.Text or 'Action'),43)
                 b.MouseButton1Click:Connect(function()invoke(c.Callback)end)
                 return b
             end
             function sec:AddToggle(c)
                 local enabled=c.Default==true
-                local b=click(holder,'',39)
+                local b=click(holder,'',43)
                 local function update()
-                    b.Text=(enabled and '🟠  ON   ' or '○  OFF   ')..tostring(c.Text or 'Toggle')
-                    b.BackgroundColor3=enabled and Color3.fromRGB(80,45,34) or C.button
+                    b.Text=(enabled and '◆  ON    ' or '◇  OFF   ')..tostring(c.Text or 'Toggle')
+                    b.BackgroundColor3=enabled and Color3.fromRGB(64,39,105) or C.button
                 end
                 update()
                 b.MouseButton1Click:Connect(function()enabled=not enabled;update();invoke(c.Callback,enabled)end)
@@ -216,7 +272,7 @@ function Miz0UI:CreateWindow(o)
                 return {SetTitle=function(_,v)h.Text=tostring(v)end,SetContent=function(_,v)p.Text=tostring(v)end}
             end
             function sec:AddBanner(c)
-                local t=text(holder,'⚠  '..tostring(c.Text or c.Content or ''),40,C.orange)
+                local t=text(holder,'✧  '..tostring(c.Text or c.Content or ''),40,C.orange)
                 t.AutomaticSize=Enum.AutomaticSize.Y
                 return {SetText=function(_,v)t.Text=tostring(v)end}
             end
@@ -252,14 +308,14 @@ function Miz0UI:CreateWindow(o)
         navButton.MouseButton1Click:Connect(function()
             for _,t in ipairs(window._tabs) do
                 t.page.Visible=t.page==page
-                t.button.BackgroundColor3=t.page==page and Color3.fromRGB(94,50,39) or C.button
+                t.button.BackgroundColor3=t.page==page and Color3.fromRGB(60,43,105) or C.button
             end
         end)
-        if #window._tabs==1 then page.Visible=true;navButton.BackgroundColor3=Color3.fromRGB(94,50,39) end
+        if #window._tabs==1 then page.Visible=true;navButton.BackgroundColor3=Color3.fromRGB(60,43,105) end
         return tab
     end
     local dragStart,startPos,dragging
-    top.InputBegan:Connect(function(input)
+    hero.InputBegan:Connect(function(input)
         if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
             dragging=input;dragStart=input.Position;startPos=root.Position
         end
