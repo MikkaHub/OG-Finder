@@ -9,7 +9,7 @@
 
 -- Miz0 native GUI adapter: no Project Reverse GUI dependency.
 local Miz0UI = {}
-local UIColors = {bg=Color3.fromRGB(12,12,15), panel=Color3.fromRGB(23,23,28), red=Color3.fromRGB(225,32,48), text=Color3.fromRGB(239,239,243), muted=Color3.fromRGB(165,165,174)}
+local UIColors = {bg=Color3.fromRGB(12,10,17), panel=Color3.fromRGB(26,20,33), red=Color3.fromRGB(255,112,24), text=Color3.fromRGB(245,238,226), muted=Color3.fromRGB(171,159,177)}
 local function new(class, props, parent)
     local obj=Instance.new(class)
     for k,v in pairs(props or {}) do obj[k]=v end
@@ -45,7 +45,7 @@ function Miz0UI:CreateWindow(opts)
     local root=new('Frame',{Name='Window',Size=UDim2.fromOffset(width,height),Position=UDim2.new(.5,-width/2,.5,-height/2),BackgroundColor3=UIColors.bg,BorderSizePixel=0,Active=true},gui)
     corner(root,10)
     new('UIStroke',{Color=UIColors.red,Thickness=1.5},root)
-    local top=new('Frame',{Size=UDim2.new(1,0,0,43),BackgroundColor3=UIColors.panel,BorderSizePixel=0},root)
+    local top=new('Frame',{Size=UDim2.new(1,0,0,48),BackgroundColor3=UIColors.panel,BorderSizePixel=0},root)
     corner(top,10)
     new('Frame',{Position=UDim2.new(0,0,1,-2),Size=UDim2.new(1,0,0,2),BorderSizePixel=0,BackgroundColor3=UIColors.red},top)
     local title=label(opts.Title or 'Miz0',top,35)
@@ -54,12 +54,19 @@ function Miz0UI:CreateWindow(opts)
     title.Font=Enum.Font.GothamBold
     title.TextSize=17
     local close=new('TextButton',{Text='×',TextColor3=UIColors.text,Font=Enum.Font.GothamBold,TextSize=22,BackgroundTransparency=1,Size=UDim2.fromOffset(40,40),Position=UDim2.new(1,-41,0,0)},top)
-    local sidebar=new('ScrollingFrame',{Position=UDim2.fromOffset(9,52),Size=UDim2.new(0,157,1,-61),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=2,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new()},root)
+    local sidebar=new('ScrollingFrame',{Position=UDim2.fromOffset(9,58),Size=UDim2.new(0,157,1,-67),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=2,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new()},root)
     stack(sidebar,6)
-    local content=new('Frame',{Position=UDim2.fromOffset(177,52),Size=UDim2.new(1,-186,1,-61),BackgroundTransparency=1},root)
+    local content=new('Frame',{Position=UDim2.fromOffset(177,58),Size=UDim2.new(1,-186,1,-67),BackgroundTransparency=1},root)
     local window={_gui=gui,_tabs={},_content=content}
+    function window:Destroy() if self._gui then self._gui:Destroy() end end
+    local accent=new('UIGradient',{Color=ColorSequence.new(Color3.fromRGB(255,140,34),Color3.fromRGB(120,48,169)),Rotation=0},top)
+    local subtitle=label('🎃  HALLOWEEN EDITION  •  MM2',top,16)
+    subtitle.TextColor3=UIColors.muted;subtitle.TextSize=10;subtitle.Position=UDim2.fromOffset(16,29)
+    subtitle.Size=UDim2.new(1,-110,0,12)
+    title.Size=UDim2.new(1,-100,0,26);title.TextSize=16
+    new('UIStroke',{Color=Color3.fromRGB(75,43,86),Thickness=1},content)
     function window:CreateTab(config)
-        local button=textButton(config.Name,sidebar,36)
+        local button=textButton('  '..tostring(config.Name),sidebar,38);button.TextXAlignment=Enum.TextXAlignment.Left
         local page=new('ScrollingFrame',{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=4,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new(),Visible=false},content)
         stack(page,10)
         local tab={_page=page,_name=config.Name}
@@ -68,7 +75,7 @@ function Miz0UI:CreateWindow(opts)
             corner(holder,8)
             new('UIPadding',{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,9),PaddingBottom=UDim.new(0,10)},holder)
             stack(holder,6)
-            local heading=label(cfg.Name or 'Section',holder,24)
+            local heading=label('✦  '..tostring(cfg.Name or 'Section'),holder,24)
             heading.Font=Enum.Font.GothamBold
             heading.TextColor3=UIColors.red
             local section={_holder=holder}
@@ -92,35 +99,65 @@ function Miz0UI:CreateWindow(opts)
                 return {SetContent=function(_,v)body.Text=tostring(v)end,SetTitle=function(_,v)h.Text=tostring(v)end}
             end
             function section:AddSlider(c)
-                local min,max=c.Min or 0,c.Max or 100
-                local step=c.Increment or 1
-                local value=tonumber(c.Default) or min
-                local b=textButton('',holder)
-                local function update() b.Text=('%s: %s  (tap to increase)'):format(c.Text or 'Slider',tostring(value)) end
-                update()
-                b.MouseButton1Click:Connect(function()value=value+step;if value>max then value=min end;update();if c.Callback then c.Callback(value)end end)
-                return {Set=function(_,v)value=math.clamp(tonumber(v) or min,min,max);update();if c.Callback then c.Callback(value)end end}
+                local min,max=tonumber(c.Min) or 0,tonumber(c.Max) or 100
+                local step=math.max(tonumber(c.Increment) or 1,0.001)
+                local value=math.clamp(tonumber(c.Default) or min,min,max)
+                local caption=label('',holder,22)
+                local track=new('Frame',{BackgroundColor3=UIColors.bg,Size=UDim2.new(1,-8,0,14),Active=true},holder);corner(track,7)
+                local fill=new('Frame',{BackgroundColor3=UIColors.red,Size=UDim2.fromScale(0,1),BorderSizePixel=0},track);corner(fill,7)
+                local function set(v,fire)
+                    value=math.clamp(min+math.floor(((v-min)/step)+0.5)*step,min,max)
+                    caption.Text=('%s  •  %s'):format(tostring(c.Text or 'Slider'),tostring(math.floor(value*100+0.5)/100))
+                    fill.Size=UDim2.fromScale(max>min and (value-min)/(max-min) or 0,1)
+                    if fire and c.Callback then c.Callback(value) end
+                end
+                set(value,false)
+                local UIS=game:GetService('UserInputService');local sliding=false
+                local function move(x)
+                    local fraction=math.clamp((x-track.AbsolutePosition.X)/math.max(track.AbsoluteSize.X,1),0,1)
+                    set(min+(max-min)*fraction,true)
+                end
+                track.InputBegan:Connect(function(input)
+                    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then sliding=true;move(input.Position.X) end
+                end)
+                UIS.InputChanged:Connect(function(input)
+                    if sliding and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then move(input.Position.X) end
+                end)
+                UIS.InputEnded:Connect(function(input)
+                    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then sliding=false end
+                end)
+                return {Set=function(_,v)set(tonumber(v) or min,true)end}
             end
             function section:AddDropdown(c)
-                local options=c.Options or {}
-                local index=table.find(options,c.Default) or 1
+                local options=c.Options or {};local current=c.Default
                 local b=textButton('',holder)
-                local function update()b.Text=tostring(c.Text or 'Select')..': '..tostring(options[index] or c.Default or 'None')end
+                local menu=new('Frame',{Visible=false,Size=UDim2.new(1,-8,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundColor3=UIColors.bg},holder)
+                corner(menu,6);stack(menu,3)
+                local function update()b.Text=tostring(c.Text or 'Select')..'  ▾  '..tostring(current or 'None')end
                 update()
-                b.MouseButton1Click:Connect(function()if #options==0 then return end;index=index%#options+1;update();if c.Callback then c.Callback(options[index])end end)
-                return {Set=function(_,v)index=table.find(options,v) or index;update()end}
+                for _,opt in ipairs(options) do
+                    local option=opt
+                    local item=textButton(tostring(option),menu,27)
+                    item.MouseButton1Click:Connect(function()current=option;menu.Visible=false;update();if c.Callback then c.Callback(option)end end)
+                end
+                b.MouseButton1Click:Connect(function()menu.Visible=not menu.Visible end)
+                return {Set=function(_,v)current=v;update()end}
             end
             function section:AddMultiDropdown(c)
-                local opts=c.Options or {};local selected={}
+                local selected={};local opts=c.Options or {}
                 local b=textButton(c.Text or 'Select items',holder)
-                b.MouseButton1Click:Connect(function()
-                    if #opts==0 then return end
-                    local v=opts[1];selected[v]=not selected[v]
-                    local out={};for k,on in pairs(selected)do if on then table.insert(out,k)end end
-                    b.Text=(c.Text or 'Items')..': '..table.concat(out,', ')
-                    if c.Callback then c.Callback(out)end
-                end)
-                return {GetSelected=function()local out={};for k,on in pairs(selected)do if on then table.insert(out,k)end end;return out end}
+                local menu=new('Frame',{Visible=false,Size=UDim2.new(1,-8,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundColor3=UIColors.bg},holder)
+                corner(menu,6);stack(menu,3)
+                local function selectedList()
+                    local out={};for _,opt in ipairs(opts) do if selected[opt] then table.insert(out,opt) end end;return out
+                end
+                local function notify()local out=selectedList();b.Text=tostring(c.Text or 'Items')..'  ▾  '..(#out>0 and table.concat(out,', ') or 'None');if c.Callback then c.Callback(out)end end
+                for _,opt in ipairs(opts) do
+                    local option=opt;local item=textButton('○  '..tostring(option),menu,27)
+                    item.MouseButton1Click:Connect(function()selected[option]=not selected[option];item.Text=(selected[option] and '●  ' or '○  ')..tostring(option);notify()end)
+                end
+                b.MouseButton1Click:Connect(function()menu.Visible=not menu.Visible end)
+                return {GetSelected=function()return selectedList()end}
             end
             function section:AddInput(c)
                 label(c.Text or 'Input',holder,20)
@@ -128,6 +165,12 @@ function Miz0UI:CreateWindow(opts)
                 corner(input,5)
                 input.FocusLost:Connect(function()if c.Callback then c.Callback(input.Text)end end)
                 return input
+            end
+            function section:AddBanner(c)
+                local banner=label(tostring(c.Text or ''),holder,42)
+                banner.TextWrapped=true;banner.AutomaticSize=Enum.AutomaticSize.Y
+                banner.TextColor3=UIColors.red
+                return banner
             end
             function section:AddColorPicker(c)
                 local b=textButton(c.Text or 'Accent',holder)
@@ -170,6 +213,7 @@ function Miz0UI:CreateWindow(opts)
     UIS.InputBegan:Connect(function(input,processed)if not processed and input.KeyCode==(opts.ToggleKeybind or Enum.KeyCode.RightControl)then root.Visible=not root.Visible end end)
     return window
 end
+Miz0UI.Version = 'Halloween 1.0'
 local lib=Miz0UI
 
 local genv = typeof(getgenv) == "function" and getgenv() or _G
@@ -2731,13 +2775,13 @@ local mobileScale = getMobileScale()
 local uDim2 = IS_TOUCH_ONLY and UDim2.fromOffset(math.floor(820 * mobileScale), math.floor(540 * mobileScale)) or UDim2.fromOffset(820, 540)
 local vector2 = IS_TOUCH_ONLY and Vector2.new(160, 120) or Vector2.new(760, 420)
 local vector22 = IS_TOUCH_ONLY and Vector2.new(math.max(40, math.floor(118 * mobileScale)), math.max(48, math.floor(148 * mobileScale))) or Vector2.new(118, 148)
-local MIZ0_RED = Color3.fromRGB(225, 32, 48)
+local MIZ0_RED = Color3.fromRGB(255, 112, 24)
 local MIZ0_DARK_RED = Color3.fromRGB(130, 12, 26)
 
 local function applyMiz0Theme()
     -- Use the existing UI library. No separate ScreenGui is created.
     pcall(function()
-        lib:SetTheme("AMOLED")
+        lib:SetTheme("Halloween")
         lib:SetTheme({
             AccentSolid = MIZ0_RED,
             AccentGradientFrom = MIZ0_DARK_RED,
@@ -4005,602 +4049,6 @@ do
 end
 
 do
-	local v593 = miz0Window:CreateTab({
-		Name = "Valentine Farm"
-	})
-	local t35 = {
-		PlayerData = {},
-		MaxCoins = 40,
-		CoinBag = 0,
-		TotalCollected = 0,
-		SessionTime = 0,
-		PauseFloatTP = false,
-		IsFarming = false,
-		CoinTypes = { "Any" },
-		CoinFarmType = "Under",
-		FarmSpeed = 22.7,
-		KillAllOnFull = false,
-		ResetOnFullBag = false,
-		FlingMurdererFullBag = false,
-		FlingedRecently = false,
-		LastFlingTime = 0
-	}
-	local Gameplay2 = ReplicatedStorage.Remotes.Gameplay
-	local Extras = ReplicatedStorage.Remotes.Extras
-
-	pcall(function()
-		t35.PlayerData = Gameplay2.GetCurrentPlayerData:InvokeServer()
-
-		local ok, result = pcall(function()
-			return Extras.AmElite:InvokeServer()
-		end)
-		local v599 = ok and result
-
-		t35.MaxCoins = v599 and 50 or 40
-
-		if t35.PlayerData[LocalPlayer.Name] then
-			t35.CoinBag = t35.PlayerData[LocalPlayer.Name].Coins or 0
-			t35.IsFarming = not t35.PlayerData[LocalPlayer.Name].Dead
-		end
-	end)
-	Gameplay2.PlayerDataChanged.OnClientEvent:Connect(function(p113)
-		t35.PlayerData = p113
-	end)
-	Gameplay2.CoinCollected.OnClientEvent:Connect(function(p114, p115)
-		t35.CoinBag = p115
-		t35.TotalCollected += 1
-	end)
-	Gameplay2.LoadingMap.OnClientEvent:Connect(function()
-		t35.CoinBag = 0
-	end)
-	Gameplay2.RoundStart.OnClientEvent:Connect(function()
-		local ok, result = pcall(function()
-			return Extras.AmElite:InvokeServer()
-		end)
-
-		t35.MaxCoins = ok and result and 50 or 40
-		t35.IsFarming = true
-	end)
-	Gameplay2.RoundEndFade.OnClientEvent:Connect(function()
-		t35.IsFarming = false
-	end)
-
-	local function v602(p116)
-		return p116.Character or p116.CharacterAdded:Wait()
-	end
-	local function v603(p117)
-		local v604 = v602(p117)
-
-		return v604 and v604:FindFirstChild("HumanoidRootPart")
-	end
-	local function v605(p118)
-		local v606 = v602(p118)
-
-		return v606 and v606:FindFirstChildOfClass("Humanoid")
-	end
-	local function v607()
-		local Character = LocalPlayer.Character
-		local Humanoid = Character and Character:FindFirstChildWhichIsA("Humanoid")
-
-		return Character and Humanoid and Humanoid.Health > 0
-	end
-	local function v610(p119)
-		return t35.PlayerData[p119.Name] and not t35.PlayerData[p119.Name].Dead
-	end
-	local function v611()
-		for _, child in pairs(Workspace:GetChildren()) do
-			if child:GetAttribute("MapID") then
-				return child
-			end
-		end
-	end
-	local function v614()
-		return t35.CoinBag >= t35.MaxCoins
-	end
-	local function v615(p120)
-		for k, v in pairs(t35.PlayerData) do
-			if k == p120.Name then
-				return v.Role
-			end
-		end
-
-		return "None"
-	end
-	local function v618()
-		return v615(LocalPlayer) == "Murderer"
-	end
-	local function v619()
-		local n15 = 0
-		local v621 = false
-
-		for k, v in pairs(t35.PlayerData) do
-			if k ~= LocalPlayer.Name and v and not v.Dead then
-				n15 += 1
-
-				if v.Role == "Murderer" then
-					v621 = true
-				end
-			end
-		end
-
-		return v610(LocalPlayer) and n15 == 1 and v621
-	end
-	local function v624()
-		t35.PauseFloatTP = true
-		task.wait(0.5)
-
-		if v607() then
-			LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Dead)
-		end
-
-		repeat
-			task.wait(0.2)
-		until v607()
-
-		t35.PauseFloatTP = false
-	end
-	local function v625()
-		local v626 = v605(LocalPlayer)
-
-		if LocalPlayer.Backpack:FindFirstChild("Knife") and v626 then
-			v626:EquipTool(LocalPlayer.Backpack:FindFirstChild("Knife"))
-		end
-
-		local v627 = v602(LocalPlayer)
-		local Knife = v627 and v627:FindFirstChild("Knife")
-
-		if not Knife then
-			return
-		end
-
-		for _, player in pairs(Players:GetPlayers()) do
-			task.spawn(function()
-				local v631 = v603(LocalPlayer)
-
-				if player.Character and v631 and player ~= LocalPlayer and v610(player) then
-					local HumanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-
-					if HumanoidRootPart then
-						pcall(function()
-							firetouchinterest(Knife.Handle, HumanoidRootPart, 1)
-							Knife:FindFirstChild("Events"):FindFirstChild("KnifeStabbed"):FireServer()
-							Knife:Activate()
-							firetouchinterest(Knife.Handle, HumanoidRootPart, 0)
-						end)
-						task.wait()
-					end
-				end
-			end)
-		end
-	end
-	local function v633()
-		local v634 = v603(LocalPlayer)
-
-		if not v634 then
-			return
-		end
-
-		local v635 = v611()
-		local CoinContainer = v635 and v635:FindFirstChild("CoinContainer")
-
-		if not CoinContainer then
-			return
-		end
-
-		local t36 = {}
-
-		for _, child in pairs(CoinContainer:GetChildren()) do
-			if child:GetAttribute("CoinID") and not child:GetAttribute("Collected") and (table.find(t35.CoinTypes, child:GetAttribute("CoinID")) or table.find(t35.CoinTypes, "Any")) then
-				local CoinVisual = child:FindFirstChild("CoinVisual")
-				local MainCoin = CoinVisual and CoinVisual:FindFirstChild("MainCoin")
-
-				if MainCoin and MainCoin.Transparency == 0 then
-					table.insert(t36, {
-						coin = child,
-						dist = (v634.Position - child.Position).Magnitude
-					})
-				end
-			end
-		end
-
-		table.sort(t36, function(p121, p122)
-			return p121.dist < p122.dist
-		end)
-
-		return t36[1] and t36[1].coin
-	end
-
-	local Part2
-	local connection3
-	local connection4
-	local Position
-	local connection5
-
-	local function v647()
-		t35.FlingedRecently = true
-		t35.LastFlingTime = tick()
-		task.delay(30, function()
-			if tick() - t35.LastFlingTime >= 30 then
-				t35.FlingedRecently = false
-			end
-		end)
-	end
-	local function v648(p123)
-		genv.ValAutoFarmCoins = p123
-
-		if p123 then
-			Part2 = Instance.new("Part")
-			Part2.Name = "ValFarmFloat"
-			Part2.Size = Vector3.new(5, 0.1, 5)
-			Part2.CanCollide = true
-			Part2.Anchored = true
-			Part2.Parent = Workspace
-			Part2.Transparency = 1
-			Position = v603(LocalPlayer) and v603(LocalPlayer).Position or Vector3.zero
-			connection3 = RunService.RenderStepped:Connect(function()
-				if v603(LocalPlayer) then
-					local pairs_ = pairs
-					local v650 = v602(LocalPlayer)
-
-					for _, descendant in pairs_(v650:GetDescendants()) do
-						if descendant:IsA("BasePart") and descendant.CanCollide then
-							descendant.CanCollide = false
-						end
-					end
-				end
-			end)
-			connection5 = RunService.RenderStepped:Connect(function(dt)
-				t35.SessionTime += dt
-			end)
-			connection4 = RunService.Heartbeat:Connect(function()
-				local v653 = v603(LocalPlayer)
-
-				if v653 and Part2 and v607() and not t35.PauseFloatTP then
-					local cFrame = Part2.CFrame * CFrame.new(0, 3, 0)
-
-					if v610(LocalPlayer) and not v614() and t35.IsFarming then
-						cFrame *= CFrame.Angles(math.rad(90), 0, 0)
-					end
-
-					v653.CFrame = cFrame
-					v653.Velocity = Vector3.zero
-					v653.RotVelocity = Vector3.zero
-				end
-			end)
-		else
-			if connection3 then
-				connection3:Disconnect()
-				connection3 = nil
-			end
-
-			if connection4 then
-				connection4:Disconnect()
-				connection4 = nil
-			end
-
-			if connection5 then
-				connection5:Disconnect()
-				connection5 = nil
-			end
-
-			if Part2 then
-				Part2:Destroy()
-				Part2 = nil
-			end
-
-			local v655 = v603(LocalPlayer)
-
-			if v655 and Position then
-				v655.Anchored = true
-				v655.CFrame = CFrame.new(Position)
-				v655.Velocity = Vector3.zero
-				task.wait(0.7)
-				v655.Anchored = false
-			end
-		end
-
-		task.spawn(function()
-			while genv.ValAutoFarmCoins do
-				local v656 = v603(LocalPlayer)
-
-				if v656 then
-					if not v607() then
-						task.wait(1)
-						task.wait()
-
-						continue
-					end
-
-					if v611() then
-						if not v610(LocalPlayer) or v614() or not t35.IsFarming then
-							if not t35.IsFarming then
-								if Part2 and Part2.Parent then
-									Part2.CFrame = CFrame.new(100, 0, 100)
-								end
-
-								task.wait(0.1)
-								task.wait()
-
-								continue
-							end
-
-							if t35.FlingMurdererFullBag then
-								if v618() or not v607() or not v614() then
-									if v618() and t35.KillAllOnFull and v614() and v610(LocalPlayer) and v607() then
-										v625()
-									end
-
-									if t35.ResetOnFullBag and v614() and v607() and not v618() and not t35.FlingedRecently and v610(LocalPlayer) then
-										v624()
-									end
-
-									if Part2 and Part2.Parent then
-										Part2.CFrame = CFrame.new(100, 0, 100)
-									end
-
-									task.wait(0.1)
-									task.wait()
-
-									continue
-								end
-
-								if v619() then
-									v624()
-								else
-									for k, v in pairs(t35.PlayerData) do
-										if k ~= LocalPlayer.Name and v.Role == "Murderer" then
-											if not v.Dead then
-												t35.PauseFloatTP = true
-												v647()
-												flingTargets({ k })
-												t35.PauseFloatTP = false
-												task.wait(0.5)
-
-												break
-											end
-										end
-									end
-								end
-							elseif v618() and t35.KillAllOnFull and v614() and v610(LocalPlayer) and v607() then
-								v625()
-							end
-
-							if t35.ResetOnFullBag and v614() and v607() and not v618() and not t35.FlingedRecently and v610(LocalPlayer) then
-								v624()
-							end
-
-							if Part2 and Part2.Parent then
-								Part2.CFrame = CFrame.new(100, 0, 100)
-							end
-
-							task.wait(0.1)
-							task.wait()
-
-							continue
-						end
-
-						local v659 = v633()
-
-						if v659 then
-							local v660 = t35.CoinFarmType == "Under" and -6 or -2
-							local cFrame = CFrame.new(v659.Position) * CFrame.new(0, v660 - 1, 0)
-							local Magnitude = (v656.Position - cFrame.Position).Magnitude
-
-							if Magnitude >= 200 then
-								Part2.CFrame = cFrame
-							else
-								local tween = TweenService:Create(Part2, TweenInfo.new(Magnitude / t35.FarmSpeed, Enum.EasingStyle.Linear), {
-									CFrame = cFrame
-								})
-
-								tween:Play()
-
-								if not v614() then
-									tween.Completed:Wait()
-									tween:Cancel()
-								end
-							end
-
-							task.spawn(function()
-								while v659 and v656 and not v659:GetAttribute("Collected") do
-									for i = 0, 200 do
-										local function v665()
-											pcall(function()
-												firetouchinterest(v656, v659, 1)
-												firetouchinterest(v656, v659, 0)
-											end)
-										end
-
-										task.spawn(v665)
-									end
-
-									task.wait()
-								end
-							end)
-							v659:Destroy()
-						end
-					elseif Part2 then
-						Part2.CFrame = CFrame.new(100, 0, 100)
-					end
-				else
-					task.wait(1)
-				end
-
-				task.wait()
-			end
-		end)
-	end
-	local function v666(p124)
-		if p124 then
-			return RunService.Heartbeat:Connect(function()
-				for _, player in ipairs(Players:GetPlayers()) do
-					if player ~= LocalPlayer and player.Character then
-						for _, descendant in ipairs(player.Character:GetDescendants()) do
-							if descendant:IsA("BasePart") and not descendant.Anchored and descendant.Velocity.Magnitude > 100 then
-								descendant.Velocity = Vector3.zero
-								descendant.RotVelocity = Vector3.zero
-								descendant.Anchored = true
-								task.delay(0.5, function()
-									if descendant and descendant.Anchored then
-										descendant.Anchored = false
-									end
-								end)
-							end
-						end
-					end
-				end
-			end)
-		end
-	end
-
-	local v671 = v593:CreateSection({
-		Name = "Session Statistics",
-		Side = "Left"
-	}):AddParagraph({
-		Title = "Session Progress",
-		Content = "Time: 00:00:00\nCoins: 0 | Per Hour: 0"
-	})
-
-	local function v672(p125)
-		return string.format("%02d:%02d:%02d", math.floor(p125 / 3600), math.floor(p125 / 60) % 60, p125 % 60)
-	end
-	local function v673(p126)
-		return tostring(p126):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
-	end
-
-	local n16 = 0
-
-	RunService.Heartbeat:Connect(function()
-		if tick() - n16 > 0.5 then
-			n16 = tick()
-			v671:SetContent(string.format("Time: %s\nCoins: %s | Per Hour: %s", v672(t35.SessionTime), v673(t35.TotalCollected), t35.SessionTime > 0 and v673(math.round(t35.TotalCollected / t35.SessionTime * 3600)) or "0"))
-		end
-	end)
-	v593:CreateSection({
-		Name = "Farming",
-		Side = "Left"
-	}):AddToggle({
-		Text = "Enable Coin Auto Farm",
-		Default = false,
-		Flag = "ValFarm",
-		Callback = function(p127)
-			v648(p127)
-		end
-	})
-
-	local v675 = v593:CreateSection({
-		Name = "Farm Settings",
-		Side = "Right"
-	})
-
-	v675:AddMultiDropdown({
-		Text = "Coin Types",
-		Options = {
-			"Any",
-			"Candy",
-			"BeachBall",
-			"Coin",
-			"SnowToken",
-			"Egg"
-		},
-		Default = { "Any" },
-		Max = 6,
-		Flag = "ValCoinTypes",
-		Callback = function(p128)
-			t35.CoinTypes = #p128 > 0 and p128 or { "Any" }
-		end
-	})
-	v675:AddDropdown({
-		Text = "Teleport Mode",
-		Options = {
-			"Under",
-			"Normal"
-		},
-		Default = "Under",
-		Flag = "ValTPMode",
-		Callback = function(p129)
-			t35.CoinFarmType = p129
-		end
-	})
-	v675:AddSlider({
-		Text = "Farm Speed",
-		Min = 19,
-		Max = 26,
-		Default = 22.7,
-		Increment = 0.1,
-		Suffix = "studs/s",
-		Flag = "ValSpeed",
-		Tooltip = "Above 22 might kick",
-		Callback = function(p130)
-			t35.FarmSpeed = p130
-		end
-	})
-
-	local v676 = v593:CreateSection({
-		Name = "On Full Bag",
-		Side = "Right"
-	})
-
-	v676:AddToggle({
-		Text = "Kill All (Knife required)",
-		Default = false,
-		Flag = "ValKillAll",
-		Callback = function(p131)
-			t35.KillAllOnFull = p131
-		end
-	})
-	v676:AddToggle({
-		Text = "Reset On Full Bag",
-		Default = false,
-		Flag = "ValReset",
-		Callback = function(p132)
-			t35.ResetOnFullBag = p132
-		end
-	})
-	v676:AddToggle({
-		Text = "Fling Murderer On Full Bag",
-		Default = false,
-		Flag = "ValFlingM",
-		Callback = function(p133)
-			t35.FlingMurdererFullBag = p133
-		end
-	})
-
-	local v677 = v593:CreateSection({
-		Name = "Utilities",
-		Side = "Right"
-	})
-	local u678
-
-	v677:AddToggle({
-		Text = "Anti Fling",
-		Default = false,
-		Flag = "ValAntiFling",
-		Callback = function(p134)
-			if u678 then
-				u678:Disconnect()
-				u678 = nil
-			end
-
-			if p134 then
-				u678 = v666(true)
-			end
-		end
-	})
-	v677:AddToggle({
-		Text = "Disable Rendering",
-		Default = false,
-		Flag = "ValNoRender",
-		Tooltip = "Lowers CPU usage (Black Screen)",
-		Callback = function(p135)
-			pcall(function()
-				RunService:Set3dRenderingEnabled(not p135)
-			end)
-		end
-	})
-end
-
-do
 	local v679 = miz0Window:CreateTab({
 		Name = "Settings"
 	})
@@ -4612,13 +4060,9 @@ do
 	v680:AddDropdown({
 		Text = "Preset",
 		Options = {
-			"Dark",
-			"Light",
-			"Midnight",
-			"Catppuccin",
-			"AMOLED"
+			"Halloween"
 		},
-		Default = "AMOLED",
+		Default = "Halloween",
 		Searchable = false,
 		Flag = "ThemePreset",
 		Callback = function(p136)
@@ -4675,11 +4119,11 @@ do
 
 	v681:AddParagraph({
 		Title = "Miz0 | MM2",
-		Content = "Miz0 integrated MM2 build • UI framework v" .. (lib.Version or "?") .. ". Drag the header to move the window, resize from the bottom-right corner. Toggle: RightControl."
+		Content = "Miz0 Halloween MM2 build • UI framework v" .. (lib.Version or "?") .. ". Drag the header to move the window, resize from the bottom-right corner. Toggle: RightControl."
 	})
 	v681:AddParagraph({
 		Title = "Credits",
-		Content = "Miz0 rework. UI framework and valuation API: project-reverse.org"
+		Content = "Miz0 Halloween rework. Built-in UI library; external item valuation service is separate."
 	})
 	v681:AddBanner({
 		Type = "Info",
@@ -4698,7 +4142,7 @@ end
 sessionGlobals.Miz0MM2Window = miz0Window
 task.delay(0.4, function()
 	lib:Notify({
-		Title = "Miz0 | MM2 Loaded",
+		Title = "🎃 Miz0 | Halloween Loaded",
 		Content = "Version " .. (lib.Version or "?") .. ". Toggle UI: RightControl.",
 		Type = "Success",
 		Duration = 5
