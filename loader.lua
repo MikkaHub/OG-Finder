@@ -9,7 +9,11 @@
 
 -- Miz0 native GUI adapter: no Project Reverse GUI dependency.
 local Miz0UI = {}
-local UIColors = {bg=Color3.fromRGB(12,10,17), panel=Color3.fromRGB(26,20,33), red=Color3.fromRGB(255,112,24), text=Color3.fromRGB(245,238,226), muted=Color3.fromRGB(171,159,177)}
+-- Upload the supplied photo as a Roblox decal/image and paste its numeric asset ID below.
+-- Roblox ImageLabel cannot load a local JPEG path or arbitrary web image directly.
+local MIZ0_PHOTO_ASSET_ID = ""  -- Upload your photo to Roblox and enter its asset ID here
+
+local UIColors = {bg=Color3.fromRGB(13,12,17), panel=Color3.fromRGB(25,23,31), red=Color3.fromRGB(240,112,37), text=Color3.fromRGB(248,244,239), muted=Color3.fromRGB(166,157,171), control=Color3.fromRGB(38,34,44), border=Color3.fromRGB(62,52,70)}
 local function new(class, props, parent)
     local obj=Instance.new(class)
     for k,v in pairs(props or {}) do obj[k]=v end
@@ -18,8 +22,17 @@ local function new(class, props, parent)
 end
 local function corner(parent, radius) new('UICorner',{CornerRadius=UDim.new(0,radius or 7)},parent) end
 local function textButton(label,parent,height)
-    local b=new('TextButton',{Text=tostring(label or ''),TextColor3=UIColors.text,BackgroundColor3=UIColors.panel,Font=Enum.Font.GothamMedium,TextSize=13,Size=UDim2.new(1,-8,0,height or 32),AutoButtonColor=true},parent)
-    corner(b,6)
+    local b=new('TextButton',{
+        Text='  '..tostring(label or ''),TextColor3=UIColors.text,
+        BackgroundColor3=UIColors.control,BackgroundTransparency=0.12,Font=Enum.Font.GothamMedium,TextSize=12,
+        Size=UDim2.new(1,-8,0,height or 38),AutoButtonColor=false,
+        TextXAlignment=Enum.TextXAlignment.Left,BorderSizePixel=0
+    },parent)
+    corner(b,8)
+    new('UIStroke',{Color=UIColors.border,Thickness=1,Transparency=0.15},b)
+    new('UIPadding',{PaddingLeft=UDim.new(0,9),PaddingRight=UDim.new(0,9)},b)
+    b.MouseEnter:Connect(function() game:GetService('TweenService'):Create(b,TweenInfo.new(.12),{BackgroundColor3=Color3.fromRGB(57,43,58)}):Play() end)
+    b.MouseLeave:Connect(function() game:GetService('TweenService'):Create(b,TweenInfo.new(.12),{BackgroundColor3=UIColors.control}):Play() end)
     return b
 end
 local function stack(parent,pad)
@@ -40,12 +53,33 @@ function Miz0UI:SetDensity(_) end
 function Miz0UI:CreateWindow(opts)
     local player=game:GetService('Players').LocalPlayer
     local gui=new('ScreenGui',{Name='Miz0MM2',ResetOnSpawn=false,IgnoreGuiInset=true,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},player:WaitForChild('PlayerGui'))
-    local width=math.clamp((opts.Size and opts.Size.X.Offset or 740),480,1100)
-    local height=math.clamp((opts.Size and opts.Size.Y.Offset or 520),350,760)
+    local width=math.clamp((opts.Size and opts.Size.X.Offset or 740),620,1100)
+    local height=math.clamp((opts.Size and opts.Size.Y.Offset or 520),400,760)
     local root=new('Frame',{Name='Window',Size=UDim2.fromOffset(width,height),Position=UDim2.new(.5,-width/2,.5,-height/2),BackgroundColor3=UIColors.bg,BorderSizePixel=0,Active=true},gui)
-    corner(root,10)
+    corner(root,13)
+    root.ClipsDescendants=true
+    -- Full-window portrait backdrop, rather than a small picture in the sidebar.
+    -- ImageLabel needs a Roblox image asset ID; executor-local JPEG paths are not supported.
+    local wallpaper=new('ImageLabel',{
+        Name='Miz0FullWindowPhoto',Size=UDim2.fromScale(1,1),Position=UDim2.fromScale(0,0),
+        BackgroundTransparency=1,BorderSizePixel=0,ScaleType=Enum.ScaleType.Crop,
+        Image=(MIZ0_PHOTO_ASSET_ID ~= '' and ('rbxassetid://'..MIZ0_PHOTO_ASSET_ID) or ''),
+        ImageTransparency=0.17,ZIndex=0
+    },root)
+    corner(wallpaper,13)
+    local tint=new('Frame',{Name='ReadabilityOverlay',Size=UDim2.fromScale(1,1),BackgroundColor3=Color3.fromRGB(9,8,15),BackgroundTransparency=.28,BorderSizePixel=0,ZIndex=1},root)
+    new('UIGradient',{Rotation=0,Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,.18),NumberSequenceKeypoint.new(.45,.34),NumberSequenceKeypoint.new(1,.06)})},tint)
     new('UIStroke',{Color=UIColors.red,Thickness=1.5},root)
-    local top=new('Frame',{Size=UDim2.new(1,0,0,48),BackgroundColor3=UIColors.panel,BorderSizePixel=0},root)
+    -- Scale entire integrated window on Delta/mobile screens without clipping controls.
+    local uiScale=new('UIScale',{Scale=1},root)
+    local camera=workspace.CurrentCamera
+    local function resize()
+        local view=camera and camera.ViewportSize or Vector2.new(900,600)
+        uiScale.Scale=math.min(1,(view.X-18)/width,(view.Y-24)/height)
+    end
+    resize()
+    if camera then camera:GetPropertyChangedSignal('ViewportSize'):Connect(resize) end
+    local top=new('Frame',{Size=UDim2.new(1,0,0,48),BackgroundColor3=UIColors.panel,BackgroundTransparency=.16,BorderSizePixel=0,ZIndex=2},root)
     corner(top,10)
     new('Frame',{Position=UDim2.new(0,0,1,-2),Size=UDim2.new(1,0,0,2),BorderSizePixel=0,BackgroundColor3=UIColors.red},top)
     local title=label(opts.Title or 'Miz0',top,35)
@@ -54,9 +88,12 @@ function Miz0UI:CreateWindow(opts)
     title.Font=Enum.Font.GothamBold
     title.TextSize=17
     local close=new('TextButton',{Text='×',TextColor3=UIColors.text,Font=Enum.Font.GothamBold,TextSize=22,BackgroundTransparency=1,Size=UDim2.fromOffset(40,40),Position=UDim2.new(1,-41,0,0)},top)
-    local sidebar=new('ScrollingFrame',{Position=UDim2.fromOffset(9,58),Size=UDim2.new(0,157,1,-67),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=2,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new()},root)
-    stack(sidebar,6)
-    local content=new('Frame',{Position=UDim2.fromOffset(177,58),Size=UDim2.new(1,-186,1,-67),BackgroundTransparency=1},root)
+    -- Compact tab navigation keeps the artwork visible behind all the controls.
+    local sidebar=new('ScrollingFrame',{Position=UDim2.fromOffset(12,62),Size=UDim2.new(0,160,1,-77),BackgroundColor3=UIColors.panel,BackgroundTransparency=.22,BorderSizePixel=0,ScrollBarThickness=2,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new(),ZIndex=3},root)
+    corner(sidebar,10)
+    new('UIPadding',{PaddingTop=UDim.new(0,9),PaddingLeft=UDim.new(0,5),PaddingRight=UDim.new(0,5),PaddingBottom=UDim.new(0,8)},sidebar)
+    stack(sidebar,8)
+    local content=new('Frame',{Position=UDim2.fromOffset(184,62),Size=UDim2.new(1,-197,1,-77),BackgroundTransparency=1,ZIndex=3},root)
     local window={_gui=gui,_tabs={},_content=content}
     function window:Destroy() if self._gui then self._gui:Destroy() end end
     local accent=new('UIGradient',{Color=ColorSequence.new(Color3.fromRGB(255,140,34),Color3.fromRGB(120,48,169)),Rotation=0},top)
@@ -66,28 +103,29 @@ function Miz0UI:CreateWindow(opts)
     title.Size=UDim2.new(1,-100,0,26);title.TextSize=16
     new('UIStroke',{Color=Color3.fromRGB(75,43,86),Thickness=1},content)
     function window:CreateTab(config)
-        local button=textButton('  '..tostring(config.Name),sidebar,38);button.TextXAlignment=Enum.TextXAlignment.Left
+        local button=textButton(tostring(config.Name),sidebar,39);button.TextXAlignment=Enum.TextXAlignment.Left
         local page=new('ScrollingFrame',{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=4,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new(),Visible=false},content)
         stack(page,10)
         local tab={_page=page,_name=config.Name}
         function tab:CreateSection(cfg)
-            local holder=new('Frame',{BackgroundColor3=UIColors.panel,BorderSizePixel=0,Size=UDim2.new(1,-10,0,40),AutomaticSize=Enum.AutomaticSize.Y},page)
-            corner(holder,8)
+            local holder=new('Frame',{BackgroundColor3=UIColors.panel,BackgroundTransparency=.12,BorderSizePixel=0,Size=UDim2.new(1,-14,0,40),AutomaticSize=Enum.AutomaticSize.Y},page)
+            corner(holder,10)
+            new('UIStroke',{Color=UIColors.border,Thickness=1,Transparency=.25},holder)
             new('UIPadding',{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,9),PaddingBottom=UDim.new(0,10)},holder)
-            stack(holder,6)
+            stack(holder,9)
             local heading=label('✦  '..tostring(cfg.Name or 'Section'),holder,24)
             heading.Font=Enum.Font.GothamBold
             heading.TextColor3=UIColors.red
             local section={_holder=holder}
             function section:AddButton(c)
-                local b=textButton(c.Text,holder)
+                local b=textButton('›  '..tostring(c.Text or 'Action'),holder,38)
                 b.MouseButton1Click:Connect(function() if c.Callback then task.spawn(c.Callback) end end)
                 return b
             end
             function section:AddToggle(c)
                 local value=c.Default==true
                 local b=textButton('',holder)
-                local function update() b.Text=(value and '●  ' or '○  ')..tostring(c.Text or 'Toggle'); b.TextColor3=value and UIColors.red or UIColors.text end
+                local function update() b.Text=(value and '  ◉  ' or '  ○  ')..tostring(c.Text or 'Toggle'); b.TextColor3=value and UIColors.red or UIColors.text end
                 update()
                 b.MouseButton1Click:Connect(function() value=not value;update();if c.Callback then task.spawn(c.Callback,value) end end)
                 return {Set=function(_,v) value=not not v;update();if c.Callback then c.Callback(value) end end}
@@ -213,7 +251,7 @@ function Miz0UI:CreateWindow(opts)
     UIS.InputBegan:Connect(function(input,processed)if not processed and input.KeyCode==(opts.ToggleKeybind or Enum.KeyCode.RightControl)then root.Visible=not root.Visible end end)
     return window
 end
-Miz0UI.Version = 'Halloween 1.0'
+Miz0UI.Version = 'Halloween 3.0 Full Photo Glass'
 local lib=Miz0UI
 
 local genv = typeof(getgenv) == "function" and getgenv() or _G
