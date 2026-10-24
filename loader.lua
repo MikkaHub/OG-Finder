@@ -38,6 +38,78 @@ if not windOk or type(WindUI) ~= "table" then
     warn("[Miz0] WindUI failed to load:", WindUI)
     return
 end
+-- Use FIT rather than CROP so the complete background image stays visible.
+-- Any spare space is letterboxed in the Halloween dark color.
+local function polishMiz0Window(raw, photo)
+    task.spawn(function()
+        local player = game:GetService("Players").LocalPlayer
+        local guiRoot = player and player:FindFirstChildOfClass("PlayerGui")
+        if not guiRoot then return end
+        local seen = {}
+        -- Small bounded passes accommodate WindUI elements created after the window.
+        for pass = 1, 10 do
+            task.wait(pass == 1 and 0.35 or 1.2)
+            local count = 0
+            for _, obj in ipairs(guiRoot:GetDescendants()) do
+                count += 1
+                if count > 2600 then break end
+                if obj:IsA("ImageLabel") and photo ~= "" then
+                    local current = obj.Image
+                    if current == photo then
+                        obj.ScaleType = Enum.ScaleType.Fit
+                        obj.ImageTransparency = 0.10
+                        obj.BackgroundColor3 = Color3.fromRGB(14, 10, 21)
+                    end
+                end
+                if obj:IsA("TextButton") and not seen[obj] then
+                    local title = (obj.Text or ""):lower()
+                    if title == "miz0 script" or title == "miz0" then
+                        seen[obj] = true
+                        pcall(function()
+                            obj.Text = "Miz0 Script"
+                            obj.TextXAlignment = Enum.TextXAlignment.Right
+                            obj.TextSize = 13
+                            obj.Font = Enum.Font.GothamBold
+                            obj.BackgroundColor3 = Color3.fromRGB(26, 17, 34)
+                            local round = Instance.new("UICorner")
+                            round.CornerRadius = UDim.new(0, 12)
+                            round.Parent = obj
+                            local border = Instance.new("UIStroke")
+                            border.Color = Color3.fromRGB(255, 125, 36)
+                            border.Thickness = 1.2
+                            border.Transparency = 0.15
+                            border.Parent = obj
+                            if photo ~= "" then
+                                local thumb = Instance.new("ImageLabel")
+                                thumb.Name = "Miz0OpenThumbnail"
+                                thumb.BackgroundTransparency = 1
+                                thumb.Image = photo
+                                thumb.ScaleType = Enum.ScaleType.Fit
+                                thumb.Size = UDim2.fromOffset(30, 30)
+                                thumb.Position = UDim2.new(0, 5, 0.5, -15)
+                                thumb.Active = false
+                                thumb.Parent = obj
+                            end
+                        end)
+                    elseif title ~= "" and obj.AbsoluteSize.X > 95 and obj.AbsoluteSize.Y > 23 then
+                        seen[obj] = true
+                        pcall(function()
+                            if not obj:FindFirstChild("Miz0ButtonStroke") then
+                                local stroke = Instance.new("UIStroke")
+                                stroke.Name = "Miz0ButtonStroke"
+                                stroke.Color = Color3.fromRGB(121, 72, 130)
+                                stroke.Transparency = 0.65
+                                stroke.Thickness = 1
+                                stroke.Parent = obj
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
 local Miz0UI = {}
 local activeWindow
 local function protect(fn, ...)
@@ -70,11 +142,12 @@ function Miz0UI:CreateWindow(o)
         Title="🎃 Miz0 | MM2", Author="Halloween Edition", Icon="ghost", Folder="Miz0",
         Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(320,270),
         Theme="Dark", Transparent=true, Resizable=true,
-        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.50,
+        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.12,
         ToggleKey=Enum.KeyCode.RightControl,
-        OpenButton={Enabled=true, OnlyMobile=false, Title="Miz0", Draggable=true, Scale=touch and 0.65 or 0.5},
+        OpenButton={Enabled=true, OnlyMobile=false, Title="Miz0 Script", Draggable=true, Scale=touch and 0.85 or 0.7},
     })
     activeWindow=raw
+    polishMiz0Window(raw, PHOTO)
     local wrapper={_raw=raw}
     function wrapper:Destroy()
         protect(o.OnClose)
