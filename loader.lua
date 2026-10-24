@@ -1,14 +1,3 @@
--- Miz0 Galaxy V15: Project Reverse API, cache and USD-source integration removed.
--- WindUI uses only https://i.ibb.co/N2q7Lr9C/8.jpg as its window background.
--- MIZ0 GALAXY V14: single original image INSIDE WindUI only; no floating gallery.
--- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
--- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
--- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
--- Miz0 | Halloween • WindUI edition
--- Original gameplay logic and existing feature callbacks continue below.
--- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
--- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
--- First original picture only, enlarged in a FIT image frame (no cropping).
 local PHOTO_URLS = {
     "https://i.ibb.co/N2q7Lr9C/8.jpg",
 }
@@ -44,10 +33,7 @@ if not windOk or type(WindUI) ~= "table" then
     warn("[Miz0] WindUI failed to load:", WindUI)
     return
 end
--- Use FIT rather than CROP so the complete background image stays visible.
--- Any spare space is letterboxed in the Halloween dark color.
--- WindUI owns its own controls. Avoid scanning and restyling arbitrary PlayerGui
--- descendants: that broke layouts and caused expensive repeated work on Android.
+
 local function polishMiz0Window() end
 local sessionClosed = false
 local activeConnections = {}
@@ -79,8 +65,8 @@ function Miz0UI:SetTheme(theme)
         local supported = {Dark=true, Light=true}
         pcall(function() WindUI:SetTheme(supported[theme] and theme or "Dark") end)
     elseif type(theme)=="table" then
-        -- This WindUI adapter has no documented per-accent API.
-        -- Do not silently overwrite WindUI internals.
+        
+        
         warn("[Miz0] Custom accent is not supported by this WindUI adapter")
     end
 end
@@ -89,18 +75,18 @@ function Miz0UI:CreateWindow(o)
     local touch = game:GetService("UserInputService").TouchEnabled
     local camera = workspace.CurrentCamera
     local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
-    -- Fit the real screen orientation; never force a landscape-sized window on portrait Android.
+    
     local portrait = viewport.Y > viewport.X
     local margin = touch and 12 or 24
     local w = math.max(240, math.min(viewport.X - margin * 2, touch and (portrait and 345 or 640) or 760))
     local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
-    -- Wait briefly for image; do not freeze game if download is slow.
+    
     local startPhoto = os.clock()
     while not photoReady and os.clock()-startPhoto < 8 do task.wait(0.1) end
     pcall(function()
         WindUI:SetTheme("Dark")
     end)
-    -- Remove leftover GUI from previous executions before rebuilding.
+    
     pcall(function()
         local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
         if pg then
@@ -120,8 +106,8 @@ function Miz0UI:CreateWindow(o)
         OpenButton={Enabled=true, OnlyMobile=false, Title="✦ Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
     })
     activeWindow=raw
-    -- Only one image: the WindUI window background. No independent image ScreenGui.
-    -- Clean up an older floating gallery if this file is re-executed.
+    
+    
     pcall(function()
         local pg=game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
         if pg then
@@ -129,7 +115,7 @@ function Miz0UI:CreateWindow(o)
             if old then old:Destroy() end
         end
     end)
-    -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
+    
     local wrapper={_raw=raw}
     function wrapper:Destroy()
         if sessionClosed then return end
@@ -140,7 +126,7 @@ function Miz0UI:CreateWindow(o)
     end
     function wrapper:CreateTab(cfg)
         local name=tostring(cfg.Name or "Tab")
-        local icons={Gameplay="gamepad-2",ESP="eye",Combat="swords",Movement="footprints",Misc="settings",Inventory="backpack",Settings="settings",Trading="handshake",Teleports="map-pin"}
+        local icons={Gameplay="gamepad-2",ESP="eye",Combat="swords",Movement="footprints",Misc="settings",Inventory="backpack",Settings="settings",Teleports="map-pin"}
         local tab=raw:Tab({Title=name, Icon=icons[name] or "star"})
         local proxy={_tab=tab}
         function proxy:CreateSection(c)
@@ -185,7 +171,7 @@ function Miz0UI:CreateWindow(o)
             return out
         end
         function proxy:AddItemGrid(c)
-            -- Lazy paged list: avoids thousands of UI controls freezing Android.
+            
             local section=self:CreateSection({Name="Inventory selection"})
             local chosen, controls = {}, {}
             local items=c.Items or {}
@@ -199,8 +185,8 @@ function Miz0UI:CreateWindow(o)
                 end)())
             end
             local function drawPage()
-                -- Create a separate section for each requested page; old pages are not
-                -- recreated automatically. This caps initial creation to 24 toggles.
+                
+                
                 local first=(page-1)*pageSize+1
                 local last=math.min(total,page*pageSize)
                 local chunk=self:CreateSection({Name=("Items %d-%d of %d"):format(first,last,total)})
@@ -349,7 +335,6 @@ local function activateGuiButton(p1)
 	end
 end
 
--- Do not block the whole script if MM2 changes its menu structure.
 task.spawn(function()
     for _ = 1, 12 do
         if LocalPlayer.PlayerGui:FindFirstChild("MainGUI") then break end
@@ -1431,7 +1416,7 @@ local function flingTargets(p17)
 			end
 		end
 
-		-- Do not assign NaN to FallenPartsDestroyHeight.
+		
 
 		local BodyVelocity = Instance.new("BodyVelocity")
 
@@ -1736,794 +1721,12 @@ CoinCollected.OnClientEvent:Connect(function(p24, p25, p26)
 	end)
 end)
 
-local u251
-local u252
-local u253
-local s1 = "Supreme"
-local u255 = false
-local n6 = 6
-local u257 = false
-
--- Project Reverse integration removed. USD prices are unavailable without an independent source.
--- Preserve the expected return shape so inventory/trading controls continue to run.
-local function mapUsdValues()
-    return {}
-end
-local function loadSupremeValues()
-	local n7 = 0
-
-	local function v275(p27, p28, p29)
-		n7 += 1
-		task.spawn(function()
-			if not genv[p27] then
-				local ok, result = pcall(game.HttpGet, game, p28)
-
-				if not ok then
-					result = ""
-				end
-
-				if p29 then
-					result = result:split(p29)[1]
-				end
-
-				genv[p27] = result
-			end
-
-			n7 -= 1
-		end)
-	end
-
-	n7 += 1
-	task.spawn(function()
-		if not genv.htmlparser then
-			local ok, htmlparser = pcall(function()
-				return loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/RBXL-HTML-Parser/refs/heads/master/html/init.lua"))()
-			end)
-
-			if ok then
-				genv.htmlparser = htmlparser
-			end
-		end
-
-		n7 -= 1
-	end)
-	v275("SupremeAncients", "https://supremevaluelist.com/mm2/ancients.html")
-	v275("SupremeChromas", "https://supremevaluelist.com/mm2/chromas.html", "<div class=\"tierheading\" id=\"pets\">Pets</div>")
-	v275("SupremeGodlies", "https://supremevaluelist.com/mm2/godlies.html")
-	v275("SupremeUniques", "https://supremevaluelist.com/mm2/uniques.html", "<div class=\"tierheading\" id=\"special\">Special Tier</div>")
-	v275("SupremeVintages", "https://supremevaluelist.com/mm2/vintages.html")
-	v275("SupremeLegendarys", "https://supremevaluelist.com/mm2/legendaries.html", "<div class=\"tierheading\" id=\"tier2\">Tier 2</div>")
-
-	local now2 = tick()
-
-	while n7 > 0 do
-		task.wait()
-
-		if tick() - now2 > 30 then
-			break
-		end
-	end
-
-	if not genv.htmlparser then
-		return {}
-	end
-
-	local v281 = (genv.SupremeAncients or "") .. (genv.SupremeChromas or "") .. (genv.SupremeGodlies or "") .. (genv.SupremeUniques or "") .. (genv.SupremeLegendarys or "") .. (genv.SupremeVintages or "")
-	local ok, result = pcall(function()
-		return genv.htmlparser.parse(v281)
-	end)
-
-	if not ok or not result then
-		return {}
-	end
-
-	local t11 = {}
-	local itemhead = result:select(".itemhead")
-	local itembody = result:select(".itembody")
-
-	for i = 1, math.min(#itemhead, #itembody) do
-		local name = itemhead[i]:content():gsub("%s<img.+$", "")
-
-		if string.find(name, "https://www.youtube.com/jdrbx") then
-			name = "JD"
-		end
-
-		local t12 = {
-			name = name
-		}
-		local itemvalue = itembody[i]:select(".itemvalue")
-
-		if #itemvalue > 0 then
-			t12.value = itemvalue[1]:content():gsub(",", "")
-		end
-
-		if not string.find(t12.name, "Nik's Scythe") then
-			table.insert(t11, t12)
-		end
-	end
-
-	local t13 = {}
-
-	for _, v in pairs(t11) do
-		t13[v.name] = {
-			value = tonumber(v.value)
-		}
-	end
-
-	local Item = require(ReplicatedStorage.Database.Sync.Item)
-	local t14 = {}
-	local t15 = {}
-
-	for k, v in pairs(Item) do
-		if v.Rarity == "Unique" or v.Rarity == "Godly" or v.Rarity == "Ancient" or v.Rarity == "Classic" or v.Rarity == "Legendary" then
-			table.insert(t14, {
-				name = k,
-				rarity = v.Rarity,
-				chroma = v.Chroma or false
-			})
-		end
-	end
-
-	for _, v in pairs(t14) do
-		if not v.name then
-			v.name = "???"
-		end
-
-		t15[v.name] = {
-			rarity = v.rarity,
-			chroma = v.chroma
-		}
-	end
-
-	local t16 = {
-		["Red Luger"] = "RedLuger",
-		["Hallow's Blade"] = "HallowsBlade",
-		["Flowerwood Gun"] = "FlowerwoodGun",
-		["Battleaxe II"] = "BattleAxe2",
-		["Rainbow Gun"] = "Rainbow_G",
-		Waves = "Waves_K",
-		["Orange Seer"] = "OrangeSeer",
-		Icecracker = "Icecracker_K_2020",
-		Soul = "WraithGun",
-		["Arctic (Gun)"] = "Arctic_G_2022",
-		["C. Elderwood Blade"] = "ElderwoodKnifeChroma",
-		["Chroma Heat"] = "HeatChroma",
-		["Santa's Spirit"] = "SantasSpirit",
-		Spirit = "WraithKnife",
-		["Vampire's Edge"] = "VampiresEdge",
-		["Vampire's Axe"] = "VampireAxe",
-		Evergun = "TreeGun2023",
-		["Eternal III"] = "Eternal3",
-		["Cotton Candy"] = "CottonCandy",
-		["Chroma Gingerblade"] = "GingerbladeChroma",
-		["Elderwood Revolver"] = "ElderwoodGun",
-		["Chroma Tides"] = "TidesChroma",
-		["Spectral (Knife)"] = "Spectral_K_2021",
-		["Latte (Gun)"] = "Latte_G_2023",
-		["Ginger (Gun)"] = "Ginger_G_2018",
-		["Elderwood Blade"] = "ElderwoodKnife",
-		["Chroma Seer"] = "SeerChroma",
-		["Red Seer"] = "RedSeer",
-		Ocean = "Ocean_G",
-		["Chroma Evergreen"] = "TreeKnife2023Chroma",
-		["Chroma Evergun"] = "TreeGun2023Chroma",
-		["Chroma Bauble"] = "BaubleChroma",
-		["Green Luger"] = "GreenLuger",
-		Gingermint = "Gingermint_G",
-		Phantom = "Phantom2022",
-		["Chroma Boneblade"] = "BonebladeChroma",
-		["Blue Seer"] = "BlueSeer",
-		["Winter's Edge"] = "WintersEdge",
-		["Chroma Lightbringer"] = "ChromaLightbringer",
-		["Cavern (Gun)"] = "Cavern_G_2019",
-		["Tree (Knife)"] = "Tree",
-		["Tree (Gun)"] = "TreeGun",
-		Rupture = "Bleed",
-		Evergreen = "TreeKnife2023",
-		["Ghost (Gun)"] = "GhostG2018",
-		["Red Fire"] = "RedFire",
-		["Blue Scratch"] = "ScratchBlue",
-		Broken = "Broken_K_2023",
-		["Chroma Deathshard"] = "DeathshardChroma",
-		["Red Scratch"] = "Scratch",
-		["Blue Elite"] = "EliteBlue",
-		["Vampire (Knife)"] = "Vampire_K_2022",
-		["Traveler (Gun)"] = "Traveler_G_2023",
-		["Eternal II"] = "Eternal2",
-		["C. Vampire's Gun"] = "VampireGunChroma",
-		["Vampire (Gun)"] = "VampireGun",
-		["Ice Dragon"] = "IceDragon",
-		Icedriller = "Icedriller_G_2020",
-		["Green Elite"] = "EliteGreen",
-		["Swirly Gun"] = "SwirlyGun",
-		["Cavern (Knife)"] = "Cavern_K_2019",
-		Turkey = "Turkey2023",
-		["C. Traveler's Gun"] = "TravelerGunChroma",
-		["Santa's Magic"] = "SantasMagic",
-		Sakura = "Sakura_K",
-		["Chroma Saw"] = "SawChroma",
-		["Traveler's Gun"] = "TravelerGun",
-		["Latte (Knife)"] = "Latte_K_2023",
-		Australis = "AuroraKnife",
-		["Chroma Swirly Gun"] = "SwirlyGunChroma",
-		["Chroma Gemstone"] = "GemstoneChroma",
-		Corrupt = "Sorry",
-		["Old Glory"] = "AmericaSword",
-		["Chroma Fang"] = "FangChroma",
-		Pearl = "Pearl_K",
-		["Ginger Luger"] = "GingerLuger",
-		["Eternal IV"] = "Eternal4",
-		["Ghost (Knife)"] = "GhostK2018",
-		["Chroma Darkbringer"] = "ChromaDarkbringer",
-		["Traveler's Axe"] = "TravelerAxe",
-		["Chroma Luger"] = "LugerChroma",
-		["Ice Shard"] = "IceShard",
-		Battleaxe = "BattleAxe",
-		Borealis = "AuroraGun",
-		Flowerwood = "FlowerwoodKnife",
-		Cookiecane = "Gingermint_K",
-		["Hallow's Edge"] = "Hallow",
-		["Aurora (Gun)"] = "Aurora_G_2021",
-		["Frostfade (Knife)"] = "Frostfade_K_2023",
-		Batwing = "Scythe",
-		Blossom = "Blossom_G",
-		["Chroma Shark"] = "SharkChroma",
-		["Chroma Candleflame"] = "CandleflameChroma",
-		["Yellow Seer"] = "YellowSeer",
-		Bat = "ZombieBat",
-		["C. Constellation"] = "ConstellationChroma",
-		["Purple Seer"] = "PurpleSeer",
-		["Chroma Slasher"] = "SlasherChroma",
-		Beach = "Beach_K_2023",
-		["Elderwood Scythe"] = "ElderwoodScythe",
-		Eternalcane = "EternalCane",
-		["Chroma Laser"] = "LaserChroma",
-		Pearlshine = "Pearl_G",
-		["Chroma Cookiecane"] = "Gingermint_KChroma",
-		["Swirly Blade"] = "SwirlyBlade",
-		Spectre = "Spectre2022",
-		["Vampire's Gun"] = "VampireGun",
-		Rainbow = "Rainbow_K",
-		["Chroma Watergun"] = "WatergunChroma",
-		["Swirly Axe"] = "SwirlyAxe",
-		Splitter = "Knife1",
-		Ghost = "GhostKnife",
-		Blood = "BloodKnife",
-		Shadow = "ShadowKnife"
-	}
-	local t17 = {}
-
-	for k, v in pairs(t13) do
-		if t15[k] then
-			t17[k] = v
-		elseif t15[t16[k] or ""] then
-			t17[t16[k]] = v
-		end
-	end
-
-	local t18 = {}
-
-	for k, v in pairs(t17) do
-		t18[k] = v.value
-	end
-
-	return t18
-end
-
-task.spawn(function()
-	u252 = loadSupremeValues() or {}
-	u253 = {} -- Project Reverse USD feed removed
-	u251 = u252
-end)
-
-local function selectValueSource()
-	u251 = u252 or {}
-end
-
 local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI", 30)
 if not MainGUI then
     warn("[Miz0] MainGUI did not appear within 30 seconds")
     genv.miz0MM2Loaded = false
     return
 end
-local v310 = false
-
-if MainGUI:FindFirstChild("Lobby") then
-	if MainGUI.Lobby:FindFirstChild("LeaderBar") then
-		v310 = true
-	end
-end
-
-local function createTextLabel(p30)
-	local TextLabel = Instance.new("TextLabel")
-
-	TextLabel.Position = UDim2.new(0, 0, 0, 0)
-	TextLabel.Size = UDim2.new(1, 0, 0.3, 0)
-	TextLabel.TextScaled = true
-	TextLabel.TextWrapped = true
-	TextLabel.TextSize = 14
-	TextLabel.TextStrokeTransparency = 0.7
-	TextLabel.ZIndex = 10
-	TextLabel.BackgroundTransparency = 1
-	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	TextLabel.Name = "Value"
-	TextLabel.Parent = p30
-
-	return TextLabel
-end
-local function v313(p31)
-	pcall(function()
-		local Trade = ReplicatedStorage:FindFirstChild("Trade")
-		local OfferItem = Trade and Trade:FindFirstChild("OfferItem")
-
-		if OfferItem then
-			OfferItem:FireServer(p31, "Weapons")
-		end
-	end)
-end
-local function v316(p32)
-	pcall(function()
-		local Trade = ReplicatedStorage:FindFirstChild("Trade")
-		local RemoveOffer = Trade and Trade:FindFirstChild("RemoveOffer")
-
-		if RemoveOffer then
-			RemoveOffer:FireServer(p32, "Weapons")
-		end
-	end)
-end
-local function v319(p33)
-	for _, v in pairs(p33) do
-		local n8 = 1
-		local v323 = v[2] or 1
-
-		for i = n8, v323 do
-			v316(v[1])
-		end
-	end
-end
-local function v325(p34)
-	selectValueSource()
-
-	local t19 = {}
-	local ok, result = pcall(function()
-		return ReplicatedStorage.Remotes.Extras.GetFullInventory:InvokeServer(p34).Weapons.Owned
-	end)
-
-	if not ok or not result then
-		return t19
-	end
-
-	for k, v in pairs(result) do
-		if u251[k] and u251[k] > 0 then
-			t19[k] = {
-				value = u251[k],
-				quantity = v
-			}
-		end
-	end
-
-	return t19
-end
-local function chooseTradeItems(p35, p36, p37)
-	if not p35 or p35 <= 0 then
-		return {}, 0
-	end
-
-	local v332 = p35 * (1 - p37 / 100)
-	local t20 = {}
-
-	for k, v in pairs(p36) do
-		for i = 1, v.quantity do
-			table.insert(t20, {
-				name = k,
-				value = v.value
-			})
-		end
-	end
-
-	table.sort(t20, function(p38, p39)
-		return p38.value > p39.value
-	end)
-
-	return (function(p40, p41, p42)
-		local t21 = {}
-
-		for i = 0, #p40 do
-			t21[i] = {}
-
-			for i2 = 0, p41 do
-				t21[i][i2] = 0
-			end
-		end
-
-		for i = 1, #p40 do
-			for i2 = 0, p41 do
-				t21[i][i2] = t21[i - 1][i2]
-
-				if i2 > 0 and t21[i - 1][i2 - 1] + p40[i].value <= p42 then
-					t21[i][i2] = math.max(t21[i][i2], t21[i - 1][i2 - 1] + p40[i].value)
-				end
-			end
-		end
-
-		local t22 = {}
-		local v343 = p41
-
-		for i = #p40, 1, -1 do
-			if t21[i][v343] ~= t21[i - 1][v343] then
-				table.insert(t22, p40[i].name)
-				v343 -= 1
-			end
-		end
-
-		return t22, t21[#p40][p41]
-	end)(t20, 4, v332)
-end
-
-local u345
-local Title
-local Title2
-local Offer
-local u349
-local n9
-local n10
-local Player2
-local u353
-local connection2
-local u355
-
-local function getTradePanel()
-	local v357 = v310 and "TradeGUI_Phone" or "TradeGUI"
-	local v358 = LocalPlayer.PlayerGui:FindFirstChild(v357) or LocalPlayer.PlayerGui:WaitForChild(v357, 5)
-	local Container = v358 and v358:FindFirstChild("Container")
-
-	return Container and Container:FindFirstChild("Trade")
-end
-local function renderTradeValues(p43, p44)
-	selectValueSource()
-
-	if not p44 or not p43 then
-		return
-	end
-
-	n9 = 0
-	n10 = 0
-
-	for k, v in pairs(p43) do
-		local v363 = v[1]
-		local v364 = v[2]
-		local Container = u345.TheirOffer.Container["NewItem" .. k].Container
-
-		if Container:FindFirstChild("Value") then
-			Container.Value:Destroy()
-		end
-
-		createTextLabel(Container).Text = "Value: " .. (u251[v363] or 0) * v364
-
-		if u251[v363] then
-			n9 += (u251[v363] or 0) * v364
-		end
-	end
-
-	for k, v in pairs(p44) do
-		local v368 = v[1]
-		local v369 = v[2]
-		local Container = u345.YourOffer.Container["NewItem" .. k].Container
-
-		if Container:FindFirstChild("Value") then
-			Container.Value:Destroy()
-		end
-
-		createTextLabel(Container).Text = "Value: " .. (u251[v368] or 0) * v369
-
-		if Container:FindFirstChild("Amount") then
-			Container.Amount.Position = UDim2.new(0.23, -4, 0.76, 0)
-		end
-
-		if u251[v368] then
-			n10 += (u251[v368] or 0) * v369
-		end
-	end
-
-	Title.Text = "YOUR OFFER | TOTAL:" .. n10
-	Title2.Text = "THEIR OFFER | TOTAL:" .. n9
-end
-local function clearTradeValues()
-	n9 = 0
-	n10 = 0
-	pcall(function()
-		u345 = getTradePanel()
-	end)
-
-	if not u345 then
-		return
-	end
-
-	for _, v in ipairs({
-		u345.TheirOffer.Container,
-		u345.YourOffer.Container
-	}) do
-		for _, child in pairs(v:GetChildren()) do
-			if child.ClassName == "Frame" and child:FindFirstChild("Container") then
-				if child.Container:FindFirstChild("Value") then
-					child.Container.Value:Destroy()
-				end
-			end
-		end
-	end
-
-	if Title then
-		Title.Text = "YOUR OFFER"
-	end
-
-	if Title2 then
-		Title2.Text = "THEIR OFFER"
-	end
-end
-
-ReplicatedStorage.Trade.UpdateTrade.OnClientEvent:Connect(function(p45)
-	if p45.Player2.Player == LocalPlayer then
-		local Player1 = p45.Player1
-
-		Player2 = p45.Player2
-		u353 = Player1
-	end
-
-	if p45.Player1.Player == LocalPlayer then
-		local Player22 = p45.Player2
-
-		Player2 = p45.Player1
-		u353 = Player22
-	end
-
-	if not Player2 or not u353 then
-		return
-	end
-
-	local Offer2 = Player2.Offer
-
-	Offer = u353.Offer
-	u349 = Offer2
-	pcall(function()
-		u345 = getTradePanel()
-	end)
-
-	if not u345 then
-		return
-	end
-
-	Title = u345.YourOffer.Title
-	Title2 = u345.TheirOffer.Title
-	n9 = 0
-	n10 = 0
-
-	if u255 then
-		pcall(renderTradeValues, Offer, u349)
-	end
-end)
-
-local function listenForTradeChanges()
-	u355 = v325(LocalPlayer.Name)
-
-	if connection2 then
-		return connection2
-	end
-
-	connection2 = ReplicatedStorage.Trade.UpdateTrade.OnClientEvent:Connect(function(p46)
-		if p46.Player2.Player == LocalPlayer then
-			local Player1 = p46.Player1
-
-			Player2 = p46.Player2
-			u353 = Player1
-		end
-
-		if p46.Player1.Player == LocalPlayer then
-			local Player22 = p46.Player2
-
-			Player2 = p46.Player1
-			u353 = Player22
-		end
-
-		if not Player2 or not u353 then
-			return
-		end
-
-		local Offer2 = Player2.Offer
-
-		Offer = u353.Offer
-		u349 = Offer2
-		pcall(function()
-			u345 = getTradePanel()
-		end)
-
-		if not u345 then
-			return
-		end
-
-		local Title3 = u345.TheirOffer.Title
-
-		Title = u345.YourOffer.Title
-		Title2 = Title3
-		n9 = 0
-		n10 = 0
-
-		for _, v in pairs(Offer) do
-			if u251[v[1]] then
-				n9 += (u251[v[1]] or 0) * v[2]
-			end
-		end
-
-		for _, v in pairs(u349) do
-			if u251[v[1]] then
-				n10 += (u251[v[1]] or 0) * v[2]
-			end
-		end
-
-		if u257 then
-			if #Offer == 0 then
-				v319(u349)
-
-				return
-			end
-
-			local v388, v389 = chooseTradeItems(n9, u355, n6)
-
-			if v389 ~= n10 then
-				connection2:Disconnect()
-				connection2 = nil
-				v319(u349)
-
-				for _, v in pairs(v388) do
-					v313(v)
-				end
-
-				connection2 = listenForTradeChanges()
-			end
-		end
-	end)
-
-	return connection2
-end
-
-ReplicatedStorage.Trade.StartTrade.OnClientEvent:Connect(function()
-	pcall(function()
-		u345 = getTradePanel()
-	end)
-
-	if not u345 then
-		return
-	end
-
-	local Title3 = u345.TheirOffer.Title
-
-	Title = u345.YourOffer.Title
-	Title2 = Title3
-
-	if u255 then
-		Title.Text = "YOUR OFFER | TOTAL: 0"
-		Title2.Text = "THEIR OFFER | TOTAL: 0"
-	end
-
-	connection2 = listenForTradeChanges()
-end)
-ReplicatedStorage.Trade.EndTrade.OnClientEvent:Connect(function()
-	if connection2 then
-		connection2:Disconnect()
-		connection2 = nil
-	end
-end)
-ReplicatedStorage.Trade.AcceptTrade.OnClientEvent:Connect(function()
-	if connection2 then
-		connection2:Disconnect()
-		connection2 = nil
-	end
-
-	if u257 and n9 then
-		local v393, v394 = chooseTradeItems(n9, u355 or {}, n6)
-
-		if v394 ~= n10 and u349 then
-			for _, v in pairs(u349) do
-				for i = 1, v[2] do
-					v316(v[1])
-				end
-			end
-
-			for _, v in pairs(v393) do
-				v313(v)
-			end
-
-			connection2 = listenForTradeChanges()
-		end
-	end
-end)
-
-local function v400()
-	local v401, v402 = chooseTradeItems(n9 or 0, u355 or {}, n6)
-
-	if v402 ~= n10 and u349 then
-		for _, v in pairs(u349) do
-			for i = 1, v[2] do
-				v316(v[1])
-			end
-		end
-
-		for _, v in pairs(v401) do
-			v313(v)
-		end
-	end
-end
-local function v408()
-	if not u349 then
-		return
-	end
-
-	for _, v in pairs(u349) do
-		for i = 1, v[2] do
-			v316(v[1])
-		end
-	end
-end
-local function readInventoryCounts(p47)
-	local response = ReplicatedStorage.Remotes.Extras.GetFullInventory:InvokeServer(p47)
-	local t23 = {}
-	local Owned = (response.Weapons or {}).Owned or {}
-
-	for k, v in pairs(Owned) do
-		t23[k] = (t23[k] or 0) + v
-	end
-
-	local Owned2 = (response.Pets or {}).Owned or {}
-
-	for k, v in pairs(Owned2) do
-		t23[k] = (t23[k] or 0) + v
-	end
-
-	return t23
-end
-local function analyzeInventoryValue(p48)
-	local v422 = readInventoryCounts(p48)
-	local v423 = mapUsdValues()
-	local t24 = {}
-	local n11 = 0
-	local n12 = 0
-
-	for k, v in pairs(v422) do
-		local v429 = v423[k] or 0
-
-		if v429 > 0 then
-			local v430 = v429 * v
-
-			table.insert(t24, {
-				name = k,
-				count = v,
-				price = v429,
-				total = v430
-			})
-			n11 += v430
-			n12 += v
-		end
-	end
-
-	table.sort(t24, function(p49, p50)
-		return p49.total > p50.total
-	end)
-
-	local t25 = {
-		"Inventory Analysis:",
-		string.rep("-", 40)
-	}
-
-	for _, v in ipairs(t24) do
-		table.insert(t25, string.format("%-20s x%-4d | $%8.2f | $%10.2f", v.name, v.count, v.price, v.total))
-	end
-
-	table.insert(t25, string.rep("-", 40))
-	table.insert(t25, string.format("Total Items: %d", n12))
-	table.insert(t25, string.format("Total Value: $%d", math.floor(n11)))
-
-	return table.concat(t25, "\n")
-end
-
 local v434 = ReplicatedStorage
 local ChangeInventoryItem = v434.Remotes.Inventory.ChangeInventoryItem
 local ItemGift = v434:FindFirstChild("ItemGift")
@@ -2768,7 +1971,7 @@ local MIZ0_RED = Color3.fromRGB(255, 148, 47)
 local MIZ0_DARK_RED = Color3.fromRGB(130, 12, 26)
 
 local function applyMiz0Theme()
-    -- Use the existing UI library. No separate ScreenGui is created.
+    
     pcall(function()
         lib:SetTheme("Halloween")
         lib:SetTheme({
@@ -2792,7 +1995,7 @@ local miz0Window = lib:CreateWindow({
 		pcall(function()
 			RunService:Set3dRenderingEnabled(true)
 		end)
-        -- Stop background tasks and reset temporary character modifications.
+        
         settings.CoinFarm.State = false
         settings.CoinFarm2.State = false
         settings.Noclip = false
@@ -3441,242 +2644,8 @@ do
 		end
 	})
 
-	-- Auto Open Crates controls removed.
+	
 
-end
-
-do
-	local v528 = miz0Window:CreateTab({
-		Name = "Trade Helper"
-	})
-	local v529 = v528:CreateSection({
-		Name = "Trade Info",
-		Side = "Left"
-	})
-
-	v529:AddParagraph({
-		Title = "Trade Helper",
-		Content = "This tab shows Supreme item values in trades, calculates total value, and helps you choose offers."
-	})
-	v529:AddDropdown({
-		Text = "Item Price Display",
-		Options = {
-			"Supreme"
-		},
-		Default = "Supreme",
-		Flag = "PriceType",
-		Callback = function(p96)
-			s1 = p96
-			selectValueSource()
-		end
-	})
-	v529:AddToggle({
-		Text = "Show Values In Trade",
-		Default = false,
-		Flag = "ShowValues",
-		Callback = function(p97)
-			u255 = p97
-
-			if p97 then
-				pcall(renderTradeValues, Offer, u349)
-			else
-				pcall(clearTradeValues)
-			end
-		end
-	})
-
-	local v530 = v528:CreateSection({
-		Name = "Auto Trade [Risky]",
-		Side = "Right"
-	})
-
-	v530:AddBanner({
-		Type = "Warning",
-		Text = "Auto-trade changes your offer automatically. Test it on an alt first."
-	})
-	v530:AddToggle({
-		Text = "Automatically Generate Offers",
-		Default = false,
-		Flag = "AutoOffer",
-		Callback = function(p98)
-			u257 = p98
-		end
-	})
-	v530:AddButton({
-		Text = "Generate Offer",
-		Callback = function()
-			pcall(v400)
-		end
-	})
-	v530:AddButton({
-		Text = "Refresh Offer",
-		Variant = "Ghost",
-		Callback = function()
-			pcall(v408)
-		end
-	})
-	v530:AddSlider({
-		Text = "Minimum Profit Percentage",
-		Min = 0,
-		Max = 100,
-		Default = 6,
-		Increment = 1,
-		Suffix = "%",
-		Flag = "MinProfit",
-		Callback = function(p99)
-			n6 = p99
-		end
-	})
-end
-
-do
-	local v531 = miz0Window:CreateTab({
-		Name = "Inventory"
-	})
-	local v532 = v531:CreateSection({
-		Name = "Inventory Analyzer",
-		Side = "Left"
-	})
-
-	v532:AddParagraph({
-		Title = "What is this?",
-		Content = "Analyzes your inventory. USD price analysis is unavailable because the Project Reverse source was removed."
-	})
-
-	local v533 = v532:AddParagraph({
-		Title = "Your Inventory:",
-		Content = "Press the button below."
-	})
-	local u534 = false
-
-	v532:AddButton({
-		Text = "Start Analysis",
-		Variant = "Primary",
-		Callback = function()
-			if u534 then
-				return
-			end
-
-			u534 = true
-			v533:SetTitle("Please wait...")
-			v533:SetContent("Collecting data...")
-			task.spawn(function()
-				local ok, result = pcall(analyzeInventoryValue, LocalPlayer.Name)
-
-				v533:SetTitle("Your Inventory:")
-				v533:SetContent(ok and result or "Failed to fetch inventory.")
-				u534 = false
-			end)
-		end
-	})
-	v532:AddButton({
-		Text = "Copy To Clipboard",
-		Variant = "Ghost",
-		Callback = function()
-			local ok, result = pcall(analyzeInventoryValue, LocalPlayer.Name)
-
-			if ok and typeof(setclipboard) == "function" and pcall(setclipboard, result) then
-				lib:Notify({
-					Title = "Copied",
-					Content = "Copied to clipboard.",
-					Type = "Success",
-					Duration = 3
-				})
-			end
-		end
-	})
-
-	local v539 = v531:CreateSection({
-		Name = "Other Players' Inventories",
-		Side = "Right"
-	})
-
-	v539:AddParagraph({
-		Title = "Players Inventories Analysis",
-		Content = "Start the scanner and wait a minute: it collects all player inventories and sorts them by total value."
-	})
-
-	local t32 = {}
-	local v541 = v539:AddParagraph({
-		Title = "Results:",
-		Content = "(empty)"
-	})
-
-	local function v542(p100)
-		local v543 = string.match(type(p100) == "string" and p100 or "", "Total Value:%s*%$?(%-?[%d%.]+)")
-
-		return tonumber(v543) or 0
-	end
-	local function v544()
-		local t33 = {}
-
-		for k, v in pairs(t32) do
-			table.insert(t33, {
-				name = k,
-				data = v,
-				total = v542(v)
-			})
-		end
-
-		table.sort(t33, function(p101, p102)
-			return p101.total > p102.total
-		end)
-
-		local t34 = {}
-
-		for _, v in ipairs(t33) do
-			table.insert(t34, ("Player %s:\n%s\n"):format(v.name, v.data))
-		end
-
-		v541:SetContent(#t34 > 0 and table.concat(t34, "\n") or "(empty)")
-	end
-
-	local u551 = false
-
-	v539:AddToggle({
-		Text = "Auto-Scan Players Every Minute",
-		Default = false,
-		Flag = "OthersScan",
-		Callback = function(p103)
-			u551 = p103
-
-			if p103 then
-				task.spawn(function()
-					while u551 do
-						for _, player in ipairs(Players:GetPlayers()) do
-							if not u551 then
-								break
-							end
-
-							local ok, result = pcall(analyzeInventoryValue, player.Name)
-							local Name = player.Name
-							local v557 = ok and result
-
-							t32[Name] = v557 or "Failed to fetch."
-							v544()
-							task.wait(1)
-						end
-
-						task.wait(60)
-					end
-				end)
-			end
-		end
-	})
-	v539:AddButton({
-		Text = "Scan All Players Now",
-		Callback = function()
-			task.spawn(function()
-				for _, player in ipairs(Players:GetPlayers()) do
-					local ok, result = pcall(analyzeInventoryValue, player.Name)
-
-					t32[player.Name] = ok and result or "Failed to fetch."
-					v544()
-					task.wait(0.5)
-				end
-			end)
-		end
-	})
 end
 
 do
@@ -3781,9 +2750,9 @@ do
 		})
 	end
 
-	-- Spawner tab and its controls removed from Miz0.
+	
 
-	-- Crates tab removed.
+	
 
 end
 
