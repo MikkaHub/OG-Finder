@@ -1,234 +1,392 @@
-local PHOTO_URLS = {
-    "https://i.ibb.co/N2q7Lr9C/8.jpg",
-}
-local PHOTOS = {""}
-local function fetchPhoto(url, index)
-    local assetFn = getcustomasset or getsynasset
-    local requestFn = request or http_request or (syn and syn.request)
-    if type(assetFn)~="function" or type(requestFn)~="function" or type(writefile)~="function" then return "" end
-    local path="miz0_galaxy_v15_photo_"..index..".jpg"
-    local ok,result=pcall(function()
-        if not (type(isfile)=="function" and isfile(path)) then
-            local r=requestFn({Url=url,Method="GET"})
-            assert(r and (r.StatusCode==200 or r.StatusCode==201) and type(r.Body)=="string" and #r.Body>100,"Image download failed")
-            writefile(path,r.Body)
-        end
-        return assetFn(path)
-    end)
-    if ok and type(result)=="string" then return result end
-    warn("[Miz0] Image "..index.." unavailable: "..tostring(result))
-    return ""
-end
-local photoReady=false
-task.spawn(function()
-    for i,url in ipairs(PHOTO_URLS) do PHOTOS[i]=fetchPhoto(url,i) end
-    photoReady=true
-end)
-local windOk, WindUI = pcall(function()
-    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
-    assert(type(source)=="string" and #source>100, "WindUI source unavailable")
-    return assert(loadstring(source))()
-end)
-if not windOk or type(WindUI) ~= "table" then
-    warn("[Miz0] WindUI failed to load:", WindUI)
-    return
-end
-
-local function polishMiz0Window() end
+-- MIZ0 Galaxy: refreshed interface and uncropped photo views.
+local lib
 local sessionClosed = false
-local activeConnections = {}
-local function trackConnection(conn)
-    activeConnections[#activeConnections+1] = conn
-    return conn
-end
-local function disconnectTracked()
-    for _, conn in ipairs(activeConnections) do
-        pcall(function() conn:Disconnect() end)
+do
+    local PHOTO_URLS = {
+        "https://i.ibb.co/N2q7Lr9C/8.jpg",
+    }
+    -- A Roblox asset ID (rbxassetid://...) also works here.
+    local photoAsset = ""
+    local photoState = "Loading your image..."
+    local photoBusy = false
+    local refreshPhoto = function() end
+    local connections, tabs, sections = {}, {}, {}
+    local density = "normal"
+    local backgroundTransparency = 0.48
+    local themeName = "Galaxy"
+    local themeAccent = Color3.fromRGB(174, 151, 255)
+    local themeListeners = {}
+
+    local function protect(fn, ...)
+        if type(fn) ~= "function" then return end
+        local ok, result = pcall(fn, ...)
+        if not ok then warn("[Miz0] UI callback:", result) end
+        return ok and result or nil
     end
-    table.clear(activeConnections)
+    local function track(connection)
+        connections[#connections + 1] = connection
+        return connection
+    end
+    local function make(className, properties, parent)
+        local object = Instance.new(className)
+        for key, value in pairs(properties) do object[key] = value end
+        object.Parent = parent
+        return object
+    end
+    local function corner(object, radius)
+        make("UICorner", {CornerRadius = UDim.new(0, radius)}, object)
+    end
+
+    local windOk, WindUI = pcall(function()
+        local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+        assert(type(source) == "string" and #source > 100, "WindUI source unavailable")
+        return assert(loadstring(source))()
+    end)
+    if not windOk or type(WindUI) ~= "table" then
+        warn("[Miz0] WindUI failed to load:", WindUI)
+        return
+    end
+
+    local palettes = {
+        Galaxy = {background = "11101C", surface = "1B192B", panel = "171524", accent = "AE97FF"},
+        Halloween = {background = "17110E", surface = "241B16", panel = "1E1612", accent = "FFAA66"},
+        AMOLED = {background = "050508", surface = "101016", panel = "09090E", accent = "9ECFFF"},
+    }
+    local function registerTheme(name, accent)
+        local colors = palettes[name] or palettes.Galaxy
+        WindUI:AddTheme({
+            Name = "Miz0 " .. name,
+            Accent = Color3.fromHex(colors.surface),
+            Background = Color3.fromHex(colors.background),
+            Dialog = Color3.fromHex(colors.surface),
+            Outline = Color3.fromHex("514960"),
+            Text = Color3.fromHex("F3F0FF"),
+            Placeholder = Color3.fromHex("A59DB8"),
+            Button = Color3.fromHex(colors.surface),
+            Icon = Color3.fromHex("CEC5E6"),
+            Primary = accent, Toggle = accent, Slider = accent, Checkbox = accent,
+            PanelBackground = Color3.fromHex(colors.panel), PanelBackgroundTransparency = 0.10,
+            LabelBackground = Color3.fromHex(colors.surface), LabelBackgroundTransparency = 0.12,
+            ElementBackground = Color3.fromHex(colors.surface), ElementBackgroundTransparency = 0.15,
+        })
+    end
+
+    local Miz0UI = {Version = "2.0"}
+    function Miz0UI:Notify(o)
+        protect(function()
+            local icons = {Success = "circle-check", Warning = "triangle-alert", Danger = "circle-alert", Info = "info"}
+            WindUI:Notify({Title = o.Title or "Miz0", Content = tostring(o.Content or ""),
+                Icon = icons[o.Type] or "sparkles", Duration = o.Duration or 4})
+        end)
+    end
+    function Miz0UI:SetTheme(theme)
+        if type(theme) == "string" then
+            themeName = palettes[theme] and theme or "Galaxy"
+            themeAccent = Color3.fromHex(palettes[themeName].accent)
+        elseif type(theme) == "table" and typeof(theme.AccentSolid) == "Color3" then
+            themeAccent = theme.AccentSolid
+        end
+        registerTheme(themeName, themeAccent)
+        WindUI:SetTheme("Miz0 " .. themeName)
+        for _, update in ipairs(themeListeners) do protect(update) end
+    end
+    function Miz0UI:SetDensity(value)
+        local gaps = {compact = 3, normal = 7, comfortable = 12}
+        density = gaps[value] and value or "normal"
+        local gap = gaps[density]
+        for _, tab in ipairs(tabs) do
+            tab.Gap = gap
+            local container = tab.UIElements and tab.UIElements.ContainerFrame
+            local layout = container and container:FindFirstChildOfClass("UIListLayout")
+            if layout then layout.Padding = UDim.new(0, gap) end
+        end
+        for _, section in ipairs(sections) do
+            local outline = section.ElementFrame and section.ElementFrame:FindFirstChild("Outline")
+            local content = outline and outline:FindFirstChild("Content")
+            local layout = content and content:FindFirstChildOfClass("UIListLayout")
+            if layout then layout.Padding = UDim.new(0, gap) end
+        end
+    end
+
+    local function loadPhoto(force)
+        if photoBusy or sessionClosed then return end
+        photoBusy = true
+        photoState = "Loading your image..."
+        refreshPhoto()
+        task.spawn(function()
+            local ok, result = pcall(function()
+                local url = PHOTO_URLS[1]
+                assert(type(url) == "string" and url ~= "", "No image has been configured.")
+                if url:match("^rbxassetid://") or url:match("^rbxthumb://") then return url end
+                local assetFn = getcustomasset or getsynasset
+                local requestFn = request or http_request or (syn and syn.request)
+                assert(type(assetFn) == "function" and type(requestFn) == "function" and type(writefile) == "function",
+                    "This environment cannot load web images. Use a Roblox asset ID in PHOTO_URLS.")
+                local hash = 5381
+                for i = 1, #url do hash = (hash * 33 + url:byte(i)) % 2147483647 end
+                local cleanUrl = url:match("^[^?#]+") or url
+                local extension = (cleanUrl:match("%.(%w+)$") or "jpg"):lower()
+                if extension ~= "png" and extension ~= "webp" and extension ~= "jpeg" then extension = "jpg" end
+                local path = "miz0_photo_" .. tostring(hash) .. "." .. extension
+                if force or not (type(isfile) == "function" and isfile(path)) then
+                    local response = requestFn({Url = url, Method = "GET"})
+                    assert(response and (response.StatusCode == 200 or response.StatusCode == 201)
+                        and type(response.Body) == "string" and #response.Body > 100, "Image download failed. Try Reload image.")
+                    writefile(path, response.Body)
+                end
+                local asset = assetFn(path)
+                assert(type(asset) == "string" and asset ~= "", "Image could not be registered. Try Reload image.")
+                return asset
+            end)
+            photoBusy = false
+            if sessionClosed then return end
+            photoAsset = ok and result or ""
+            photoState = ok and "Full image · original proportions" or tostring(result):gsub("^.-:%d+: ", "")
+            if not ok then warn("[Miz0] Photo:", result) end
+            refreshPhoto()
+        end)
+    end
+
+    function Miz0UI:CreateWindow(o)
+        local input = game:GetService("UserInputService")
+        local touch = input.TouchEnabled and not input.MouseEnabled
+        local function viewport()
+            return workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(900, 650)
+        end
+        local function bounds()
+            local view = viewport()
+            local margin = touch and 12 or 24
+            return math.max(1, view.X - margin * 2), math.max(1, view.Y - margin * 2 - 40)
+        end
+        local maxW, maxH = bounds()
+        local preferredW = touch and (maxH > maxW and 430 or 760) or (o.Size and o.Size.X.Offset or 840)
+        local preferredH = touch and (maxH > maxW and 650 or 440) or (o.Size and o.Size.Y.Offset or 560)
+        local w, h = math.min(maxW, preferredW), math.min(maxH, preferredH)
+        self:SetTheme(o.Theme or "Galaxy")
+        local raw = WindUI:CreateWindow({
+            Title = touch and "MIZ0" or (o.Title or "MIZ0 | GALAXY"),
+            Author = touch and "MM2" or "Murder Mystery 2", Icon = "moon",
+            Folder = "Miz0", Size = UDim2.fromOffset(w, h),
+            MinSize = Vector2.new(math.min(w, touch and 300 or 520), math.min(h, 320)),
+            MaxSize = Vector2.new(maxW, maxH), Theme = "Miz0 " .. themeName,
+            Transparent = false, Resizable = not touch, AutoScale = false,
+            SideBarWidth = math.clamp(math.floor(w * 0.25), 100, 168),
+            HideSearchBar = false, ScrollBarEnabled = true, Radius = 18,
+            Background = "", BackgroundImageTransparency = backgroundTransparency,
+            ToggleKey = o.ToggleKeybind or Enum.KeyCode.RightControl,
+            OpenButton = {Enabled = true, OnlyMobile = false, Title = "MIZ0", Icon = "moon", Draggable = true, Scale = 0.9},
+        })
+        local wrapper = {_raw = raw}
+        local main = raw.UIElements.Main
+        local galleryGui, previewImage, previewStatus, fullImage, fullStatus
+
+        local function applyPhoto()
+            if sessionClosed then return end
+            raw.BackgroundImageTransparency = backgroundTransparency
+            local background = main:FindFirstChild("Background")
+            local image = background and background:FindFirstChild("ImageLabel")
+            if image and image:IsA("ImageLabel") then
+                image.Image = photoAsset
+                image.ScaleType = Enum.ScaleType.Fit
+                image.ImageRectOffset = Vector2.zero
+                image.ImageRectSize = Vector2.zero
+                image.ImageTransparency = backgroundTransparency
+                image.ImageColor3 = Color3.new(1, 1, 1)
+                -- Keep the fitted image inside the rounded window edges.
+                image.Position = UDim2.fromOffset(12, 12)
+                image.Size = UDim2.new(1, -24, 1, -24)
+                local mask = image:FindFirstChildOfClass("UICorner")
+                if mask then mask.CornerRadius = UDim.new(0, 0) end
+            end
+            if previewImage then previewImage.Image = photoAsset end
+            if fullImage then fullImage.Image = photoAsset end
+            if previewStatus then previewStatus.Text = photoState end
+            if fullStatus then fullStatus.Text = photoState end
+        end
+        refreshPhoto = applyPhoto
+        function Miz0UI:SetPhotoTransparency(value)
+            backgroundTransparency = math.clamp(value, 0, 1)
+            applyPhoto()
+        end
+        function Miz0UI:ReloadPhoto() loadPhoto(true) end
+
+        local function cleanup()
+            if sessionClosed then return end
+            sessionClosed = true
+            if galleryGui then galleryGui:Destroy() end
+            for _, connection in ipairs(connections) do connection:Disconnect() end
+            table.clear(connections)
+            refreshPhoto = function() end
+            protect(o.OnClose)
+        end
+        function wrapper:Destroy()
+            if sessionClosed then return end
+            cleanup()
+            protect(function() raw:Destroy() end)
+        end
+        raw:OnDestroy(cleanup)
+        track(main.Destroying:Connect(cleanup))
+
+        local hostGui = main:FindFirstAncestorOfClass("ScreenGui")
+        galleryGui = make("ScreenGui", {
+            Name = "Miz0GalaxyGallery", ResetOnSpawn = false, Enabled = false,
+            DisplayOrder = hostGui and hostGui.DisplayOrder + 10 or 100,
+            ZIndexBehavior = Enum.ZIndexBehavior.Sibling, IgnoreGuiInset = false,
+        }, hostGui and hostGui.Parent or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))
+        local shade = make("TextButton", {Text = "", AutoButtonColor = false,
+            BackgroundColor3 = Color3.fromRGB(4, 4, 9), BackgroundTransparency = 0.14,
+            BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 1, Modal = true}, galleryGui)
+        local panel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, -32, 1, -32),
+            BackgroundColor3 = Color3.fromRGB(17, 16, 28), BorderSizePixel = 0, ZIndex = 2, Active = true}, galleryGui)
+        corner(panel, 18)
+        make("UISizeConstraint", {MaxSize = Vector2.new(1600, 1100)}, panel)
+        local outline = make("UIStroke", {Color = themeAccent, Transparency = 0.55, Thickness = 1}, panel)
+        make("TextLabel", {Text = "Your image", Font = Enum.Font.GothamBold, TextSize = 20,
+            TextColor3 = Color3.fromRGB(243, 240, 255), TextXAlignment = Enum.TextXAlignment.Left,
+            BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 12), Size = UDim2.new(1, -90, 0, 28), ZIndex = 3}, panel)
+        fullStatus = make("TextLabel", {Text = photoState, Font = Enum.Font.Gotham, TextSize = 12,
+            TextColor3 = Color3.fromRGB(185, 177, 206), TextXAlignment = Enum.TextXAlignment.Left,
+            TextWrapped = true, BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 42),
+            Size = UDim2.new(1, -84, 0, 36), ZIndex = 3}, panel)
+        local close = make("TextButton", {Text = "×", Font = Enum.Font.GothamMedium, TextSize = 26,
+            TextColor3 = Color3.fromRGB(243, 240, 255), BackgroundColor3 = Color3.fromRGB(36, 32, 52),
+            BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12),
+            Size = UDim2.fromOffset(44, 44), ZIndex = 4}, panel)
+        corner(close, 12)
+        fullImage = make("ImageLabel", {Name = "FullPhoto", Image = "", ScaleType = Enum.ScaleType.Fit,
+            ImageColor3 = Color3.new(1, 1, 1), ImageTransparency = 0, BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(20, 88), Size = UDim2.new(1, -40, 1, -108), ZIndex = 3}, panel)
+        local function closeGallery()
+            if not sessionClosed and galleryGui.Parent then galleryGui.Enabled = false end
+        end
+        function wrapper:ShowPhoto()
+            if sessionClosed then return end
+            applyPhoto()
+            galleryGui.Enabled = true
+        end
+        track(close.Activated:Connect(closeGallery))
+        track(shade.Activated:Connect(closeGallery))
+        track(input.InputBegan:Connect(function(key, processed)
+            if not processed and key.KeyCode == Enum.KeyCode.Escape then closeGallery() end
+        end))
+        raw:OnClose(closeGallery)
+        raw:CreateTopbarButton("View full image", "image", function() wrapper:ShowPhoto() end, 990)
+        themeListeners[#themeListeners + 1] = function()
+            panel.BackgroundColor3 = Color3.fromHex(palettes[themeName].background)
+            outline.Color = themeAccent
+        end
+
+        local cameraConnection
+        local function fitWindow()
+            if sessionClosed or raw.IsFullscreen then return end
+            local availableW, availableH = bounds()
+            if touch then
+                local portrait = availableH > availableW
+                preferredW, preferredH = portrait and 430 or 760, portrait and 650 or 440
+            end
+            raw.MinSize = Vector2.new(math.min(availableW, touch and 300 or 520), math.min(availableH, 320))
+            raw.MaxSize = Vector2.new(availableW, availableH)
+            local size = raw.Size
+            raw:SetSize(UDim2.fromOffset(math.min(availableW, touch and preferredW or size.X.Offset),
+                math.min(availableH, touch and preferredH or size.Y.Offset)))
+            raw:SetToTheCenter()
+        end
+        local function watchCamera()
+            if cameraConnection then cameraConnection:Disconnect() end
+            if workspace.CurrentCamera then
+                cameraConnection = track(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitWindow))
+            end
+            fitWindow()
+        end
+        track(workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(watchCamera))
+        watchCamera()
+
+        function wrapper:CreateTab(cfg)
+            local name = tostring(cfg.Name or "Tab")
+            local icons = {Home = "house", Gameplay = "gamepad-2", ESP = "eye", Combat = "swords", Movement = "footprints",
+                Misc = "layers", Inventory = "backpack", Settings = "settings", Teleports = "map-pin",
+                ["Auto Farm"] = "repeat", ["Coin Farm"] = "coins"}
+            local tab = raw:Tab({Title = name, Icon = icons[name] or "star"})
+            tabs[#tabs + 1] = tab
+            Miz0UI:SetDensity(density)
+            local proxy = {_tab = tab}
+            function proxy:CreateSection(c)
+                if type(c) == "string" then c = {Name = c} end
+                c = c or {}
+                local sec = tab:Section({Title = tostring(c.Name or "Section"), Box = true, Opened = true})
+                sections[#sections + 1] = sec
+                Miz0UI:SetDensity(density)
+                local out = {_section = sec}
+                function out:AddButton(x)
+                    return sec:Button({Title = tostring(x.Text or "Action"), Desc = x.Tooltip,
+                        Callback = function() protect(x.Callback) end})
+                end
+                function out:AddToggle(x)
+                    return sec:Toggle({Title = tostring(x.Text or "Toggle"), Desc = x.Tooltip, Value = x.Default == true,
+                        Callback = function(v) protect(x.Callback, v) end})
+                end
+                function out:AddSlider(x)
+                    return sec:Slider({Title = tostring(x.Text or "Slider"), Desc = x.Tooltip or x.Suffix,
+                        Step = x.Increment or 1, Value = {Min = x.Min or 0, Max = x.Max or 100, Default = x.Default or x.Min or 0},
+                        Callback = function(v) protect(x.Callback, v) end})
+                end
+                function out:AddDropdown(x)
+                    return sec:Dropdown({Title = tostring(x.Text or "Select"), Desc = x.Tooltip, Values = x.Options or {},
+                        Value = x.Default, AllowNone = true, Callback = function(v) protect(x.Callback, v) end})
+                end
+                function out:AddMultiDropdown(x)
+                    return sec:Dropdown({Title = tostring(x.Text or "Select"), Desc = x.Tooltip, Values = x.Options or {},
+                        Value = x.Default, Multi = true, AllowNone = true, Callback = function(v) protect(x.Callback, v) end})
+                end
+                function out:AddInput(x)
+                    return sec:Input({Title = tostring(x.Text or "Input"), Desc = x.Tooltip, Value = tostring(x.Default or ""),
+                        Placeholder = x.Placeholder or "", Callback = function(v) protect(x.Callback, v) end})
+                end
+                function out:AddColorPicker(x)
+                    return sec:Colorpicker({Title = tostring(x.Text or "Color"), Default = x.Default or themeAccent,
+                        Callback = function(v) protect(x.Callback, v) end})
+                end
+                function out:AddParagraph(x)
+                    local para = sec:Paragraph({Title = tostring(x.Title or ""), Desc = tostring(x.Content or "")})
+                    return {SetTitle = function(_, v) protect(function() para:SetTitle(tostring(v)) end) end,
+                        SetContent = function(_, v) protect(function() para:SetDesc(tostring(v)) end) end}
+                end
+                function out:AddBanner(x)
+                    return sec:Paragraph({Title = "MIZ0", Desc = tostring(x.Text or "")})
+                end
+                return out
+            end
+            return proxy
+        end
+
+        local home = wrapper:CreateTab({Name = "Home"})
+        local container = home._tab.UIElements and home._tab.UIElements.ContainerFrame
+        if container then
+            local card = make("Frame", {Name = "PhotoPreview", Size = UDim2.new(1, 0, 0, math.clamp(h - 280, 160, 300)),
+                BackgroundColor3 = Color3.fromRGB(10, 9, 18), BorderSizePixel = 0, LayoutOrder = -10}, container)
+            corner(card, 12)
+            local cardOutline = make("UIStroke", {Color = themeAccent, Transparency = 0.65, Thickness = 1}, card)
+            previewImage = make("ImageLabel", {Name = "Photo", Image = photoAsset, ScaleType = Enum.ScaleType.Fit,
+                BackgroundTransparency = 1, ImageTransparency = 0, Position = UDim2.fromOffset(12, 12),
+                Size = UDim2.new(1, -24, 1, -58)}, card)
+            previewStatus = make("TextLabel", {Text = photoState, Font = Enum.Font.Gotham, TextSize = 12,
+                TextColor3 = Color3.fromRGB(195, 186, 216), BackgroundTransparency = 1, TextWrapped = true,
+                AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -8), Size = UDim2.new(1, -24, 0, 36)}, card)
+            themeListeners[#themeListeners + 1] = function() cardOutline.Color = themeAccent end
+        end
+        local welcome = home:CreateSection({Name = "Welcome to MIZ0"})
+        welcome:AddParagraph({Title = "Your space, your style", Content = "Choose a tab to get started. Search finds controls quickly. Change colors and spacing in Settings."})
+        welcome:AddButton({Text = "View full image", Tooltip = "Open the whole photo without cropping or controls over it.", Callback = function() wrapper:ShowPhoto() end})
+        welcome:AddButton({Text = "Reload image", Callback = function() Miz0UI:ReloadPhoto() end})
+        home._tab:Select()
+        applyPhoto()
+        loadPhoto(false)
+        return wrapper
+    end
+    lib = Miz0UI
 end
 
-local Miz0UI = {}
-local activeWindow
-local function protect(fn, ...)
-    if not fn then return end
-    local ok, err = pcall(fn, ...)
-    if not ok then warn("[Miz0] Callback error:", err) end
-end
-function Miz0UI:Notify(o)
-    pcall(function()
-        WindUI:Notify({Title=o.Title or "Miz0", Content=tostring(o.Content or ""), Duration=o.Duration or 4})
-    end)
-end
-function Miz0UI:SetTheme(theme)
-    if type(theme)=="string" then
-        local supported = {Dark=true, Light=true}
-        pcall(function() WindUI:SetTheme(supported[theme] and theme or "Dark") end)
-    elseif type(theme)=="table" then
-        
-        
-        warn("[Miz0] Custom accent is not supported by this WindUI adapter")
-    end
-end
-function Miz0UI:SetDensity(_) end
-function Miz0UI:CreateWindow(o)
-    local touch = game:GetService("UserInputService").TouchEnabled
-    local camera = workspace.CurrentCamera
-    local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
-    
-    local portrait = viewport.Y > viewport.X
-    local margin = touch and 12 or 24
-    local w = math.max(240, math.min(viewport.X - margin * 2, touch and (portrait and 345 or 640) or 760))
-    local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
-    
-    local startPhoto = os.clock()
-    while not photoReady and os.clock()-startPhoto < 8 do task.wait(0.1) end
-    pcall(function()
-        WindUI:SetTheme("Dark")
-    end)
-    
-    pcall(function()
-        local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
-        if pg then
-            for _, child in ipairs(pg:GetChildren()) do
-                if child:IsA("ScreenGui") and (child.Name:lower():find("miz0") or child.Name:lower():find("windui")) then
-                    child:Destroy()
-                end
-            end
-        end
-    end)
-    local raw = WindUI:CreateWindow({
-        Title="✦ MIZ0 | GALAXY", Author="Miz0 Script", Icon="moon", Folder="Miz0",
-        Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
-        Theme="Dark", Transparent=true, Resizable=not touch,
-        Background=PHOTOS[1] ~= "" and PHOTOS[1] or nil, BackgroundImageTransparency=0.15,
-        ToggleKey=Enum.KeyCode.RightControl,
-        OpenButton={Enabled=true, OnlyMobile=false, Title="✦ Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
-    })
-    activeWindow=raw
-    
-    
-    pcall(function()
-        local pg=game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
-        if pg then
-            local old=pg:FindFirstChild("Miz0GalaxyGallery")
-            if old then old:Destroy() end
-        end
-    end)
-    
-    local wrapper={_raw=raw}
-    function wrapper:Destroy()
-        if sessionClosed then return end
-        sessionClosed = true
-        protect(o.OnClose)
-        disconnectTracked()
-        protect(function() raw:Destroy() end)
-    end
-    function wrapper:CreateTab(cfg)
-        local name=tostring(cfg.Name or "Tab")
-        local icons={Gameplay="gamepad-2",ESP="eye",Combat="swords",Movement="footprints",Misc="settings",Inventory="backpack",Settings="settings",Teleports="map-pin"}
-        local tab=raw:Tab({Title=name, Icon=icons[name] or "star"})
-        local proxy={_tab=tab}
-        function proxy:CreateSection(c)
-            local sec=tab:Section({Title="✦ "..tostring(c.Name or "Section"), Box=true, Opened=true})
-            local out={_section=sec}
-            function out:AddButton(x)
-                return sec:Button({Title=tostring(x.Text or "Action"), Callback=function() protect(x.Callback) end})
-            end
-            function out:AddToggle(x)
-                return sec:Toggle({Title=tostring(x.Text or "Toggle"), Value=x.Default==true,
-                    Callback=function(v) protect(x.Callback,v) end})
-            end
-            function out:AddSlider(x)
-                return sec:Slider({Title=tostring(x.Text or "Slider"), Step=x.Increment or 1,
-                    Value={Min=x.Min or 0, Max=x.Max or 100, Default=x.Default or x.Min or 0},
-                    Callback=function(v) protect(x.Callback,v) end})
-            end
-            function out:AddDropdown(x)
-                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
-                    Value=x.Default, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
-            end
-            function out:AddMultiDropdown(x)
-                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
-                    Multi=true, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
-            end
-            function out:AddInput(x)
-                return sec:Input({Title=tostring(x.Text or "Input"), Value=tostring(x.Default or ""),
-                    Placeholder=x.Placeholder or "", Callback=function(v) protect(x.Callback,v) end})
-            end
-            function out:AddColorPicker(x)
-                return sec:Colorpicker({Title=tostring(x.Text or "Color"), Default=x.Default or Color3.fromRGB(255,120,20),
-                    Callback=function(v) protect(x.Callback,v) end})
-            end
-            function out:AddParagraph(x)
-                local para=sec:Paragraph({Title=tostring(x.Title or ""), Desc=tostring(x.Content or "")})
-                return {SetTitle=function(_,v) protect(function() para:SetTitle(tostring(v)) end) end,
-                    SetContent=function(_,v) protect(function() para:SetDesc(tostring(v)) end) end}
-            end
-            function out:AddBanner(x)
-                return sec:Paragraph({Title="🎃 Miz0", Desc=tostring(x.Text or "")})
-            end
-            return out
-        end
-        function proxy:AddItemGrid(c)
-            
-            local section=self:CreateSection({Name="Inventory selection"})
-            local chosen, controls = {}, {}
-            local items=c.Items or {}
-            local page, pageSize = 1, 24
-            local total= #items
-            local function update()
-                protect(c.OnSelectionChanged, (function()
-                    local selected = {}
-                    for i, item in ipairs(items) do if chosen[i] then selected[#selected+1]=item end end
-                    return selected
-                end)())
-            end
-            local function drawPage()
-                
-                
-                local first=(page-1)*pageSize+1
-                local last=math.min(total,page*pageSize)
-                local chunk=self:CreateSection({Name=("Items %d-%d of %d"):format(first,last,total)})
-                for i=first,last do
-                    local item=items[i]
-                    local title=type(item)=="table" and (item.Name or item.Text or item.Title or tostring(i)) or tostring(item)
-                    controls[i]=chunk:AddToggle({Text=tostring(title), Default=chosen[i]==true, Callback=function(v)
-                        chosen[i]=v; update()
-                    end})
-                end
-            end
-            if total>0 then drawPage() end
-            section:AddButton({Text="Load next 24 items", Callback=function()
-                if page*pageSize<total then page+=1; drawPage() end
-            end})
-            return {
-                GetSelected=function()
-                    local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end
-                    return r
-                end,
-                SelectAll=function()
-                    for i=1,total do chosen[i]=true end
-                    for i, control in pairs(controls) do pcall(function() control:Set(true) end) end
-                    update()
-                end,
-                Clear=function()
-                    table.clear(chosen)
-                    for i, control in pairs(controls) do pcall(function() control:Set(false) end) end
-                    update()
-                end
-            }
-        end
-        function proxy:SetActionBar(c)
-            local section=self:CreateSection({Name="Actions"})
-            for _,b in ipairs(c.Left or {}) do section:AddButton(b) end
-            if c.Primary then section:AddButton(c.Primary) end
-        end
-        return proxy
-    end
-    return wrapper
-end
-local lib = Miz0UI
 local genv = typeof(getgenv) == "function" and getgenv() or _G
 
 if game.GameId ~= 66654135 then
@@ -1951,45 +2109,23 @@ local IS_TOUCH_ONLY = UserInputService.TouchEnabled and not UserInputService.Mou
 local function clampValue(p62, p63, p64)
 	return math.max(p63, math.min(p64, p62))
 end
-local function getMobileScale()
-	if not IS_TOUCH_ONLY then
-		return 1
-	end
-
-	local ViewportSize = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize
-
-	ViewportSize = ViewportSize or Vector2.new(390, 800)
-
-	return clampValue(clampValue(math.min(math.min(ViewportSize.X, ViewportSize.Y) / 820, math.max(ViewportSize.X, ViewportSize.Y) / 1450), 0.78, 0.96) * 0.43478260869565222, 0.32, 0.46)
-end
-
-local mobileScale = getMobileScale()
-local uDim2 = IS_TOUCH_ONLY and UDim2.fromOffset(math.floor(820 * mobileScale), math.floor(540 * mobileScale)) or UDim2.fromOffset(820, 540)
-local vector2 = IS_TOUCH_ONLY and Vector2.new(160, 120) or Vector2.new(760, 420)
-local vector22 = IS_TOUCH_ONLY and Vector2.new(math.max(40, math.floor(118 * mobileScale)), math.max(48, math.floor(148 * mobileScale))) or Vector2.new(118, 148)
-local MIZ0_RED = Color3.fromRGB(255, 148, 47)
-local MIZ0_DARK_RED = Color3.fromRGB(130, 12, 26)
+-- Window sizing is fitted to the current display by the UI adapter.
+local uDim2 = UDim2.fromOffset(840, 560)
+local vector2 = Vector2.new(300, 320)
+local MIZ0_RED = Color3.fromRGB(174, 151, 255)
 
 local function applyMiz0Theme()
-    
-    pcall(function()
-        lib:SetTheme("Halloween")
-        lib:SetTheme({
-            AccentSolid = MIZ0_RED,
-            AccentGradientFrom = MIZ0_DARK_RED,
-            AccentGradientTo = MIZ0_RED
-        })
-    end)
+    lib:SetTheme("Galaxy")
 end
 
 local miz0Window = lib:CreateWindow({
-	Title = "🎃 MIZ0 SPOOKY NIGHT",
+	Title = "MIZ0 | GALAXY",
 	Size = uDim2,
 	MinSize = vector2,
 	MaxSize = Vector2.new(1400, 900),
 	MobileScaled = IS_TOUCH_ONLY,
 	Resizable = true,
-	Theme = "AMOLED",
+	Theme = "Galaxy",
 	ToggleKeybind = Enum.KeyCode.RightControl,
 	OnClose = function()
 		pcall(function()
@@ -2884,18 +3020,13 @@ do
 	v680:AddDropdown({
 		Text = "Preset",
 		Options = {
-			"Halloween"
+			"Galaxy", "Halloween", "AMOLED"
 		},
-		Default = "Halloween",
+		Default = "Galaxy",
 		Searchable = false,
 		Flag = "ThemePreset",
 		Callback = function(p136)
 			lib:SetTheme(p136)
-            lib:SetTheme({
-                AccentSolid = MIZ0_RED,
-                AccentGradientFrom = MIZ0_DARK_RED,
-                AccentGradientTo = MIZ0_RED
-            })
 			lib:Notify({
 				Title = "Theme",
 				Content = p136,
@@ -2936,6 +3067,18 @@ do
 		end
 	})
 
+    local photoSettings = v679:CreateSection({Name = "Photo"})
+    photoSettings:AddButton({
+        Text = "View full image",
+        Tooltip = "See the whole photo without any controls covering it.",
+        Callback = function() miz0Window:ShowPhoto() end
+    })
+    photoSettings:AddSlider({
+        Text = "Background visibility", Min = 0, Max = 100, Default = 52, Increment = 1,
+        Suffix = "%", Callback = function(value) lib:SetPhotoTransparency(1 - value / 100) end
+    })
+    photoSettings:AddButton({Text = "Reload image", Callback = function() lib:ReloadPhoto() end})
+
 	local v681 = v679:CreateSection({
 		Name = "About",
 		Side = "Right"
@@ -2943,11 +3086,11 @@ do
 
 	v681:AddParagraph({
 		Title = "Miz0 | MM2",
-		Content = "Miz0 Halloween MM2 build • UI framework v" .. (lib.Version or "?") .. ". Drag the header to move the window, resize from the bottom-right corner. Toggle: RightControl."
+		Content = "Miz0 Galaxy v" .. lib.Version .. ". Drag the header to move. Use Home or the image icon to see your whole photo. Toggle: RightControl."
 	})
 	v681:AddParagraph({
 		Title = "Credits",
-		Content = "Miz0 Halloween rework. Built-in UI library; external item valuation service is separate."
+		Content = "Miz0 Galaxy interface, powered by WindUI. Full-image display preserves the photo proportions."
 	})
 	v681:AddBanner({
 		Type = "Info",
@@ -2966,7 +3109,7 @@ end
 sessionGlobals.Miz0MM2Window = miz0Window
 task.delay(0.4, function()
 	lib:Notify({
-		Title = "🎃 Miz0 | Halloween Loaded",
+		Title = "Miz0 | Galaxy ready",
 		Content = "Version " .. (lib.Version or "?") .. ". Toggle UI: RightControl.",
 		Type = "Success",
 		Duration = 5
