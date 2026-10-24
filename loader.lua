@@ -1,8 +1,43 @@
 -- Miz0 | Halloween • WindUI edition
 -- Original gameplay logic and existing feature callbacks continue below.
 -- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
-local PHOTO = "rbxassetid://82865900841051"
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+-- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
+local PHOTO_URL = "https://i.ibb.co/nMfk2Cbb/images.jpg"
+local PHOTO = "" -- No moderated Roblox asset fallback
+local function preparePhoto()
+    local assetFn = getcustomasset or getsynasset
+    local requestFn = request or http_request or (syn and syn.request)
+    if type(assetFn) ~= "function" or type(writefile) ~= "function" or type(requestFn) ~= "function" then
+        warn("[Miz0] Delta lacks local-image APIs; using dark background")
+        return ""
+    end
+    local fileName = "miz0_halloween_background.jpg"
+    local ok, result = pcall(function()
+        if type(isfile) ~= "function" or not isfile(fileName) then
+            local response = requestFn({Url=PHOTO_URL, Method="GET"})
+            if not response or (response.StatusCode ~= 200 and response.StatusCode ~= 201) or type(response.Body) ~= "string" or #response.Body < 100 then
+                error("Image download failed")
+            end
+            writefile(fileName, response.Body)
+        end
+        return assetFn(fileName)
+    end)
+    if ok and type(result) == "string" then return result end
+    warn("[Miz0] Image unavailable:", result)
+    return ""
+end
+-- Resolve in background so a slow image host cannot stall execution.
+local photoReady = false
+task.spawn(function() PHOTO = preparePhoto(); photoReady = true end)
+local windOk, WindUI = pcall(function()
+    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+    assert(type(source)=="string" and #source>100, "WindUI source unavailable")
+    return assert(loadstring(source))()
+end)
+if not windOk or type(WindUI) ~= "table" then
+    warn("[Miz0] WindUI failed to load:", WindUI)
+    return
+end
 local Miz0UI = {}
 local activeWindow
 local function protect(fn, ...)
@@ -26,13 +61,16 @@ function Miz0UI:CreateWindow(o)
     local touch = game:GetService("UserInputService").TouchEnabled
     local camera = workspace.CurrentCamera
     local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
-    local w = math.clamp(viewport.X-28, 350, touch and 650 or 800)
-    local h = math.clamp(viewport.Y-55, 290, touch and 470 or 550)
+    local w = math.max(270, math.min(viewport.X-20, touch and 580 or 780))
+    local h = math.max(250, math.min(viewport.Y-45, touch and 450 or 540))
+    -- Wait briefly for image; do not freeze game if download is slow.
+    local startPhoto = os.clock()
+    while not photoReady and os.clock()-startPhoto < 2 do task.wait(0.1) end
     local raw = WindUI:CreateWindow({
         Title="🎃 Miz0 | MM2", Author="Halloween Edition", Icon="ghost", Folder="Miz0",
         Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(320,270),
         Theme="Dark", Transparent=true, Resizable=true,
-        Background=PHOTO, BackgroundImageTransparency=0.50,
+        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.50,
         ToggleKey=Enum.KeyCode.RightControl,
         OpenButton={Enabled=true, OnlyMobile=false, Title="Miz0", Draggable=true, Scale=touch and 0.65 or 0.5},
     })
@@ -87,22 +125,41 @@ function Miz0UI:CreateWindow(o)
             return out
         end
         function proxy:AddItemGrid(c)
+            -- Lazy paged list: avoids thousands of UI controls freezing Android.
             local section=self:CreateSection({Name="Inventory selection"})
-            local chosen={}
+            local chosen, controls = {}, {}
             local items=c.Items or {}
-            for i,item in ipairs(items) do
-                local title=type(item)=="table" and (item.Name or item.Text or item.Title or tostring(i)) or tostring(item)
-                section:AddToggle({Text=title, Default=false, Callback=function(v)
-                    chosen[i]=v; protect(c.OnSelectionChanged)
-                end})
+            local page, pageSize = 1, 24
+            local total= #items
+            local function update()
+                protect(c.OnSelectionChanged)
             end
-            return {GetSelected=function()
-                local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end; return r
-            end, SelectAll=function()
-                for i=1,#items do chosen[i]=true end; protect(c.OnSelectionChanged)
-            end, Clear=function()
-                table.clear(chosen); protect(c.OnSelectionChanged)
-            end}
+            local function drawPage()
+                -- Create a separate section for each requested page; old pages are not
+                -- recreated automatically. This caps initial creation to 24 toggles.
+                local first=(page-1)*pageSize+1
+                local last=math.min(total,page*pageSize)
+                local chunk=self:CreateSection({Name=("Items %d-%d of %d"):format(first,last,total)})
+                for i=first,last do
+                    local item=items[i]
+                    local title=type(item)=="table" and (item.Name or item.Text or item.Title or tostring(i)) or tostring(item)
+                    controls[i]=chunk:AddToggle({Text=tostring(title), Default=chosen[i]==true, Callback=function(v)
+                        chosen[i]=v; update()
+                    end})
+                end
+            end
+            if total>0 then drawPage() end
+            section:AddButton({Text="Load next 24 items", Callback=function()
+                if page*pageSize<total then page+=1; drawPage() end
+            end})
+            return {
+                GetSelected=function()
+                    local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end
+                    return r
+                end,
+                SelectAll=function() for i=1,total do chosen[i]=true end; update() end,
+                Clear=function() table.clear(chosen); update() end
+            }
         end
         function proxy:SetActionBar(c)
             local section=self:CreateSection({Name="Actions"})
@@ -220,15 +277,15 @@ local function activateGuiButton(p1)
 	end
 end
 
-repeat
-	pcall(function()
-		activateGuiButton(LocalPlayer.PlayerGui.DeviceSelect.Container.Tablet.Button)
-	end)
-	pcall(function()
-		activateGuiButton(LocalPlayer.PlayerGui.Join.Friends.Play)
-	end)
-	task.wait(1)
-until LocalPlayer.PlayerGui:FindFirstChild("MainGUI")
+-- Do not block the whole script if MM2 changes its menu structure.
+task.spawn(function()
+    for _ = 1, 12 do
+        if LocalPlayer.PlayerGui:FindFirstChild("MainGUI") then break end
+        pcall(function() activateGuiButton(LocalPlayer.PlayerGui.DeviceSelect.Container.Tablet.Button) end)
+        pcall(function() activateGuiButton(LocalPlayer.PlayerGui.Join.Friends.Play) end)
+        task.wait(1)
+    end
+end)
 
 local DEFAULT_SETTINGS = {
 	AutoRevealRoles = false,
