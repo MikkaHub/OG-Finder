@@ -2,7 +2,7 @@
 local lib
 local sessionClosed = false
 do
-    local PHOTO_URLS = {"https://i.ibb.co/N2q7Lr9C/8.jpg"}
+    local PHOTO_URLS = {"https://i.ibb.co/Xr3zJBVr/9.jpg"}
     local Players = game:GetService("Players")
     local Input = game:GetService("UserInputService")
     local Tween = game:GetService("TweenService")
@@ -28,6 +28,7 @@ do
         return make("TextLabel", {Text = tostring(value or ""), Position = position, Size = size,
             BackgroundTransparency = 1, Font = small and Enum.Font.Gotham or Enum.Font.GothamMedium,
             TextSize = small and 11 or 13, TextColor3 = small and Color3.fromRGB(163, 163, 171) or Color3.fromRGB(235, 235, 240),
+            TextStrokeColor3 = Color3.new(0, 0, 0), TextStrokeTransparency = 0.55,
             TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
             TextWrapped = true, BorderSizePixel = 0}, parent)
     end
@@ -133,7 +134,7 @@ do
         stroke(main, 0.4)
         local photo = make("ImageLabel", {Name = "FullBackground", Image = "", ScaleType = Enum.ScaleType.Fit,
             BackgroundTransparency = 1, ImageTransparency = backgroundTransparency,
-            Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ZIndex = 1}, main)
+            Position = UDim2.fromOffset(12, 12), Size = UDim2.new(1, -24, 1, -24), ZIndex = 1}, main)
         make("Frame", {BackgroundColor3 = Color3.fromRGB(3, 3, 5), BackgroundTransparency = 0.38,
             BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2}, main)
         local header = make("Frame", {BackgroundColor3 = Color3.fromRGB(12, 12, 15), BackgroundTransparency = 0.28,
@@ -340,9 +341,7 @@ do
                 local out = {}
                 local function card(x, kind, height, rightSpace)
                     local f = make("Frame", {Size = UDim2.new(1, 0, 0, height or 76), BackgroundColor3 = Color3.fromRGB(20, 20, 24),
-                        BackgroundTransparency = 0.22, BorderSizePixel = 0, LayoutOrder = #section.Controls + 1}, frame)
-                    round(f, 13)
-                    stroke(f, 0.43)
+                        BackgroundTransparency = 1, BorderSizePixel = 0, LayoutOrder = #section.Controls + 1}, frame)
                     local title = text(f, x.Text or x.Title or "Module", UDim2.fromOffset(14, 12), UDim2.new(1, -(rightSpace or 64), 0, 19))
                     title.TextTruncate, title.TextWrapped = Enum.TextTruncate.AtEnd, false
                     local desc = text(f, x.Tooltip or x.Content or "", UDim2.fromOffset(14, 35), UDim2.new(1, -28, 0, (height or 76) - 42), true)
@@ -3223,7 +3222,7 @@ do
 	})
 	v681:AddParagraph({
 		Title = "Credits",
-		Content = "MIZ0 custom interface. Translucent cards, horizontal tabs, and a fitted background image."
+		Content = "MIZ0 custom interface. Transparent controls, horizontal tabs, and a fitted background image."
 	})
 	v681:AddBanner({
 		Type = "Info",
