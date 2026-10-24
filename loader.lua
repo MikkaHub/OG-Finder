@@ -1,4 +1,6 @@
--- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.\n-- Miz0 | Halloween • WindUI edition
+-- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
+-- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
+-- Miz0 | Halloween • WindUI edition
 -- Original gameplay logic and existing feature callbacks continue below.
 -- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
 -- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
@@ -144,15 +146,41 @@ function Miz0UI:CreateWindow(o)
     pcall(function()
         WindUI:SetTheme("Dark")
     end)
+    -- Remove leftover GUI from previous executions before rebuilding.
+    pcall(function()
+        local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        if pg then
+            for _, child in ipairs(pg:GetChildren()) do
+                if child:IsA("ScreenGui") and (child.Name:lower():find("miz0") or child.Name:lower():find("windui")) then
+                    child:Destroy()
+                end
+            end
+        end
+    end)
     local raw = WindUI:CreateWindow({
-        Title="🎃 Miz0 | Halloween", Author="Miz0 Script", Icon="ghost", Folder="Miz0",
+        Title="🎃 MIZ0 • SPOOKY NIGHT", Author="HALLOWEEN EDITION", Icon="ghost", Folder="Miz0",
         Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
-        Theme="Dark", Transparent=true, Resizable=not touch,
+        Theme="Dark", Transparent=false, Resizable=not touch,
         Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.30,
         ToggleKey=Enum.KeyCode.RightControl,
         OpenButton={Enabled=true, OnlyMobile=false, Title="Miz0 Script", Draggable=true, Scale=touch and 0.78 or 0.7},
     })
     activeWindow=raw
+    -- Pumpkin banner visibly distinguishes this version from the old WindUI theme.
+    task.defer(function()
+        local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        if not pg then return end
+        for _, root in ipairs(pg:GetChildren()) do
+            if root:IsA("ScreenGui") and root.Name:lower():find("wind") then
+                for _, obj in ipairs(root:GetDescendants()) do
+                    if obj:IsA("TextLabel") and obj.Text:find("MIZ0") then
+                        obj.TextColor3 = Color3.fromRGB(255, 148, 47)
+                        obj.Font = Enum.Font.GothamBold
+                    end
+                end
+            end
+        end
+    end)
     polishMiz0Window(raw, PHOTO)
     local wrapper={_raw=raw}
     function wrapper:Destroy()
@@ -2809,7 +2837,7 @@ local mobileScale = getMobileScale()
 local uDim2 = IS_TOUCH_ONLY and UDim2.fromOffset(math.floor(820 * mobileScale), math.floor(540 * mobileScale)) or UDim2.fromOffset(820, 540)
 local vector2 = IS_TOUCH_ONLY and Vector2.new(160, 120) or Vector2.new(760, 420)
 local vector22 = IS_TOUCH_ONLY and Vector2.new(math.max(40, math.floor(118 * mobileScale)), math.max(48, math.floor(148 * mobileScale))) or Vector2.new(118, 148)
-local MIZ0_RED = Color3.fromRGB(255, 112, 24)
+local MIZ0_RED = Color3.fromRGB(255, 148, 47)
 local MIZ0_DARK_RED = Color3.fromRGB(130, 12, 26)
 
 local function applyMiz0Theme()
@@ -2825,7 +2853,7 @@ local function applyMiz0Theme()
 end
 
 local miz0Window = lib:CreateWindow({
-	Title = "Miz0 | MM2",
+	Title = "🎃 MIZ0 SPOOKY NIGHT",
 	Size = uDim2,
 	MinSize = vector2,
 	MaxSize = Vector2.new(1400, 900),
@@ -3486,52 +3514,8 @@ do
 		end
 	})
 
-	local v521 = v516:CreateSection({
-		Name = "Auto Open Crates",
-		Side = "Right"
-	})
-	local t31 = {}
-	local ok, result = pcall(function()
-		return require(ReplicatedStorage.Database.Sync.Shop).Weapons
-	end)
+	-- Auto Open Crates controls removed.
 
-	if ok and result then
-		for k in pairs(result) do
-			table.insert(t31, tostring(k))
-		end
-
-		table.sort(t31)
-	end
-
-	v521:AddToggle({
-		Text = "Auto Open Crates",
-		Default = false,
-		Flag = "AOCrates",
-		Callback = function(p94)
-			settings.AutoOpenCrates.State = p94
-		end
-	})
-
-	if #t31 > 0 then
-		v521:AddDropdown({
-			Text = "Choose Box",
-			Options = t31,
-			Default = t31[1],
-			Searchable = true,
-			Flag = "AOCrate_Pick",
-			Callback = function(p95)
-				settings.AutoOpenCrates.Crate = p95
-
-				local ok2, crateType = pcall(function()
-					return require(ReplicatedStorage.Database.Sync.Shop).Weapons[p95].DataType
-				end)
-
-				if ok2 and crateType then
-					settings.AutoOpenCrates.CrateType = crateType
-				end
-			end
-		})
-	end
 end
 
 do
@@ -3873,45 +3857,8 @@ do
 
 	-- Spawner tab and its controls removed from Miz0.
 
-	local v585 = miz0Window:CreateTab({
-		Name = "Crates"
-	})
-	local v586 = v585:AddItemGrid({
-		Items = v464,
-		MultiSelect = true,
-		SearchBar = true,
-		ItemSize = vector22,
-		MobileScaledItemSize = IS_TOUCH_ONLY,
-		OnSelectionChanged = function()
-			v563()
-		end
-	})
+	-- Crates tab removed.
 
-	v585:SetActionBar({
-		Left = {
-			{
-				Text = "Select All",
-				Callback = function()
-					v586:SelectAll()
-				end
-			},
-			{
-				Text = "Clear",
-				Callback = function()
-					v586:Clear()
-				end
-			}
-		},
-		Primary = {
-			Text = "Open Crate",
-			Callback = function()
-				v573(v586)
-			end
-		},
-		Status = function()
-			return ("%d selected"):format(#v586:GetSelected())
-		end
-	})
 end
 
 do
