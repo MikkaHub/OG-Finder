@@ -1,4 +1,4 @@
--- MIZ0 GALAXY V13: single original image, enlarged and fully visible (Fit).
+-- MIZ0 GALAXY V14: single original image INSIDE WindUI only; no floating gallery.
 -- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
 -- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
 -- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
@@ -78,7 +78,7 @@ function Miz0UI:CreateWindow(o)
     local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
     -- Wait briefly for image; do not freeze game if download is slow.
     local startPhoto = os.clock()
-    while not photoReady and os.clock()-startPhoto < 1.5 do task.wait(0.1) end
+    while not photoReady and os.clock()-startPhoto < 8 do task.wait(0.1) end
     pcall(function()
         WindUI:SetTheme("Dark")
     end)
@@ -97,77 +97,19 @@ function Miz0UI:CreateWindow(o)
         Title="✦ MIZ0 | GALAXY", Author="Miz0 Script", Icon="moon", Folder="Miz0",
         Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
         Theme="Dark", Transparent=true, Resizable=not touch,
-        Background=PHOTOS[1] ~= "" and PHOTOS[1] or nil, BackgroundImageTransparency=0.64,
+        Background=PHOTOS[1] ~= "" and PHOTOS[1] or nil, BackgroundImageTransparency=0.15,
         ToggleKey=Enum.KeyCode.RightControl,
         OpenButton={Enabled=true, OnlyMobile=false, Title="✦ Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
     })
     activeWindow=raw
-    -- Enlarged single-image gallery is a separate light-weight ScreenGui so it cannot
-    -- overlap WindUI text or interfere with its native controls.
-    task.spawn(function()
-        local pg=game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-        local old=pg:FindFirstChild("Miz0GalaxyGallery")
-        if old then old:Destroy() end
-        local gui=Instance.new("ScreenGui")
-        gui.Name="Miz0GalaxyGallery";gui.ResetOnSpawn=false;gui.IgnoreGuiInset=false
-        gui.DisplayOrder=20;gui.Parent=pg
-        local UIS=game:GetService("UserInputService")
-        local vp=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(900,600)
-        local width=math.min(vp.X-24, touch and (portrait and 330 or 550) or 680)
-        local height=touch and (portrait and 180 or 210) or 250
-        local panel=Instance.new("Frame")
-        panel.Name="GalaxyImageStrip";panel.Size=UDim2.fromOffset(width,height)
-        panel.Position=UDim2.new(.5,-width/2,0,6)
-        panel.BackgroundColor3=Color3.fromRGB(8,7,20)
-        panel.BorderSizePixel=0;panel.Parent=gui
-        Instance.new("UICorner",panel).CornerRadius=UDim.new(0,16)
-        local border=Instance.new("UIStroke",panel)
-        border.Color=Color3.fromRGB(145,82,255);border.Thickness=2
-        local gradient=Instance.new("UIGradient",border)
-        gradient.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(74,111,255)),ColorSequenceKeypoint.new(.5,Color3.fromRGB(184,73,245)),ColorSequenceKeypoint.new(1,Color3.fromRGB(46,215,250))})
-        local pad=Instance.new("UIPadding",panel)
-        pad.PaddingTop=UDim.new(0,7);pad.PaddingBottom=UDim.new(0,7)
-        pad.PaddingLeft=UDim.new(0,7);pad.PaddingRight=UDim.new(0,7)
-        local row=Instance.new("UIListLayout",panel)
-        row.FillDirection=Enum.FillDirection.Horizontal
-        row.HorizontalAlignment=Enum.HorizontalAlignment.Center
-        row.VerticalAlignment=Enum.VerticalAlignment.Center
-        row.Padding=UDim.new(0,7)
-        for i=1,1 do
-            local frame=Instance.new("Frame")
-            frame.Name="Photo"..i
-            frame.Size=UDim2.new(1,0,1,0)
-            frame.BackgroundColor3=Color3.fromRGB(23,16,45)
-            frame.BorderSizePixel=0;frame.ClipsDescendants=true;frame.Parent=panel
-            Instance.new("UICorner",frame).CornerRadius=UDim.new(0,11)
-            local rim=Instance.new("UIStroke",frame)
-            rim.Color=Color3.fromRGB(118,93,225);rim.Thickness=1
-            local img=Instance.new("ImageLabel")
-            img.Name="FullPhoto";img.Size=UDim2.fromScale(1,1)
-            img.BackgroundTransparency=1;img.ScaleType=Enum.ScaleType.Fit
-            img.Parent=frame
-            task.spawn(function()
-                local started=os.clock()
-                while PHOTOS[i]=="" and not photoReady and os.clock()-started<18 do task.wait(.2) end
-                if img.Parent then img.Image=PHOTOS[i] end
-            end)
+    -- Only one image: the WindUI window background. No independent image ScreenGui.
+    -- Clean up an older floating gallery if this file is re-executed.
+    pcall(function()
+        local pg=game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        if pg then
+            local old=pg:FindFirstChild("Miz0GalaxyGallery")
+            if old then old:Destroy() end
         end
-        -- Drag the gallery by its background, on both touch and mouse.
-        local dragging,origin,initial=false,nil,nil
-        panel.InputBegan:Connect(function(input)
-            if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-                dragging=true;origin=input.Position;initial=panel.Position
-            end
-        end)
-        UIS.InputChanged:Connect(function(input)
-            if dragging and origin and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-                local d=input.Position-origin
-                panel.Position=UDim2.new(initial.X.Scale,initial.X.Offset+d.X,initial.Y.Scale,initial.Y.Offset+d.Y)
-            end
-        end)
-        UIS.InputEnded:Connect(function(input)
-            if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end
-        end)
     end)
     -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
     local wrapper={_raw=raw}
