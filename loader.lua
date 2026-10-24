@@ -1,4 +1,4 @@
--- MIZ0 GALAXY V12: WindUI with three distinct FIT images side-by-side.
+-- MIZ0 GALAXY V13: single original image, enlarged and fully visible (Fit).
 -- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
 -- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
 -- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
@@ -6,13 +6,11 @@
 -- Original gameplay logic and existing feature callbacks continue below.
 -- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
 -- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
--- Three original pictures, each downloaded separately (no cropping).
+-- First original picture only, enlarged in a FIT image frame (no cropping).
 local PHOTO_URLS = {
     "https://i.ibb.co/nMfk2Cbb/images.jpg",
-    "https://i.ibb.co/PGqN0phc/7.jpg",
-    "https://i.ibb.co/x8SqYJdj/images-1.jpg",
 }
-local PHOTOS = {"", "", ""}
+local PHOTOS = {""}
 local function fetchPhoto(url, index)
     local assetFn = getcustomasset or getsynasset
     local requestFn = request or http_request or (syn and syn.request)
@@ -99,12 +97,12 @@ function Miz0UI:CreateWindow(o)
         Title="✦ MIZ0 | GALAXY", Author="Miz0 Script", Icon="moon", Folder="Miz0",
         Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
         Theme="Dark", Transparent=true, Resizable=not touch,
-        Background=PHOTOS[2] ~= "" and PHOTOS[2] or nil, BackgroundImageTransparency=0.64,
+        Background=PHOTOS[1] ~= "" and PHOTOS[1] or nil, BackgroundImageTransparency=0.64,
         ToggleKey=Enum.KeyCode.RightControl,
         OpenButton={Enabled=true, OnlyMobile=false, Title="✦ Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
     })
     activeWindow=raw
-    -- Three-image gallery is a separate light-weight ScreenGui so it cannot
+    -- Enlarged single-image gallery is a separate light-weight ScreenGui so it cannot
     -- overlap WindUI text or interfere with its native controls.
     task.spawn(function()
         local pg=game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
@@ -115,8 +113,8 @@ function Miz0UI:CreateWindow(o)
         gui.DisplayOrder=20;gui.Parent=pg
         local UIS=game:GetService("UserInputService")
         local vp=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(900,600)
-        local width=math.min(vp.X-24, touch and (portrait and 285 or 410) or 480)
-        local height=touch and 85 or 104
+        local width=math.min(vp.X-24, touch and (portrait and 330 or 550) or 680)
+        local height=touch and (portrait and 180 or 210) or 250
         local panel=Instance.new("Frame")
         panel.Name="GalaxyImageStrip";panel.Size=UDim2.fromOffset(width,height)
         panel.Position=UDim2.new(.5,-width/2,0,6)
@@ -135,10 +133,10 @@ function Miz0UI:CreateWindow(o)
         row.HorizontalAlignment=Enum.HorizontalAlignment.Center
         row.VerticalAlignment=Enum.VerticalAlignment.Center
         row.Padding=UDim.new(0,7)
-        for i=1,3 do
+        for i=1,1 do
             local frame=Instance.new("Frame")
             frame.Name="Photo"..i
-            frame.Size=UDim2.new(1/3,-5,1,0)
+            frame.Size=UDim2.new(1,0,1,0)
             frame.BackgroundColor3=Color3.fromRGB(23,16,45)
             frame.BorderSizePixel=0;frame.ClipsDescendants=true;frame.Parent=panel
             Instance.new("UICorner",frame).CornerRadius=UDim.new(0,11)
