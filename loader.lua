@@ -1,4 +1,4 @@
--- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
+-- Miz0 NIGHTFALL v5: redesigned WindUI labels, tab icons, branded photo badge, better mobile sizing.\n-- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
 -- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
 -- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
 -- Miz0 | Halloween • WindUI edition
@@ -77,7 +77,7 @@ function Miz0UI:CreateWindow(o)
     local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
     -- Wait briefly for image; do not freeze game if download is slow.
     local startPhoto = os.clock()
-    while not photoReady and os.clock()-startPhoto < 1.5 do task.wait(0.1) end
+    while not photoReady and os.clock()-startPhoto < 4 do task.wait(0.1) end
     pcall(function()
         WindUI:SetTheme("Dark")
     end)
@@ -93,14 +93,59 @@ function Miz0UI:CreateWindow(o)
         end
     end)
     local raw = WindUI:CreateWindow({
-        Title="🎃 MIZ0 | HALLOWEEN", Author="Miz0 Script", Icon="ghost", Folder="Miz0",
+        Title="🎃 MIZ0 • NIGHTFALL", Author="HALLOWEEN EDITION  •  V5", Icon="ghost", Folder="Miz0",
         Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
         Theme="Dark", Transparent=true, Resizable=not touch,
-        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.30,
+        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.42,
         ToggleKey=Enum.KeyCode.RightControl,
-        OpenButton={Enabled=true, OnlyMobile=false, Title="🎃 Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
+        OpenButton={Enabled=true, OnlyMobile=false, Title="🎃 Miz0 Script", Draggable=true, Scale=touch and 0.88 or 0.78},
     })
     activeWindow=raw
+    -- Brand badge uses the image as a fully fitted thumbnail, not a cropped square.
+    -- Its appearance makes this edition visually distinct even if WindUI ignores Background.
+    task.spawn(function()
+        local t0=os.clock()
+        while not photoReady and os.clock()-t0<8 do task.wait(.15) end
+        local player=game:GetService("Players").LocalPlayer
+        local pg=player and player:FindFirstChildOfClass("PlayerGui")
+        if not pg then return end
+        local old=pg:FindFirstChild("Miz0NightfallBadge")
+        if old then old:Destroy() end
+        local badge=Instance.new("ScreenGui")
+        badge.Name="Miz0NightfallBadge"
+        badge.ResetOnSpawn=false
+        badge.IgnoreGuiInset=true
+        badge.DisplayOrder=12
+        badge.Parent=pg
+        local panel=Instance.new("Frame")
+        panel.Size=UDim2.fromOffset(touch and 115 or 150,touch and 49 or 58)
+        panel.Position=UDim2.new(1,touch and -122 or -159,0,12)
+        panel.BackgroundColor3=Color3.fromRGB(28,14,33)
+        panel.BackgroundTransparency=.10
+        panel.BorderSizePixel=0
+        panel.Parent=badge
+        Instance.new("UICorner",panel).CornerRadius=UDim.new(0,12)
+        local edge=Instance.new("UIStroke",panel)
+        edge.Color=Color3.fromRGB(255,123,27)
+        edge.Thickness=1.5
+        local pic=Instance.new("ImageLabel")
+        pic.Size=UDim2.fromOffset(touch and 39 or 47,touch and 39 or 47)
+        pic.Position=UDim2.fromOffset(5,5)
+        pic.BackgroundTransparency=1
+        pic.ScaleType=Enum.ScaleType.Fit
+        pic.Image=PHOTO
+        pic.Parent=panel
+        Instance.new("UICorner",pic).CornerRadius=UDim.new(0,8)
+        local name=Instance.new("TextLabel")
+        name.BackgroundTransparency=1
+        name.Position=UDim2.fromOffset(touch and 47 or 56,6)
+        name.Size=UDim2.new(1,touch and -50 or -59,1,-12)
+        name.Text="MIZ0\\nNIGHTFALL"
+        name.TextColor3=Color3.fromRGB(255,170,71)
+        name.Font=Enum.Font.GothamBold
+        name.TextScaled=true
+        name.Parent=panel
+    end)
     -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
     local wrapper={_raw=raw}
     function wrapper:Destroy()
@@ -108,16 +153,18 @@ function Miz0UI:CreateWindow(o)
         protect(function() raw:Destroy() end)
     end
     function wrapper:CreateTab(cfg)
-        local tab=raw:Tab({Title=tostring(cfg.Name or "Tab"), Icon="ghost"})
+        local iconMap={ESP="eye",Combat="swords",Movement="footprints",Player="user-round",Misc="settings",Visuals="scan-eye",Trading="handshake",Inventory="backpack",Teleports="map-pin",Settings="settings",Main="house"}
+        local tabName=tostring(cfg.Name or "Tab")
+        local tab=raw:Tab({Title=tabName, Icon=iconMap[tabName] or "ghost"})
         local proxy={_tab=tab}
         function proxy:CreateSection(c)
-            local sec=tab:Section({Title="🎃 "..tostring(c.Name or "Section"), Box=true, Opened=true})
+            local sec=tab:Section({Title="✦ "..tostring(c.Name or "Section"), Box=true, Opened=true})
             local out={_section=sec}
             function out:AddButton(x)
-                return sec:Button({Title="✦ "..tostring(x.Text or "Action"), Callback=function() protect(x.Callback) end})
+                return sec:Button({Title="🎃  "..tostring(x.Text or "Action"), Callback=function() protect(x.Callback) end})
             end
             function out:AddToggle(x)
-                return sec:Toggle({Title="☾ "..tostring(x.Text or "Toggle"), Value=x.Default==true,
+                return sec:Toggle({Title="◈  "..tostring(x.Text or "Toggle"), Value=x.Default==true,
                     Callback=function(v) protect(x.Callback,v) end})
             end
             function out:AddSlider(x)
