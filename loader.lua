@@ -1,250 +1,166 @@
--- Miz0 NIGHTFALL v5: redesigned WindUI labels, tab icons, branded photo badge, better mobile sizing.\n-- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
--- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
--- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
--- Miz0 | Halloween • WindUI edition
--- Original gameplay logic and existing feature callbacks continue below.
--- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
--- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
-local PHOTO_URL = "https://i.ibb.co/nMfk2Cbb/images.jpg"
-local PHOTO = "" -- No moderated Roblox asset fallback
-local function preparePhoto()
-    local assetFn = getcustomasset or getsynasset
-    local requestFn = request or http_request or (syn and syn.request)
-    if type(assetFn) ~= "function" or type(writefile) ~= "function" or type(requestFn) ~= "function" then
-        warn("[Miz0] Delta lacks local-image APIs; using dark background")
-        return ""
-    end
-    local fileName = "miz0_halloween_background.jpg"
-    local ok, result = pcall(function()
-        if type(isfile) ~= "function" or not isfile(fileName) then
-            local response = requestFn({Url=PHOTO_URL, Method="GET"})
-            if not response or (response.StatusCode ~= 200 and response.StatusCode ~= 201) or type(response.Body) ~= "string" or #response.Body < 100 then
-                error("Image download failed")
-            end
-            writefile(fileName, response.Body)
-        end
-        return assetFn(fileName)
-    end)
-    if ok and type(result) == "string" then return result end
-    warn("[Miz0] Image unavailable:", result)
-    return ""
+-- Miz0 Halloween / Fluent GUI edition
+-- Fluent by dawid-scripts: https://github.com/dawid-scripts/Fluent
+local PHOTO_URL="https://i.ibb.co/nMfk2Cbb/images.jpg"
+local function safe(fn,...)
+    if type(fn)~="function" then return end
+    local ok,err=pcall(fn,...)
+    if not ok then warn("[Miz0] callback:",err) end
 end
--- Resolve in background so a slow image host cannot stall execution.
-local photoReady = false
-task.spawn(function() PHOTO = preparePhoto(); photoReady = true end)
-local windOk, WindUI = pcall(function()
-    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
-    assert(type(source)=="string" and #source>100, "WindUI source unavailable")
-    return assert(loadstring(source))()
+local ok,Fluent=pcall(function()
+    local code=game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/main.lua")
+    assert(type(code)=="string" and #code>100,"Fluent download failed")
+    return assert(loadstring(code))()
 end)
-if not windOk or type(WindUI) ~= "table" then
-    warn("[Miz0] WindUI failed to load:", WindUI)
+if not ok or type(Fluent)~="table" then
+    warn("[Miz0] Could not initialize Fluent:",Fluent)
     return
 end
--- Use FIT rather than CROP so the complete background image stays visible.
--- Any spare space is letterboxed in the Halloween dark color.
--- WindUI owns its own controls. Avoid scanning and restyling arbitrary PlayerGui
--- descendants: that broke layouts and caused expensive repeated work on Android.
-local function polishMiz0Window() end
-
-local Miz0UI = {}
-local activeWindow
-local function protect(fn, ...)
-    if not fn then return end
-    local ok, err = pcall(fn, ...)
-    if not ok then warn("[Miz0] Callback error:", err) end
+local lib={}
+local serial=0
+local function unique(prefix)
+    serial+=1
+    return "Miz0_"..prefix.."_"..serial
 end
-function Miz0UI:Notify(o)
-    pcall(function()
-        WindUI:Notify({Title=o.Title or "Miz0", Content=tostring(o.Content or ""), Duration=o.Duration or 4})
-    end)
+function lib:Notify(c)
+    safe(function() Fluent:Notify({Title=tostring(c.Title or "Miz0"),Content=tostring(c.Content or ""),Duration=c.Duration or 4}) end)
 end
-function Miz0UI:SetTheme(theme)
-    if type(theme)=="string" then
-        -- WindUI uses its own themes; keep Halloween's dark base.
-        pcall(function() WindUI:SetTheme("Dark") end)
-    end
-end
-function Miz0UI:SetDensity(_) end
-function Miz0UI:CreateWindow(o)
-    local touch = game:GetService("UserInputService").TouchEnabled
-    local camera = workspace.CurrentCamera
-    local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
-    -- Fit the real screen orientation; never force a landscape-sized window on portrait Android.
-    local portrait = viewport.Y > viewport.X
-    local margin = touch and 12 or 24
-    local w = math.max(240, math.min(viewport.X - margin * 2, touch and (portrait and 345 or 640) or 760))
-    local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
-    -- Wait briefly for image; do not freeze game if download is slow.
-    local startPhoto = os.clock()
-    while not photoReady and os.clock()-startPhoto < 4 do task.wait(0.1) end
-    pcall(function()
-        WindUI:SetTheme("Dark")
-    end)
-    -- Remove leftover GUI from previous executions before rebuilding.
-    pcall(function()
-        local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
-        if pg then
-            for _, child in ipairs(pg:GetChildren()) do
-                if child:IsA("ScreenGui") and (child.Name:lower():find("miz0") or child.Name:lower():find("windui")) then
-                    child:Destroy()
-                end
-            end
-        end
-    end)
-    local raw = WindUI:CreateWindow({
-        Title="🎃 MIZ0 • NIGHTFALL", Author="HALLOWEEN EDITION  •  V5", Icon="ghost", Folder="Miz0",
-        Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
-        Theme="Dark", Transparent=true, Resizable=not touch,
-        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.42,
-        ToggleKey=Enum.KeyCode.RightControl,
-        OpenButton={Enabled=true, OnlyMobile=false, Title="🎃 Miz0 Script", Draggable=true, Scale=touch and 0.88 or 0.78},
+function lib:SetTheme(_) end
+function lib:SetDensity(_) end
+function lib:CreateWindow(_)
+    local Window=Fluent:CreateWindow({
+        Title="🎃 Miz0 | Haunted Night",
+        SubTitle="Halloween Edition",
+        TabWidth=135,
+        Size=UDim2.fromOffset(560,400),
+        Acrylic=false,
+        Theme="Dark",
+        MinimizeKey=Enum.KeyCode.RightControl
     })
-    activeWindow=raw
-    -- Brand badge uses the image as a fully fitted thumbnail, not a cropped square.
-    -- Its appearance makes this edition visually distinct even if WindUI ignores Background.
-    task.spawn(function()
-        local t0=os.clock()
-        while not photoReady and os.clock()-t0<8 do task.wait(.15) end
-        local player=game:GetService("Players").LocalPlayer
-        local pg=player and player:FindFirstChildOfClass("PlayerGui")
-        if not pg then return end
-        local old=pg:FindFirstChild("Miz0NightfallBadge")
-        if old then old:Destroy() end
-        local badge=Instance.new("ScreenGui")
-        badge.Name="Miz0NightfallBadge"
-        badge.ResetOnSpawn=false
-        badge.IgnoreGuiInset=true
-        badge.DisplayOrder=12
-        badge.Parent=pg
-        local panel=Instance.new("Frame")
-        panel.Size=UDim2.fromOffset(touch and 115 or 150,touch and 49 or 58)
-        panel.Position=UDim2.new(1,touch and -122 or -159,0,12)
-        panel.BackgroundColor3=Color3.fromRGB(28,14,33)
-        panel.BackgroundTransparency=.10
-        panel.BorderSizePixel=0
-        panel.Parent=badge
-        Instance.new("UICorner",panel).CornerRadius=UDim.new(0,12)
-        local edge=Instance.new("UIStroke",panel)
-        edge.Color=Color3.fromRGB(255,123,27)
-        edge.Thickness=1.5
-        local pic=Instance.new("ImageLabel")
-        pic.Size=UDim2.fromOffset(touch and 39 or 47,touch and 39 or 47)
-        pic.Position=UDim2.fromOffset(5,5)
-        pic.BackgroundTransparency=1
-        pic.ScaleType=Enum.ScaleType.Fit
-        pic.Image=PHOTO
-        pic.Parent=panel
-        Instance.new("UICorner",pic).CornerRadius=UDim.new(0,8)
-        local name=Instance.new("TextLabel")
-        name.BackgroundTransparency=1
-        name.Position=UDim2.fromOffset(touch and 47 or 56,6)
-        name.Size=UDim2.new(1,touch and -50 or -59,1,-12)
-        name.Text="MIZ0\\nNIGHTFALL"
-        name.TextColor3=Color3.fromRGB(255,170,71)
-        name.Font=Enum.Font.GothamBold
-        name.TextScaled=true
-        name.Parent=panel
-    end)
-    -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
-    local wrapper={_raw=raw}
-    function wrapper:Destroy()
-        protect(o.OnClose)
-        protect(function() raw:Destroy() end)
-    end
+    local wrapper={}
     function wrapper:CreateTab(cfg)
-        local iconMap={ESP="eye",Combat="swords",Movement="footprints",Player="user-round",Misc="settings",Visuals="scan-eye",Trading="handshake",Inventory="backpack",Teleports="map-pin",Settings="settings",Main="house"}
-        local tabName=tostring(cfg.Name or "Tab")
-        local tab=raw:Tab({Title=tabName, Icon=iconMap[tabName] or "ghost"})
-        local proxy={_tab=tab}
+        local title=tostring(cfg.Name or "Tab")
+        local iconMap={ESP="eye",Combat="swords",Movement="footprints",Player="user",Misc="settings",Visuals="eye",Trading="handshake",Inventory="package",Teleports="map-pin",Settings="settings",Main="home"}
+        local tab=Window:AddTab({Title=title,Icon=iconMap[title] or "moon"})
+        local proxy={}
         function proxy:CreateSection(c)
-            local sec=tab:Section({Title="✦ "..tostring(c.Name or "Section"), Box=true, Opened=true})
-            local out={_section=sec}
-            function out:AddButton(x)
-                return sec:Button({Title="🎃  "..tostring(x.Text or "Action"), Callback=function() protect(x.Callback) end})
+            local name=type(c)=="table" and c.Name or c
+            local section=tab:AddSection("🎃 "..tostring(name or "Features"))
+            local sec={}
+            function sec:AddButton(x)
+                return section:AddButton({Title="✦ "..tostring(x.Text or "Action"),Description=tostring(x.Tooltip or ""),Callback=function()safe(x.Callback)end})
             end
-            function out:AddToggle(x)
-                return sec:Toggle({Title="◈  "..tostring(x.Text or "Toggle"), Value=x.Default==true,
-                    Callback=function(v) protect(x.Callback,v) end})
+            function sec:AddToggle(x)
+                return section:AddToggle(unique("toggle"),{Title=tostring(x.Text or "Toggle"),Description=tostring(x.Tooltip or ""),Default=x.Default==true,Callback=function(v)safe(x.Callback,v)end})
             end
-            function out:AddSlider(x)
-                return sec:Slider({Title=tostring(x.Text or "Slider"), Step=x.Increment or 1,
-                    Value={Min=x.Min or 0, Max=x.Max or 100, Default=x.Default or x.Min or 0},
-                    Callback=function(v) protect(x.Callback,v) end})
+            function sec:AddSlider(x)
+                return section:AddSlider(unique("slider"),{Title=tostring(x.Text or "Slider"),Description=tostring(x.Tooltip or ""),
+                    Default=tonumber(x.Default) or tonumber(x.Min) or 0,
+                    Min=tonumber(x.Min) or 0,Max=tonumber(x.Max) or 100,Rounding=2,
+                    Callback=function(v)safe(x.Callback,v)end})
             end
-            function out:AddDropdown(x)
-                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
-                    Value=x.Default, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
+            function sec:AddDropdown(x)
+                return section:AddDropdown(unique("dropdown"),{Title=tostring(x.Text or "Select"),
+                    Values=x.Options or {},Multi=false,Default=x.Default,
+                    Callback=function(v)safe(x.Callback,v)end})
             end
-            function out:AddMultiDropdown(x)
-                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
-                    Multi=true, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
+            function sec:AddMultiDropdown(x)
+                return section:AddDropdown(unique("multidropdown"),{Title=tostring(x.Text or "Select"),
+                    Values=x.Options or {},Multi=true,Default={},
+                    Callback=function(v)safe(x.Callback,v)end})
             end
-            function out:AddInput(x)
-                return sec:Input({Title=tostring(x.Text or "Input"), Value=tostring(x.Default or ""),
-                    Placeholder=x.Placeholder or "", Callback=function(v) protect(x.Callback,v) end})
+            function sec:AddInput(x)
+                return section:AddInput(unique("input"),{Title=tostring(x.Text or "Input"),Default=tostring(x.Default or ""),
+                    Placeholder=tostring(x.Placeholder or ""),Numeric=false,Finished=false,
+                    Callback=function(v)safe(x.Callback,v)end})
             end
-            function out:AddColorPicker(x)
-                return sec:Colorpicker({Title=tostring(x.Text or "Color"), Default=x.Default or Color3.fromRGB(255,120,20),
-                    Callback=function(v) protect(x.Callback,v) end})
+            function sec:AddColorPicker(x)
+                return section:AddColorpicker(unique("color"),{Title=tostring(x.Text or "Color"),
+                    Default=x.Default or Color3.fromRGB(255,120,30),
+                    Callback=function(v)safe(x.Callback,v)end})
             end
-            function out:AddParagraph(x)
-                local para=sec:Paragraph({Title=tostring(x.Title or ""), Desc=tostring(x.Content or "")})
-                return {SetTitle=function(_,v) protect(function() para:SetTitle(tostring(v)) end) end,
-                    SetContent=function(_,v) protect(function() para:SetDesc(tostring(v)) end) end}
+            function sec:AddParagraph(x)
+                local title=tostring(x.Title or "Info")
+                local content=tostring(x.Content or "")
+                local p=section:AddParagraph({Title=title,Content=content})
+                return {SetTitle=function(_,v)title=tostring(v);safe(function()p:SetTitle(title)end)end,
+                    SetContent=function(_,v)content=tostring(v);safe(function()p:SetDesc(content)end)end}
             end
-            function out:AddBanner(x)
-                return sec:Paragraph({Title="🎃 Miz0", Desc=tostring(x.Text or "")})
+            function sec:AddBanner(x)
+                return section:AddParagraph({Title="🎃 Miz0",Content=tostring(x.Text or x.Content or "")})
             end
-            return out
+            return sec
         end
         function proxy:AddItemGrid(c)
-            -- Lazy paged list: avoids thousands of UI controls freezing Android.
-            local section=self:CreateSection({Name="Inventory selection"})
-            local chosen, controls = {}, {}
             local items=c.Items or {}
-            local page, pageSize = 1, 24
-            local total= #items
-            local function update()
-                protect(c.OnSelectionChanged)
-            end
-            local function drawPage()
-                -- Create a separate section for each requested page; old pages are not
-                -- recreated automatically. This caps initial creation to 24 toggles.
-                local first=(page-1)*pageSize+1
-                local last=math.min(total,page*pageSize)
-                local chunk=self:CreateSection({Name=("Items %d-%d of %d"):format(first,last,total)})
-                for i=first,last do
+            local selected={}
+            local page,pageSize=1,20
+            local sec=self:CreateSection({Name="Inventory"})
+            local function showPage()
+                local chunk=self:CreateSection({Name="Items • page "..page})
+                for i=(page-1)*pageSize+1,math.min(#items,page*pageSize) do
                     local item=items[i]
-                    local title=type(item)=="table" and (item.Name or item.Text or item.Title or tostring(i)) or tostring(item)
-                    controls[i]=chunk:AddToggle({Text=tostring(title), Default=chosen[i]==true, Callback=function(v)
-                        chosen[i]=v; update()
+                    local title=type(item)=="table" and tostring(item.Name or item.Text or item.Title or i) or tostring(item)
+                    chunk:AddToggle({Text=title,Default=selected[i]==true,Callback=function(v)
+                        selected[i]=v or nil
+                        safe(c.OnSelectionChanged)
                     end})
                 end
             end
-            if total>0 then drawPage() end
-            section:AddButton({Text="Load next 24 items", Callback=function()
-                if page*pageSize<total then page+=1; drawPage() end
+            if #items>0 then showPage() end
+            sec:AddButton({Text="Next inventory page",Callback=function()
+                if page*pageSize<#items then page+=1;showPage() end
             end})
             return {
                 GetSelected=function()
-                    local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end
-                    return r
+                    local out={}
+                    for i,item in ipairs(items) do if selected[i] then out[#out+1]=item end end
+                    return out
                 end,
-                SelectAll=function() for i=1,total do chosen[i]=true end; update() end,
-                Clear=function() table.clear(chosen); update() end
+                SelectAll=function()for i=1,#items do selected[i]=true end;safe(c.OnSelectionChanged)end,
+                Clear=function()table.clear(selected);safe(c.OnSelectionChanged)end
             }
         end
         function proxy:SetActionBar(c)
-            local section=self:CreateSection({Name="Actions"})
-            for _,b in ipairs(c.Left or {}) do section:AddButton(b) end
-            if c.Primary then section:AddButton(c.Primary) end
+            local sec=self:CreateSection({Name="Actions"})
+            for _,b in ipairs(c.Left or {}) do sec:AddButton(b) end
+            if c.Primary then sec:AddButton(c.Primary) end
         end
         return proxy
     end
+    task.spawn(function()
+        local asset=getcustomasset or getsynasset
+        local req=request or http_request or (syn and syn.request)
+        if type(asset)~="function" or type(req)~="function" or type(writefile)~="function" then return end
+        local worked,photo=pcall(function()
+            local path="miz0_fluent_background.jpg"
+            if not (type(isfile)=="function" and isfile(path)) then
+                local r=req({Url=PHOTO_URL,Method="GET"})
+                assert(r and r.StatusCode==200 and type(r.Body)=="string" and #r.Body>100)
+                writefile(path,r.Body)
+            end
+            return asset(path)
+        end)
+        if not worked then warn("[Miz0] photo unavailable:",photo);return end
+        local pg=game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        if not pg then return end
+        local previous=pg:FindFirstChild("Miz0FluentPhoto")
+        if previous then previous:Destroy() end
+        local gui=Instance.new("ScreenGui")
+        gui.Name="Miz0FluentPhoto";gui.ResetOnSpawn=false;gui.Parent=pg
+        local pic=Instance.new("ImageLabel")
+        pic.Size=UDim2.fromOffset(74,74)
+        pic.Position=UDim2.new(1,-84,0,12)
+        pic.BackgroundColor3=Color3.fromRGB(28,16,36)
+        pic.Image=photo
+        pic.ScaleType=Enum.ScaleType.Fit
+        pic.Parent=gui
+        Instance.new("UICorner",pic).CornerRadius=UDim.new(0,12)
+        local border=Instance.new("UIStroke",pic)
+        border.Color=Color3.fromRGB(255,129,31);border.Thickness=2
+    end)
     return wrapper
 end
-local lib = Miz0UI
+
 local genv = typeof(getgenv) == "function" and getgenv() or _G
 
 if game.GameId ~= 66654135 then
