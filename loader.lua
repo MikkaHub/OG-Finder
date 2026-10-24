@@ -49,6 +49,18 @@ end
 -- WindUI owns its own controls. Avoid scanning and restyling arbitrary PlayerGui
 -- descendants: that broke layouts and caused expensive repeated work on Android.
 local function polishMiz0Window() end
+local sessionClosed = false
+local activeConnections = {}
+local function trackConnection(conn)
+    activeConnections[#activeConnections+1] = conn
+    return conn
+end
+local function disconnectTracked()
+    for _, conn in ipairs(activeConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    table.clear(activeConnections)
+end
 
 local Miz0UI = {}
 local activeWindow
@@ -64,8 +76,12 @@ function Miz0UI:Notify(o)
 end
 function Miz0UI:SetTheme(theme)
     if type(theme)=="string" then
-        -- WindUI uses its own themes; keep Halloween's dark base.
-        pcall(function() WindUI:SetTheme("Dark") end)
+        local supported = {Dark=true, Light=true}
+        pcall(function() WindUI:SetTheme(supported[theme] and theme or "Dark") end)
+    elseif type(theme)=="table" then
+        -- This WindUI adapter has no documented per-accent API.
+        -- Do not silently overwrite WindUI internals.
+        warn("[Miz0] Custom accent is not supported by this WindUI adapter")
     end
 end
 function Miz0UI:SetDensity(_) end
@@ -116,7 +132,10 @@ function Miz0UI:CreateWindow(o)
     -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
     local wrapper={_raw=raw}
     function wrapper:Destroy()
+        if sessionClosed then return end
+        sessionClosed = true
         protect(o.OnClose)
+        disconnectTracked()
         protect(function() raw:Destroy() end)
     end
     function wrapper:CreateTab(cfg)
@@ -173,7 +192,11 @@ function Miz0UI:CreateWindow(o)
             local page, pageSize = 1, 24
             local total= #items
             local function update()
-                protect(c.OnSelectionChanged)
+                protect(c.OnSelectionChanged, (function()
+                    local selected = {}
+                    for i, item in ipairs(items) do if chosen[i] then selected[#selected+1]=item end end
+                    return selected
+                end)())
             end
             local function drawPage()
                 -- Create a separate section for each requested page; old pages are not
@@ -198,8 +221,16 @@ function Miz0UI:CreateWindow(o)
                     local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end
                     return r
                 end,
-                SelectAll=function() for i=1,total do chosen[i]=true end; update() end,
-                Clear=function() table.clear(chosen); update() end
+                SelectAll=function()
+                    for i=1,total do chosen[i]=true end
+                    for i, control in pairs(controls) do pcall(function() control:Set(true) end) end
+                    update()
+                end,
+                Clear=function()
+                    table.clear(chosen)
+                    for i, control in pairs(controls) do pcall(function() control:Set(false) end) end
+                    update()
+                end
             }
         end
         function proxy:SetActionBar(c)
@@ -447,10 +478,14 @@ CoinCollected.OnClientEvent:Connect(function(p3, p4, p5)
 	n2 = tonumber(p4) or n2
 	n3 = tonumber(p5) or n3
 end)
-RunService.RenderStepped:Connect(function()
+task.spawn(function()
+    while not sessionClosed do
+        task.wait(0.5)
+        if not settings.CoinFarm.StatsOverlay then continue end
 	local v45 = math.floor(n1 * 3600 / math.max(tick() - now, 1))
 
 	CenteredTextLabel.Text = ("Coins Collected: %d/%d\nTotal Coins: %d\nCoins Per Hour: %d"):format(n2, n3, n1, v45)
+    end
 end)
 
 local u46
@@ -1396,7 +1431,7 @@ local function flingTargets(p17)
 			end
 		end
 
-		Workspace.FallenPartsDestroyHeight = (0/0)
+		-- Do not assign NaN to FallenPartsDestroyHeight.
 
 		local BodyVelocity = Instance.new("BodyVelocity")
 
@@ -1985,7 +2020,12 @@ local function selectValueSource()
 	u251 = u252 or {}
 end
 
-local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI", 9e9)
+local MainGUI = LocalPlayer.PlayerGui:WaitForChild("MainGUI", 30)
+if not MainGUI then
+    warn("[Miz0] MainGUI did not appear within 30 seconds")
+    genv.miz0MM2Loaded = false
+    return
+end
 local v310 = false
 
 if MainGUI:FindFirstChild("Lobby") then
