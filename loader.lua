@@ -1,4 +1,4 @@
--- Miz0 | Halloween • WindUI edition
+-- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.\n-- Miz0 | Halloween • WindUI edition
 -- Original gameplay logic and existing feature callbacks continue below.
 -- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
 -- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
@@ -97,8 +97,8 @@ local function polishMiz0Window(raw, photo)
                             if not obj:FindFirstChild("Miz0ButtonStroke") then
                                 local stroke = Instance.new("UIStroke")
                                 stroke.Name = "Miz0ButtonStroke"
-                                stroke.Color = Color3.fromRGB(121, 72, 130)
-                                stroke.Transparency = 0.65
+                                stroke.Color = Color3.fromRGB(255, 122, 34)
+                                stroke.Transparency = 0.42
                                 stroke.Thickness = 1
                                 stroke.Parent = obj
                             end
@@ -133,18 +133,24 @@ function Miz0UI:CreateWindow(o)
     local touch = game:GetService("UserInputService").TouchEnabled
     local camera = workspace.CurrentCamera
     local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
-    local w = math.max(270, math.min(viewport.X-20, touch and 580 or 780))
-    local h = math.max(250, math.min(viewport.Y-45, touch and 450 or 540))
+    -- Fit the real screen orientation; never force a landscape-sized window on portrait Android.
+    local portrait = viewport.Y > viewport.X
+    local margin = touch and 12 or 24
+    local w = math.max(240, math.min(viewport.X - margin * 2, touch and (portrait and 355 or 650) or 780))
+    local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 540 or 400) or 540))
     -- Wait briefly for image; do not freeze game if download is slow.
     local startPhoto = os.clock()
     while not photoReady and os.clock()-startPhoto < 2 do task.wait(0.1) end
+    pcall(function()
+        WindUI:SetTheme("Dark")
+    end)
     local raw = WindUI:CreateWindow({
-        Title="🎃 Miz0 | MM2", Author="Halloween Edition", Icon="ghost", Folder="Miz0",
-        Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(320,270),
-        Theme="Dark", Transparent=true, Resizable=true,
-        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.12,
+        Title="🎃 Miz0 | Halloween", Author="Miz0 Script", Icon="ghost", Folder="Miz0",
+        Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
+        Theme="Dark", Transparent=true, Resizable=not touch,
+        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.30,
         ToggleKey=Enum.KeyCode.RightControl,
-        OpenButton={Enabled=true, OnlyMobile=false, Title="Miz0 Script", Draggable=true, Scale=touch and 0.85 or 0.7},
+        OpenButton={Enabled=true, OnlyMobile=false, Title="Miz0 Script", Draggable=true, Scale=touch and 0.78 or 0.7},
     })
     activeWindow=raw
     polishMiz0Window(raw, PHOTO)
@@ -3865,59 +3871,7 @@ do
 		})
 	end
 
-	local v580 = miz0Window:CreateTab({
-		Name = "Spawner"
-	})
-	local v581 = v580:AddItemGrid({
-		Items = v464,
-		MultiSelect = true,
-		SearchBar = true,
-		ItemSize = vector22,
-		MobileScaledItemSize = IS_TOUCH_ONLY,
-		OnSelectionChanged = function()
-			v563()
-		end
-	})
-
-	v580:SetActionBar({
-		Left = {
-			{
-				Text = "Select All",
-				Callback = function()
-					v581:SelectAll()
-				end
-			},
-			{
-				Text = "Clear",
-				Callback = function()
-					v581:Clear()
-				end
-			},
-			{
-				Text = "Amount -",
-				Callback = function()
-					v564(-1)
-				end
-			},
-			{
-				Text = "Amount +",
-				Callback = function()
-					v564(1)
-				end
-			}
-		},
-		Primary = {
-			Text = "Spawn Selected",
-			Callback = function()
-				v567(v581)
-			end
-		},
-		Status = function()
-			local v582, v583, v584 = v565(v581)
-
-			return ("%d x %d = %d items"):format(v582, v583, v584)
-		end
-	})
+	-- Spawner tab and its controls removed from Miz0.
 
 	local v585 = miz0Window:CreateTab({
 		Name = "Crates"
