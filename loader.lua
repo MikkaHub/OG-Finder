@@ -1,383 +1,275 @@
--- MIZ0 GLASS v11 | rounded glass window, always-visible photo, refined cards and switches.
--- Miz0 Haunted: native GUI, no external UI library. The gameplay body follows unchanged.
-local Miz0UI = {}
-local C = {base=Color3.fromRGB(6,7,11),panel=Color3.fromRGB(12,12,21),button=Color3.fromRGB(21,20,34),hover=Color3.fromRGB(40,38,55),orange=Color3.fromRGB(176,145,255),white=Color3.fromRGB(247,246,252),muted=Color3.fromRGB(163,163,178)}
-local function make(kind, props, parent)
-    local o=Instance.new(kind)
-    for k,v in pairs(props or {}) do o[k]=v end
-    o.Parent=parent
-    return o
-end
-local function round(o,r) return make('UICorner',{CornerRadius=UDim.new(0,r or 9)},o) end
-local function outline(o,color,alpha)
-    local stroke=make('UIStroke',{Color=color or C.orange,Transparency=alpha or .45,Thickness=1.6,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},o)
-    make('UIGradient',{Color=ColorSequence.new({
-        ColorSequenceKeypoint.new(0,Color3.fromRGB(85,65,218)),
-        ColorSequenceKeypoint.new(.33,Color3.fromRGB(200,89,255)),
-        ColorSequenceKeypoint.new(.7,Color3.fromRGB(79,178,255)),
-        ColorSequenceKeypoint.new(1,Color3.fromRGB(170,81,238))}),Rotation=30},stroke)
-    return stroke
-end
-local function pad(o,x,y) return make('UIPadding',{PaddingLeft=UDim.new(0,x),PaddingRight=UDim.new(0,x),PaddingTop=UDim.new(0,y),PaddingBottom=UDim.new(0,y)},o) end
-local function layout(o,gap) return make('UIListLayout',{Padding=UDim.new(0,gap or 7),SortOrder=Enum.SortOrder.LayoutOrder},o) end
-local function text(o,t,h,color)
-    return make('TextLabel',{BackgroundTransparency=1,Text=tostring(t or ''),TextColor3=color or C.white,Font=Enum.Font.GothamMedium,TextSize=13,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,Size=UDim2.new(1,0,0,h or 26),ZIndex=6},o)
-end
-local function click(o,t,h)
-    local b=make('TextButton',{
-        Text='',BackgroundColor3=C.button,BackgroundTransparency=.38,
-        BorderSizePixel=0,Size=UDim2.new(1,0,0,h or 54),AutoButtonColor=false,
-        ClipsDescendants=true,ZIndex=6},o)
-    round(b,15)
-    local stroke=outline(b,C.orange,.34)
-    local label=make('TextLabel',{
-        Name='ButtonLabel',Text=tostring(t or ''),BackgroundTransparency=1,
-        TextColor3=C.white,Font=Enum.Font.GothamMedium,TextSize=13,
-        TextWrapped=false,TextTruncate=Enum.TextTruncate.AtEnd,
-        TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Center,
-        Position=UDim2.fromOffset(17,0),Size=UDim2.new(1,-34,1,0),ZIndex=7},b)
-    b.MouseEnter:Connect(function()stroke.Transparency=.08;b.BackgroundTransparency=.19 end)
-    b.MouseLeave:Connect(function()stroke.Transparency=.34;b.BackgroundTransparency=.38 end)
-    return b
-end
-local function setButtonText(b,value)
-    local label=b:FindFirstChild('ButtonLabel')
-    if label then label.Text=tostring(value or '') else b.Text=tostring(value or '') end
-end
-local function invoke(fn,...)
-    if type(fn)~='function' then return end
-    local args=table.pack(...)
-    task.spawn(function()
-        local ok,err=pcall(fn,table.unpack(args,1,args.n))
-        if not ok then warn('[Miz0 UI callback] '..tostring(err)) end
-    end)
-end
-local function photoAsset()
-    local asset=getcustomasset or getsynasset
-    local req=request or http_request or (syn and syn.request)
-    if type(asset)~='function' or type(writefile)~='function' or type(req)~='function' then return nil end
-    local path='miz0_galaxy_photo_v11.jpg'
-    local function load(force)
-        if force or not (type(isfile)=='function' and isfile(path)) then
-            local r=req({Url='https://i.ibb.co/PGqN0phc/7.jpg',Method='GET'})
-            assert(r and (r.StatusCode==200 or r.StatusCode==201) and type(r.Body)=='string' and #r.Body>100,'image download failed')
+-- MIZ0 GALAXY V12: WindUI with three distinct FIT images side-by-side.
+-- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
+-- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
+-- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
+-- Miz0 | Halloween • WindUI edition
+-- Original gameplay logic and existing feature callbacks continue below.
+-- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
+-- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
+-- Three original pictures, each downloaded separately (no cropping).
+local PHOTO_URLS = {
+    "https://i.ibb.co/nMfk2Cbb/images.jpg",
+    "https://i.ibb.co/PGqN0phc/7.jpg",
+    "https://i.ibb.co/x8SqYJdj/images-1.jpg",
+}
+local PHOTOS = {"", "", ""}
+local function fetchPhoto(url, index)
+    local assetFn = getcustomasset or getsynasset
+    local requestFn = request or http_request or (syn and syn.request)
+    if type(assetFn)~="function" or type(requestFn)~="function" or type(writefile)~="function" then return "" end
+    local path="miz0_galaxy_photo_"..index..".jpg"
+    local ok,result=pcall(function()
+        if not (type(isfile)=="function" and isfile(path)) then
+            local r=requestFn({Url=url,Method="GET"})
+            assert(r and (r.StatusCode==200 or r.StatusCode==201) and type(r.Body)=="string" and #r.Body>100,"Image download failed")
             writefile(path,r.Body)
         end
-        return asset(path)
-    end
-    local ok,value=pcall(load,false)
-    if not ok then ok,value=pcall(load,true) end
-    if ok then return value end
-    warn('[Miz0] Image not available: '..tostring(value))
-    return nil
+        return assetFn(path)
+    end)
+    if ok and type(result)=="string" then return result end
+    warn("[Miz0] Image "..index.." unavailable: "..tostring(result))
+    return ""
+end
+local photoReady=false
+task.spawn(function()
+    for i,url in ipairs(PHOTO_URLS) do PHOTOS[i]=fetchPhoto(url,i) end
+    photoReady=true
+end)
+local windOk, WindUI = pcall(function()
+    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+    assert(type(source)=="string" and #source>100, "WindUI source unavailable")
+    return assert(loadstring(source))()
+end)
+if not windOk or type(WindUI) ~= "table" then
+    warn("[Miz0] WindUI failed to load:", WindUI)
+    return
+end
+-- Use FIT rather than CROP so the complete background image stays visible.
+-- Any spare space is letterboxed in the Halloween dark color.
+-- WindUI owns its own controls. Avoid scanning and restyling arbitrary PlayerGui
+-- descendants: that broke layouts and caused expensive repeated work on Android.
+local function polishMiz0Window() end
+
+local Miz0UI = {}
+local activeWindow
+local function protect(fn, ...)
+    if not fn then return end
+    local ok, err = pcall(fn, ...)
+    if not ok then warn("[Miz0] Callback error:", err) end
 end
 function Miz0UI:Notify(o)
-    pcall(function() game:GetService('StarterGui'):SetCore('SendNotification',{Title=tostring(o.Title or 'Miz0'),Text=tostring(o.Content or ''),Duration=o.Duration or 4}) end)
+    pcall(function()
+        WindUI:Notify({Title=o.Title or "Miz0", Content=tostring(o.Content or ""), Duration=o.Duration or 4})
+    end)
 end
-function Miz0UI:SetTheme(_) end
+function Miz0UI:SetTheme(theme)
+    if type(theme)=="string" then
+        -- WindUI uses its own themes; keep Halloween's dark base.
+        pcall(function() WindUI:SetTheme("Dark") end)
+    end
+end
 function Miz0UI:SetDensity(_) end
 function Miz0UI:CreateWindow(o)
-    local Players=game:GetService('Players')
-    local UIS=game:GetService('UserInputService')
-    local pg=Players.LocalPlayer:WaitForChild('PlayerGui')
-    local prior=pg:FindFirstChild('Miz0GlassV11')
-    if prior then prior:Destroy() end
-    local gui=make('ScreenGui',{Name='Miz0GlassV11',ResetOnSpawn=false,IgnoreGuiInset=true,ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=35},pg)
-    local camera=workspace.CurrentCamera
-    local screen=camera and camera.ViewportSize or Vector2.new(900,600)
-    local touch=UIS.TouchEnabled
-    local function bounds(v)
-        local portrait=v.Y>v.X
-        local margin=touch and 8 or 24
-        return math.max(250,math.min(v.X-margin*2,portrait and 480 or 970)),math.max(280,math.min(v.Y-margin*2,portrait and 660 or 610)),portrait
-    end
-    local w,h,portrait=bounds(screen)
-    local root=make('Frame',{Name='Miz0Window',AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),Size=UDim2.fromOffset(w,h),BackgroundColor3=C.base,BorderSizePixel=0,ClipsDescendants=true},gui)
-    round(root,24);outline(root,Color3.fromRGB(155,131,207),.36)
-    local galaxy=make('Frame',{Name='Galaxy',Size=UDim2.fromScale(1,1),BackgroundColor3=C.base,BorderSizePixel=0,ZIndex=1},root)
-    make('UIGradient',{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(5,8,20)),ColorSequenceKeypoint.new(.48,Color3.fromRGB(20,13,41)),ColorSequenceKeypoint.new(1,Color3.fromRGB(7,9,20))}),Rotation=120},galaxy)
-    -- Photo covers the dashboard; translucent dark cards keep text legible.
-    local wallpaper=make('ImageLabel',{Name='PhotoWallpaper',Size=UDim2.fromScale(1,1),BackgroundTransparency=1,ScaleType=Enum.ScaleType.Fit,Image='',ImageTransparency=0,ZIndex=2},root)
-    local veil=make('Frame',{Name='GlassVeil',Size=UDim2.fromScale(1,1),BackgroundColor3=Color3.fromRGB(4,4,8),BackgroundTransparency=.96,BorderSizePixel=0,ZIndex=3},root)
-    local heroHeight=56
-    local hero=make('Frame',{Name='TopBar',Position=UDim2.fromOffset(10,9),Size=UDim2.new(1,-20,0,heroHeight),BackgroundColor3=Color3.fromRGB(10,10,15),BackgroundTransparency=.51,BorderSizePixel=0,ClipsDescendants=true,ZIndex=5},root)
-    round(hero,17);outline(hero,Color3.fromRGB(150,132,183),.66)
-    local heading=text(hero,'◈  MIZ0  /  GALAXY',34,C.white)
-    heading.Position=UDim2.fromOffset(15,10);heading.Size=UDim2.new(1,-104,0,34);heading.Font=Enum.Font.GothamBold;heading.TextSize=16;heading.ZIndex=7
-    local minimize=make('TextButton',{Text='×',TextSize=22,Font=Enum.Font.GothamBold,TextColor3=C.white,BackgroundColor3=C.button,Size=UDim2.fromOffset(34,32),Position=UDim2.new(1,-42,0,11),ZIndex=8},hero)
-    round(minimize,9);outline(minimize,C.orange,.75)
-    local nav=make('ScrollingFrame',{Name='Navigation',BackgroundColor3=C.panel,BackgroundTransparency=.72,BorderSizePixel=0,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.X,ScrollBarThickness=2,ZIndex=5},root)
-    round(nav,17)
-    local content=make('Frame',{Name='Pages',BackgroundTransparency=1,ZIndex=5},root)
-    local function applyLayout(v)
-        local nw,nh,isPortrait=bounds(v)
-        portrait=isPortrait
-        root.Size=UDim2.fromOffset(nw,nh)
-        heroHeight=56
-        hero.Size=UDim2.new(1,-20,0,heroHeight)
-        heading.TextSize=portrait and 14 or 16
-        local offset=heroHeight+20
-        if portrait then
-            nav.Position=UDim2.fromOffset(10,offset)
-            nav.Size=UDim2.new(1,-20,0,49)
-            nav.AutomaticCanvasSize=Enum.AutomaticSize.X
-            nav.ScrollingDirection=Enum.ScrollingDirection.X
-            content.Position=UDim2.fromOffset(10,offset+57)
-            content.Size=UDim2.new(1,-20,1,-offset-67)
-        else
-            nav.Position=UDim2.fromOffset(10,offset)
-            nav.Size=UDim2.new(0,152,1,-offset-10)
-            nav.AutomaticCanvasSize=Enum.AutomaticSize.Y
-            nav.ScrollingDirection=Enum.ScrollingDirection.Y
-            content.Position=UDim2.fromOffset(171,offset)
-            content.Size=UDim2.new(1,-181,1,-offset-10)
-        end
-    end
-    local navLayout=layout(nav,6)
-    pad(nav,5,5)
-    local function navSizing()
-        navLayout.FillDirection=portrait and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
-    end
-    applyLayout(screen);navSizing()
-    if camera then camera:GetPropertyChangedSignal('ViewportSize'):Connect(function()
-        if not gui.Parent then return end
-        applyLayout(camera.ViewportSize);navSizing()
-        for _,child in ipairs(nav:GetChildren()) do
-            if child:IsA('TextButton') then child.Size=portrait and UDim2.fromOffset(104,40) or UDim2.new(1,-2,0,40) end
-        end
-    end) end
-    local badge=make('TextButton',{Name='Miz0Reopen',Text='',Font=Enum.Font.GothamBold,TextSize=13,TextColor3=C.white,BackgroundColor3=C.panel,Size=UDim2.fromOffset(64,64),Position=UDim2.fromOffset(18,90),Visible=false,ZIndex=20},gui)
-    round(badge,999);outline(badge,C.orange,.30)
-    local badgeImage=make('ImageLabel',{Name='Photo',Size=UDim2.new(1,-6,1,-6),Position=UDim2.fromOffset(3,3),BackgroundTransparency=1,ScaleType=Enum.ScaleType.Fit,ZIndex=21},badge)
-    round(badgeImage,999)
-    badgeImage.ClipsDescendants=true
-    badge.TextXAlignment=Enum.TextXAlignment.Right
-    minimize.MouseButton1Click:Connect(function()root.Visible=false;badge.Visible=true end)
-    local badgeDragged=false
-    local badgeInput,badgeStart,badgeOrigin
-    badge.InputBegan:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.Touch or input.UserInputType==Enum.UserInputType.MouseButton1 then
-            badgeInput=input;badgeStart=input.Position;badgeOrigin=badge.Position;badgeDragged=false
+    local touch = game:GetService("UserInputService").TouchEnabled
+    local camera = workspace.CurrentCamera
+    local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
+    -- Fit the real screen orientation; never force a landscape-sized window on portrait Android.
+    local portrait = viewport.Y > viewport.X
+    local margin = touch and 12 or 24
+    local w = math.max(240, math.min(viewport.X - margin * 2, touch and (portrait and 345 or 640) or 760))
+    local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
+    -- Wait briefly for image; do not freeze game if download is slow.
+    local startPhoto = os.clock()
+    while not photoReady and os.clock()-startPhoto < 1.5 do task.wait(0.1) end
+    pcall(function()
+        WindUI:SetTheme("Dark")
+    end)
+    -- Remove leftover GUI from previous executions before rebuilding.
+    pcall(function()
+        local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        if pg then
+            for _, child in ipairs(pg:GetChildren()) do
+                if child:IsA("ScreenGui") and (child.Name:lower():find("miz0") or child.Name:lower():find("windui")) then
+                    child:Destroy()
+                end
+            end
         end
     end)
-    UIS.InputChanged:Connect(function(input)
-        if badgeInput and (input==badgeInput or input.UserInputType==Enum.UserInputType.MouseMovement) then
-            local delta=input.Position-badgeStart
-            if delta.Magnitude>6 then badgeDragged=true end
-            badge.Position=UDim2.new(badgeOrigin.X.Scale,badgeOrigin.X.Offset+delta.X,badgeOrigin.Y.Scale,badgeOrigin.Y.Offset+delta.Y)
-        end
-    end)
-    UIS.InputEnded:Connect(function(input)
-        if input==badgeInput then badgeInput=nil end
-    end)
-    badge.MouseButton1Click:Connect(function()
-        if badgeDragged then badgeDragged=false;return end
-        root.Visible=true;badge.Visible=false
-    end)
+    local raw = WindUI:CreateWindow({
+        Title="✦ MIZ0 | GALAXY", Author="Miz0 Script", Icon="moon", Folder="Miz0",
+        Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
+        Theme="Dark", Transparent=true, Resizable=not touch,
+        Background=PHOTOS[2] ~= "" and PHOTOS[2] or nil, BackgroundImageTransparency=0.64,
+        ToggleKey=Enum.KeyCode.RightControl,
+        OpenButton={Enabled=true, OnlyMobile=false, Title="✦ Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
+    })
+    activeWindow=raw
+    -- Three-image gallery is a separate light-weight ScreenGui so it cannot
+    -- overlap WindUI text or interfere with its native controls.
     task.spawn(function()
-        local asset=photoAsset()
-        if asset and gui.Parent then wallpaper.Image=asset;badgeImage.Image=asset else warn('[Miz0] Custom photo unavailable on this executor; showing galaxy gradient') end
-    end)
-    local window={_tabs={}}
-    function window:Destroy() if gui then gui:Destroy() end end
-    function window:CreateTab(cfg)
-        local name=tostring(cfg.Name or 'Features')
-        local navButton=click(nav,name,40)
-        navButton.Size=portrait and UDim2.fromOffset(104,40) or UDim2.new(1,-2,0,40)
-        navButton.ButtonLabel.TextSize=portrait and 11 or 13
-        navButton.ZIndex=4
-        local page=make('ScrollingFrame',{Name=name,Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollBarThickness=3,Visible=false,ZIndex=5},content)
-        pad(page,3,3);layout(page,11)
-        local tab={}
-        function tab:CreateSection(cfg2)
-            local name2=type(cfg2)=='table' and cfg2.Name or cfg2
-            local holder=make('Frame',{BackgroundColor3=C.panel,BackgroundTransparency=.77,BorderSizePixel=0,Size=UDim2.new(1,-5,0,0),AutomaticSize=Enum.AutomaticSize.Y,ZIndex=4},page)
-            round(holder,19);outline(holder,Color3.fromRGB(151,133,191),.28);pad(holder,14,14);layout(holder,12)
-            local title=text(holder,'  '..tostring(name2 or 'Controls'):upper(),30,C.orange)
-            title.Font=Enum.Font.GothamBold;title.ZIndex=4
-            local sec={}
-            function sec:AddButton(c)
-                local b=click(holder,'✧  '..tostring(c.Text or 'Action'),54)
-                b.MouseButton1Click:Connect(function()invoke(c.Callback)end)
-                return b
-            end
-            function sec:AddToggle(c)
-                local enabled=c.Default==true
-                local b=click(holder,'',54)
-                local label=b:FindFirstChild('ButtonLabel')
-                label.Text=tostring(c.Text or 'Toggle')
-                label.Size=UDim2.new(1,-87,1,0)
-                label.TextTruncate=Enum.TextTruncate.AtEnd
-                local track=make('Frame',{BackgroundColor3=Color3.fromRGB(61,60,78),BorderSizePixel=0,Size=UDim2.fromOffset(46,25),Position=UDim2.new(1,-59,.5,-12),ZIndex=8},b)
-                round(track,14)
-                local knob=make('Frame',{BackgroundColor3=Color3.fromRGB(240,238,249),BorderSizePixel=0,Size=UDim2.fromOffset(19,19),Position=UDim2.fromOffset(3,3),ZIndex=9},track)
-                round(knob,12)
-                local function update()
-                    track.BackgroundColor3=enabled and C.orange or Color3.fromRGB(61,60,78)
-                    knob.Position=enabled and UDim2.fromOffset(24,3) or UDim2.fromOffset(3,3)
-                end
-                update()
-                b.MouseButton1Click:Connect(function()enabled=not enabled;update();invoke(c.Callback,enabled)end)
-                return {Set=function(_,v)enabled=not not v;update();invoke(c.Callback,enabled)end}
-            end
-            function sec:AddSlider(c)
-                local min,max=tonumber(c.Min) or 0,tonumber(c.Max) or 100
-                if max<=min then max=min+1 end
-                local step=math.max(.0001,tonumber(c.Increment) or 1)
-                local value=math.clamp(tonumber(c.Default) or min,min,max)
-                local container=make('Frame',{Size=UDim2.new(1,0,0,57),BackgroundColor3=C.button,BackgroundTransparency=.54,BorderSizePixel=0,ZIndex=5},holder)
-                round(container,16)
-                local caption=text(container,'',26);caption.Position=UDim2.fromOffset(9,2);caption.Size=UDim2.new(1,-18,0,25);caption.ZIndex=5
-                local bar=make('Frame',{Position=UDim2.new(0,10,0,37),Size=UDim2.new(1,-20,0,7),BackgroundColor3=C.base,BorderSizePixel=0,ZIndex=5,Active=true},container)
-                round(bar,4)
-                local fill=make('Frame',{Size=UDim2.fromScale(0,1),BackgroundColor3=C.orange,BorderSizePixel=0,ZIndex=6},bar)
-                round(fill,4)
-                local function set(v,notify)
-                    value=math.clamp(math.floor(((v-min)/step)+.5)*step+min,min,max)
-                    caption.Text=tostring(c.Text or 'Slider')..'  •  '..string.format('%.2f',value)
-                    fill.Size=UDim2.fromScale((value-min)/(max-min),1)
-                    if notify then invoke(c.Callback,value) end
-                end
-                set(value,false)
-                local dragging=false
-                local function fromInput(input)
-                    if bar.AbsoluteSize.X<=0 then return end
-                    local ratio=math.clamp((input.Position.X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X,0,1)
-                    set(min+ratio*(max-min),true)
-                end
-                bar.InputBegan:Connect(function(input)
-                    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-                        dragging=true;fromInput(input)
-                    end
-                end)
-                UIS.InputChanged:Connect(function(input)
-                    if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then fromInput(input) end
-                end)
-                UIS.InputEnded:Connect(function(input)
-                    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end
-                end)
-                return {Set=function(_,v)set(tonumber(v) or min,true)end}
-            end
-            local function dropdown(c,multi)
-                local opts=c.Options or {}
-                local selected={}
-                local current=c.Default
-                local head=click(holder,'',39)
-                local choices=make('Frame',{Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1,Visible=false,ZIndex=5},holder)
-                layout(choices,4)
-                local function redraw()
-                    if multi then
-                        local list={}
-                        for _,option in ipairs(opts) do if selected[tostring(option)] then table.insert(list,tostring(option)) end end
-                        setButtonText(head,tostring(c.Text or 'Select')..'  ▾  ('..#list..' selected)')
-                    else setButtonText(head,tostring(c.Text or 'Select')..'  ▾  '..tostring(current or 'None')) end
-                end
-                redraw()
-                for _,option in ipairs(opts) do
-                    local name=tostring(option)
-                    local b=click(choices,name,34)
-                    b.MouseButton1Click:Connect(function()
-                        if multi then
-                            selected[name]=not selected[name]
-                            local values={}
-                            for _,item in ipairs(opts) do if selected[tostring(item)] then table.insert(values,item) end end
-                            invoke(c.Callback,values)
-                        else current=option;choices.Visible=false;invoke(c.Callback,option) end
-                        redraw()
-                    end)
-                end
-                head.MouseButton1Click:Connect(function()choices.Visible=not choices.Visible end)
-                return {Set=function(_,v)current=v;redraw()end,GetSelected=function()
-                    local values={};for _,item in ipairs(opts) do if selected[tostring(item)] then table.insert(values,item) end end;return values
-                end}
-            end
-            function sec:AddDropdown(c) return dropdown(c,false) end
-            function sec:AddMultiDropdown(c) return dropdown(c,true) end
-            function sec:AddInput(c)
-                text(holder,c.Text or 'Input',21)
-                local input=make('TextBox',{Text=tostring(c.Default or ''),PlaceholderText=tostring(c.Placeholder or ''),ClearTextOnFocus=false,Size=UDim2.new(1,0,0,38),BackgroundColor3=C.button,TextColor3=C.white,Font=Enum.Font.Gotham,TextSize=13,ZIndex=6},holder)
-                round(input,15);outline(input,C.orange,.72)
-                input.FocusLost:Connect(function()invoke(c.Callback,input.Text)end)
-                return input
-            end
-            function sec:AddColorPicker(c)
-                local color=c.Default or C.orange
-                local b=click(holder,tostring(c.Text or 'Color')..'  •  tap to cycle',38)
-                local palette={Color3.fromRGB(255,130,37),Color3.fromRGB(155,85,232),Color3.fromRGB(255,70,110),Color3.fromRGB(80,190,175)}
-                local idx=1
-                b.MouseButton1Click:Connect(function()idx=idx%#palette+1;color=palette[idx];b.BackgroundColor3=color;invoke(c.Callback,color)end)
-                return {Set=function(_,v)color=v;invoke(c.Callback,color)end}
-            end
-            function sec:AddParagraph(c)
-                local h=text(holder,c.Title or 'Info',22,C.orange)
-                local p=text(holder,c.Content or '',34,C.white)
-                p.AutomaticSize=Enum.AutomaticSize.Y
-                return {SetTitle=function(_,v)h.Text=tostring(v)end,SetContent=function(_,v)p.Text=tostring(v)end}
-            end
-            function sec:AddBanner(c)
-                local t=text(holder,'✧  '..tostring(c.Text or c.Content or ''),40,C.orange)
-                t.AutomaticSize=Enum.AutomaticSize.Y
-                return {SetText=function(_,v)t.Text=tostring(v)end}
-            end
-            return sec
+        local pg=game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+        local old=pg:FindFirstChild("Miz0GalaxyGallery")
+        if old then old:Destroy() end
+        local gui=Instance.new("ScreenGui")
+        gui.Name="Miz0GalaxyGallery";gui.ResetOnSpawn=false;gui.IgnoreGuiInset=false
+        gui.DisplayOrder=20;gui.Parent=pg
+        local UIS=game:GetService("UserInputService")
+        local vp=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(900,600)
+        local width=math.min(vp.X-24, touch and (portrait and 285 or 410) or 480)
+        local height=touch and 85 or 104
+        local panel=Instance.new("Frame")
+        panel.Name="GalaxyImageStrip";panel.Size=UDim2.fromOffset(width,height)
+        panel.Position=UDim2.new(.5,-width/2,0,6)
+        panel.BackgroundColor3=Color3.fromRGB(8,7,20)
+        panel.BorderSizePixel=0;panel.Parent=gui
+        Instance.new("UICorner",panel).CornerRadius=UDim.new(0,16)
+        local border=Instance.new("UIStroke",panel)
+        border.Color=Color3.fromRGB(145,82,255);border.Thickness=2
+        local gradient=Instance.new("UIGradient",border)
+        gradient.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(74,111,255)),ColorSequenceKeypoint.new(.5,Color3.fromRGB(184,73,245)),ColorSequenceKeypoint.new(1,Color3.fromRGB(46,215,250))})
+        local pad=Instance.new("UIPadding",panel)
+        pad.PaddingTop=UDim.new(0,7);pad.PaddingBottom=UDim.new(0,7)
+        pad.PaddingLeft=UDim.new(0,7);pad.PaddingRight=UDim.new(0,7)
+        local row=Instance.new("UIListLayout",panel)
+        row.FillDirection=Enum.FillDirection.Horizontal
+        row.HorizontalAlignment=Enum.HorizontalAlignment.Center
+        row.VerticalAlignment=Enum.VerticalAlignment.Center
+        row.Padding=UDim.new(0,7)
+        for i=1,3 do
+            local frame=Instance.new("Frame")
+            frame.Name="Photo"..i
+            frame.Size=UDim2.new(1/3,-5,1,0)
+            frame.BackgroundColor3=Color3.fromRGB(23,16,45)
+            frame.BorderSizePixel=0;frame.ClipsDescendants=true;frame.Parent=panel
+            Instance.new("UICorner",frame).CornerRadius=UDim.new(0,11)
+            local rim=Instance.new("UIStroke",frame)
+            rim.Color=Color3.fromRGB(118,93,225);rim.Thickness=1
+            local img=Instance.new("ImageLabel")
+            img.Name="FullPhoto";img.Size=UDim2.fromScale(1,1)
+            img.BackgroundTransparency=1;img.ScaleType=Enum.ScaleType.Fit
+            img.Parent=frame
+            task.spawn(function()
+                local started=os.clock()
+                while PHOTOS[i]=="" and not photoReady and os.clock()-started<18 do task.wait(.2) end
+                if img.Parent then img.Image=PHOTOS[i] end
+            end)
         end
-        function tab:AddItemGrid(c)
-            local items=c.Items or {}
-            local selected={}
-            local sec=self:CreateSection({Name='Inventory selection'})
-            local page=1
-            local pages=math.max(1,math.ceil(#items/20))
-            local function show()
-                local part=self:CreateSection({Name='Items '..page..' / '..pages})
-                for i=(page-1)*20+1,math.min(#items,page*20) do
-                    local item=items[i]
-                    local name=type(item)=='table' and tostring(item.Name or item.Text or item.Title or i) or tostring(item)
-                    part:AddToggle({Text=name,Default=selected[i]==true,Callback=function(v)selected[i]=v or nil;invoke(c.OnSelectionChanged)end})
-                end
-            end
-            if #items>0 then show() end
-            sec:AddButton({Text='Next 20 items',Callback=function()if page<pages then page+=1;show()end end})
-            return {GetSelected=function()
-                local out={};for i,item in ipairs(items) do if selected[i] then table.insert(out,item) end end;return out
-            end,SelectAll=function()for i=1,#items do selected[i]=true end;invoke(c.OnSelectionChanged)end,
-            Clear=function()table.clear(selected);invoke(c.OnSelectionChanged)end}
-        end
-        function tab:SetActionBar(c)
-            local sec=self:CreateSection({Name='Actions'})
-            for _,v in ipairs(c.Left or {}) do sec:AddButton(v) end
-            if c.Primary then sec:AddButton(c.Primary) end
-        end
-        table.insert(window._tabs,{button=navButton,page=page})
-        navButton.MouseButton1Click:Connect(function()
-            for _,t in ipairs(window._tabs) do
-                t.page.Visible=t.page==page
-                t.button.BackgroundColor3=t.page==page and Color3.fromRGB(54,48,69) or C.button
+        -- Drag the gallery by its background, on both touch and mouse.
+        local dragging,origin,initial=false,nil,nil
+        panel.InputBegan:Connect(function(input)
+            if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+                dragging=true;origin=input.Position;initial=panel.Position
             end
         end)
-        if #window._tabs==1 then page.Visible=true;navButton.BackgroundColor3=Color3.fromRGB(54,48,69) end
-        return tab
+        UIS.InputChanged:Connect(function(input)
+            if dragging and origin and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+                local d=input.Position-origin
+                panel.Position=UDim2.new(initial.X.Scale,initial.X.Offset+d.X,initial.Y.Scale,initial.Y.Offset+d.Y)
+            end
+        end)
+        UIS.InputEnded:Connect(function(input)
+            if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end
+        end)
+    end)
+    -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
+    local wrapper={_raw=raw}
+    function wrapper:Destroy()
+        protect(o.OnClose)
+        protect(function() raw:Destroy() end)
     end
-    local dragStart,startPos,dragging
-    hero.InputBegan:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-            dragging=input;dragStart=input.Position;startPos=root.Position
+    function wrapper:CreateTab(cfg)
+        local name=tostring(cfg.Name or "Tab")
+        local icons={Gameplay="gamepad-2",ESP="eye",Combat="swords",Movement="footprints",Misc="settings",Inventory="backpack",Settings="settings",Trading="handshake",Teleports="map-pin"}
+        local tab=raw:Tab({Title=name, Icon=icons[name] or "star"})
+        local proxy={_tab=tab}
+        function proxy:CreateSection(c)
+            local sec=tab:Section({Title="✦ "..tostring(c.Name or "Section"), Box=true, Opened=true})
+            local out={_section=sec}
+            function out:AddButton(x)
+                return sec:Button({Title=tostring(x.Text or "Action"), Callback=function() protect(x.Callback) end})
+            end
+            function out:AddToggle(x)
+                return sec:Toggle({Title=tostring(x.Text or "Toggle"), Value=x.Default==true,
+                    Callback=function(v) protect(x.Callback,v) end})
+            end
+            function out:AddSlider(x)
+                return sec:Slider({Title=tostring(x.Text or "Slider"), Step=x.Increment or 1,
+                    Value={Min=x.Min or 0, Max=x.Max or 100, Default=x.Default or x.Min or 0},
+                    Callback=function(v) protect(x.Callback,v) end})
+            end
+            function out:AddDropdown(x)
+                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
+                    Value=x.Default, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
+            end
+            function out:AddMultiDropdown(x)
+                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
+                    Multi=true, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
+            end
+            function out:AddInput(x)
+                return sec:Input({Title=tostring(x.Text or "Input"), Value=tostring(x.Default or ""),
+                    Placeholder=x.Placeholder or "", Callback=function(v) protect(x.Callback,v) end})
+            end
+            function out:AddColorPicker(x)
+                return sec:Colorpicker({Title=tostring(x.Text or "Color"), Default=x.Default or Color3.fromRGB(255,120,20),
+                    Callback=function(v) protect(x.Callback,v) end})
+            end
+            function out:AddParagraph(x)
+                local para=sec:Paragraph({Title=tostring(x.Title or ""), Desc=tostring(x.Content or "")})
+                return {SetTitle=function(_,v) protect(function() para:SetTitle(tostring(v)) end) end,
+                    SetContent=function(_,v) protect(function() para:SetDesc(tostring(v)) end) end}
+            end
+            function out:AddBanner(x)
+                return sec:Paragraph({Title="🎃 Miz0", Desc=tostring(x.Text or "")})
+            end
+            return out
         end
-    end)
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input==dragging or input.UserInputType==Enum.UserInputType.MouseMovement) then
-            local d=input.Position-dragStart
-            root.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y)
+        function proxy:AddItemGrid(c)
+            -- Lazy paged list: avoids thousands of UI controls freezing Android.
+            local section=self:CreateSection({Name="Inventory selection"})
+            local chosen, controls = {}, {}
+            local items=c.Items or {}
+            local page, pageSize = 1, 24
+            local total= #items
+            local function update()
+                protect(c.OnSelectionChanged)
+            end
+            local function drawPage()
+                -- Create a separate section for each requested page; old pages are not
+                -- recreated automatically. This caps initial creation to 24 toggles.
+                local first=(page-1)*pageSize+1
+                local last=math.min(total,page*pageSize)
+                local chunk=self:CreateSection({Name=("Items %d-%d of %d"):format(first,last,total)})
+                for i=first,last do
+                    local item=items[i]
+                    local title=type(item)=="table" and (item.Name or item.Text or item.Title or tostring(i)) or tostring(item)
+                    controls[i]=chunk:AddToggle({Text=tostring(title), Default=chosen[i]==true, Callback=function(v)
+                        chosen[i]=v; update()
+                    end})
+                end
+            end
+            if total>0 then drawPage() end
+            section:AddButton({Text="Load next 24 items", Callback=function()
+                if page*pageSize<total then page+=1; drawPage() end
+            end})
+            return {
+                GetSelected=function()
+                    local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end
+                    return r
+                end,
+                SelectAll=function() for i=1,total do chosen[i]=true end; update() end,
+                Clear=function() table.clear(chosen); update() end
+            }
         end
-    end)
-    UIS.InputEnded:Connect(function(input)if input==dragging then dragging=nil end end)
-    UIS.InputBegan:Connect(function(input,processed)
-        if not processed and input.KeyCode==(o.ToggleKeybind or Enum.KeyCode.RightControl) then
-            root.Visible=not root.Visible;badge.Visible=not root.Visible
+        function proxy:SetActionBar(c)
+            local section=self:CreateSection({Name="Actions"})
+            for _,b in ipairs(c.Left or {}) do section:AddButton(b) end
+            if c.Primary then section:AddButton(c.Primary) end
         end
-    end)
-    return window
+        return proxy
+    end
+    return wrapper
 end
-local lib=Miz0UI
+local lib = Miz0UI
 local genv = typeof(getgenv) == "function" and getgenv() or _G
 
 if game.GameId ~= 66654135 then
