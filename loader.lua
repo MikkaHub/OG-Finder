@@ -1,187 +1,203 @@
--- Miz0 Halloween / Rayfield edition.
--- Rayfield source: https://github.com/SiriusSoftwareLtd/Rayfield
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
+-- Miz0 Halloween WindUI restoration. No custom GUI. No Spawner or Crates tabs.
+-- MIZ0 HALLOWEEN v3: removed Spawner and Crates tabs and crate controls; visible orange Halloween title.
+-- Miz0 Halloween: portrait-aware WindUI, pumpkin accents, full photo, Spawner tab removed.
+-- Miz0 | Halloween • WindUI edition
+-- Original gameplay logic and existing feature callbacks continue below.
+-- WindUI is developed by Footagesus: https://github.com/Footagesus/WindUI
+-- Direct hosted image. Requires executor HTTP + filesystem + custom-asset support.
 local PHOTO_URL = "https://i.ibb.co/nMfk2Cbb/images.jpg"
-local function safe(fn, ...)
-    if type(fn) ~= "function" then return end
-    local ok,err=pcall(fn,...)
-    if not ok then warn("[Miz0] callback:",err) end
-end
-local function loadPhoto()
-    local asset=getcustomasset or getsynasset
-    local req=request or http_request or (syn and syn.request)
-    if type(asset)~="function" or type(req)~="function" or type(writefile)~="function" then return nil end
-    local ok,result=pcall(function()
-        local path="miz0_rayfield_background.jpg"
-        if not (type(isfile)=="function" and isfile(path)) then
-            local r=req({Url=PHOTO_URL,Method="GET"})
-            assert(r and r.StatusCode==200 and type(r.Body)=="string" and #r.Body>100)
-            writefile(path,r.Body)
+local PHOTO = "" -- No moderated Roblox asset fallback
+local function preparePhoto()
+    local assetFn = getcustomasset or getsynasset
+    local requestFn = request or http_request or (syn and syn.request)
+    if type(assetFn) ~= "function" or type(writefile) ~= "function" or type(requestFn) ~= "function" then
+        warn("[Miz0] Delta lacks local-image APIs; using dark background")
+        return ""
+    end
+    local fileName = "miz0_halloween_background.jpg"
+    local ok, result = pcall(function()
+        if type(isfile) ~= "function" or not isfile(fileName) then
+            local response = requestFn({Url=PHOTO_URL, Method="GET"})
+            if not response or (response.StatusCode ~= 200 and response.StatusCode ~= 201) or type(response.Body) ~= "string" or #response.Body < 100 then
+                error("Image download failed")
+            end
+            writefile(fileName, response.Body)
         end
-        return asset(path)
+        return assetFn(fileName)
     end)
-    if ok then return result end
-    warn("[Miz0] photo unavailable:",result)
+    if ok and type(result) == "string" then return result end
+    warn("[Miz0] Image unavailable:", result)
+    return ""
 end
-local ok,Rayfield=pcall(function()
-    local source=game:HttpGet("https://sirius.menu/rayfield")
-    assert(type(source)=="string" and #source>100,"Rayfield download failed")
+-- Resolve in background so a slow image host cannot stall execution.
+local photoReady = false
+task.spawn(function() PHOTO = preparePhoto(); photoReady = true end)
+local windOk, WindUI = pcall(function()
+    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+    assert(type(source)=="string" and #source>100, "WindUI source unavailable")
     return assert(loadstring(source))()
 end)
-if not ok or type(Rayfield)~="table" then
-    warn("[Miz0] Rayfield could not start:",Rayfield)
+if not windOk or type(WindUI) ~= "table" then
+    warn("[Miz0] WindUI failed to load:", WindUI)
     return
 end
-local lib={}
-function lib:Notify(c)
+-- Use FIT rather than CROP so the complete background image stays visible.
+-- Any spare space is letterboxed in the Halloween dark color.
+-- WindUI owns its own controls. Avoid scanning and restyling arbitrary PlayerGui
+-- descendants: that broke layouts and caused expensive repeated work on Android.
+local function polishMiz0Window() end
+
+local Miz0UI = {}
+local activeWindow
+local function protect(fn, ...)
+    if not fn then return end
+    local ok, err = pcall(fn, ...)
+    if not ok then warn("[Miz0] Callback error:", err) end
+end
+function Miz0UI:Notify(o)
     pcall(function()
-        Rayfield:Notify({Title=tostring(c.Title or "Miz0"),Content=tostring(c.Content or ""),Duration=c.Duration or 4,Image=4483362458})
+        WindUI:Notify({Title=o.Title or "Miz0", Content=tostring(o.Content or ""), Duration=o.Duration or 4})
     end)
 end
-function lib:SetTheme(_) end
-function lib:SetDensity(_) end
-function lib:CreateWindow(o)
-    local window=Rayfield:CreateWindow({
-        Name="🎃 MIZ0 • HAUNTED NIGHT",
-        LoadingTitle="Miz0 Halloween",
-        LoadingSubtitle="Rayfield Edition",
-        Theme="DarkBlue",
-        ConfigurationSaving={Enabled=false},
-        Discord={Enabled=false},
-        KeySystem=false,
-        DisableRayfieldPrompts=true,
-        DisableBuildWarnings=true,
+function Miz0UI:SetTheme(theme)
+    if type(theme)=="string" then
+        -- WindUI uses its own themes; keep Halloween's dark base.
+        pcall(function() WindUI:SetTheme("Dark") end)
+    end
+end
+function Miz0UI:SetDensity(_) end
+function Miz0UI:CreateWindow(o)
+    local touch = game:GetService("UserInputService").TouchEnabled
+    local camera = workspace.CurrentCamera
+    local viewport = camera and camera.ViewportSize or Vector2.new(900,600)
+    -- Fit the real screen orientation; never force a landscape-sized window on portrait Android.
+    local portrait = viewport.Y > viewport.X
+    local margin = touch and 12 or 24
+    local w = math.max(240, math.min(viewport.X - margin * 2, touch and (portrait and 345 or 640) or 760))
+    local h = math.max(240, math.min(viewport.Y - margin * 2, touch and (portrait and 480 or 390) or 520))
+    -- Wait briefly for image; do not freeze game if download is slow.
+    local startPhoto = os.clock()
+    while not photoReady and os.clock()-startPhoto < 1.5 do task.wait(0.1) end
+    pcall(function()
+        WindUI:SetTheme("Dark")
+    end)
+    -- Remove leftover GUI from previous executions before rebuilding.
+    pcall(function()
+        local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        if pg then
+            for _, child in ipairs(pg:GetChildren()) do
+                if child:IsA("ScreenGui") and (child.Name:lower():find("miz0") or child.Name:lower():find("windui")) then
+                    child:Destroy()
+                end
+            end
+        end
+    end)
+    local raw = WindUI:CreateWindow({
+        Title="🎃 MIZ0 | HALLOWEEN", Author="Miz0 Script", Icon="ghost", Folder="Miz0",
+        Size=UDim2.fromOffset(w,h), MinSize=Vector2.new(240,240),
+        Theme="Dark", Transparent=true, Resizable=not touch,
+        Background=PHOTO ~= "" and PHOTO or nil, BackgroundImageTransparency=0.30,
+        ToggleKey=Enum.KeyCode.RightControl,
+        OpenButton={Enabled=true, OnlyMobile=false, Title="🎃 Miz0 Script", Draggable=true, Scale=touch and 0.8 or 0.75},
     })
-    local wrapper={}
-    function wrapper:Destroy() pcall(function() Rayfield:Destroy() end) end
+    activeWindow=raw
+    -- Use native WindUI styling only; do not mutate its internal widget hierarchy.
+    local wrapper={_raw=raw}
+    function wrapper:Destroy()
+        protect(o.OnClose)
+        protect(function() raw:Destroy() end)
+    end
     function wrapper:CreateTab(cfg)
-        local tab=window:CreateTab(tostring(cfg.Name or "Tab"),4483362458)
-        local proxy={}
-        function proxy:CreateSection(cfg)
-            local name=type(cfg)=="table" and cfg.Name or cfg
-            pcall(function() tab:CreateSection("🎃 "..tostring(name or "Features")) end)
-            local sec={}
-            function sec:AddButton(c)
-                return tab:CreateButton({Name="✦ "..tostring(c.Text or "Action"),Callback=function()safe(c.Callback)end})
+        local tab=raw:Tab({Title=tostring(cfg.Name or "Tab"), Icon="ghost"})
+        local proxy={_tab=tab}
+        function proxy:CreateSection(c)
+            local sec=tab:Section({Title="🎃 "..tostring(c.Name or "Section"), Box=true, Opened=true})
+            local out={_section=sec}
+            function out:AddButton(x)
+                return sec:Button({Title="✦ "..tostring(x.Text or "Action"), Callback=function() protect(x.Callback) end})
             end
-            function sec:AddToggle(c)
-                return tab:CreateToggle({Name=tostring(c.Text or "Toggle"),CurrentValue=c.Default==true,
-                    Flag=tostring(c.Flag or ("miz0_toggle_"..tostring(math.random(100000,999999)))),
-                    Callback=function(v)safe(c.Callback,v)end})
+            function out:AddToggle(x)
+                return sec:Toggle({Title="☾ "..tostring(x.Text or "Toggle"), Value=x.Default==true,
+                    Callback=function(v) protect(x.Callback,v) end})
             end
-            function sec:AddSlider(c)
-                return tab:CreateSlider({Name=tostring(c.Text or "Slider"),
-                    Range={tonumber(c.Min) or 0,tonumber(c.Max) or 100},
-                    Increment=tonumber(c.Increment) or 1,
-                    Suffix=tostring(c.Suffix or ""),CurrentValue=tonumber(c.Default) or tonumber(c.Min) or 0,
-                    Flag=tostring(c.Flag or ("miz0_slider_"..tostring(math.random(100000,999999)))),
-                    Callback=function(v)safe(c.Callback,v)end})
+            function out:AddSlider(x)
+                return sec:Slider({Title=tostring(x.Text or "Slider"), Step=x.Increment or 1,
+                    Value={Min=x.Min or 0, Max=x.Max or 100, Default=x.Default or x.Min or 0},
+                    Callback=function(v) protect(x.Callback,v) end})
             end
-            function sec:AddDropdown(c)
-                local options=c.Options or {}
-                return tab:CreateDropdown({Name=tostring(c.Text or "Select"),Options=options,
-                    CurrentOption=c.Default and {tostring(c.Default)} or {},
-                    MultipleOptions=false,Flag=tostring(c.Flag or ("miz0_drop_"..tostring(math.random(100000,999999)))),
-                    Callback=function(v) safe(c.Callback,type(v)=="table" and v[1] or v) end})
+            function out:AddDropdown(x)
+                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
+                    Value=x.Default, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
             end
-            function sec:AddMultiDropdown(c)
-                return tab:CreateDropdown({Name=tostring(c.Text or "Select"),Options=c.Options or {},
-                    CurrentOption={},MultipleOptions=true,
-                    Flag=tostring(c.Flag or ("miz0_multi_"..tostring(math.random(100000,999999)))),
-                    Callback=function(v)safe(c.Callback,v)end})
+            function out:AddMultiDropdown(x)
+                return sec:Dropdown({Title=tostring(x.Text or "Select"), Values=x.Options or {},
+                    Multi=true, AllowNone=true, Callback=function(v) protect(x.Callback,v) end})
             end
-            function sec:AddInput(c)
-                return tab:CreateInput({Name=tostring(c.Text or "Input"),CurrentValue=tostring(c.Default or ""),
-                    PlaceholderText=tostring(c.Placeholder or ""),RemoveTextAfterFocusLost=false,
-                    Flag=tostring(c.Flag or ("miz0_input_"..tostring(math.random(100000,999999)))),
-                    Callback=function(v)safe(c.Callback,v)end})
+            function out:AddInput(x)
+                return sec:Input({Title=tostring(x.Text or "Input"), Value=tostring(x.Default or ""),
+                    Placeholder=x.Placeholder or "", Callback=function(v) protect(x.Callback,v) end})
             end
-            function sec:AddColorPicker(c)
-                return tab:CreateColorPicker({Name=tostring(c.Text or "Color"),
-                    Color=c.Default or Color3.fromRGB(255,125,25),
-                    Flag=tostring(c.Flag or ("miz0_color_"..tostring(math.random(100000,999999)))),
-                    Callback=function(v)safe(c.Callback,v)end})
+            function out:AddColorPicker(x)
+                return sec:Colorpicker({Title=tostring(x.Text or "Color"), Default=x.Default or Color3.fromRGB(255,120,20),
+                    Callback=function(v) protect(x.Callback,v) end})
             end
-            function sec:AddParagraph(c)
-                local title=tostring(c.Title or "Info")
-                local para=tab:CreateParagraph({Title=title,Content=tostring(c.Content or "")})
-                return {
-                    SetTitle=function(_,v) title=tostring(v);pcall(function()para:Set({Title=title,Content=tostring(c.Content or "")})end)end,
-                    SetContent=function(_,v)c.Content=tostring(v);pcall(function()para:Set({Title=title,Content=c.Content})end)end,
-                }
+            function out:AddParagraph(x)
+                local para=sec:Paragraph({Title=tostring(x.Title or ""), Desc=tostring(x.Content or "")})
+                return {SetTitle=function(_,v) protect(function() para:SetTitle(tostring(v)) end) end,
+                    SetContent=function(_,v) protect(function() para:SetDesc(tostring(v)) end) end}
             end
-            function sec:AddBanner(c)
-                return tab:CreateParagraph({Title="🎃 Miz0",Content=tostring(c.Text or c.Content or "")})
+            function out:AddBanner(x)
+                return sec:Paragraph({Title="🎃 Miz0", Desc=tostring(x.Text or "")})
             end
-            return sec
+            return out
         end
         function proxy:AddItemGrid(c)
+            -- Lazy paged list: avoids thousands of UI controls freezing Android.
+            local section=self:CreateSection({Name="Inventory selection"})
+            local chosen, controls = {}, {}
             local items=c.Items or {}
-            local selected={}
-            local page,pageSize=1,20
-            local sec=self:CreateSection({Name="Inventory"})
-            local function render()
-                local opts={}
-                for i=(page-1)*pageSize+1,math.min(#items,page*pageSize) do
+            local page, pageSize = 1, 24
+            local total= #items
+            local function update()
+                protect(c.OnSelectionChanged)
+            end
+            local function drawPage()
+                -- Create a separate section for each requested page; old pages are not
+                -- recreated automatically. This caps initial creation to 24 toggles.
+                local first=(page-1)*pageSize+1
+                local last=math.min(total,page*pageSize)
+                local chunk=self:CreateSection({Name=("Items %d-%d of %d"):format(first,last,total)})
+                for i=first,last do
                     local item=items[i]
-                    opts[#opts+1]=type(item)=="table" and tostring(item.Name or item.Text or item.Title or i) or tostring(item)
-                end
-                if #opts>0 then
-                    sec:AddMultiDropdown({Text="Items • page "..page,Options=opts,Callback=function(values)
-                        local marked={}
-                        for _,v in ipairs(values or {}) do marked[tostring(v)]=true end
-                        for i=(page-1)*pageSize+1,math.min(#items,page*pageSize) do
-                            local item=items[i]
-                            local name=type(item)=="table" and tostring(item.Name or item.Text or item.Title or i) or tostring(item)
-                            selected[i]=marked[name] or nil
-                        end
-                        safe(c.OnSelectionChanged)
+                    local title=type(item)=="table" and (item.Name or item.Text or item.Title or tostring(i)) or tostring(item)
+                    controls[i]=chunk:AddToggle({Text=tostring(title), Default=chosen[i]==true, Callback=function(v)
+                        chosen[i]=v; update()
                     end})
                 end
             end
-            render()
-            sec:AddButton({Text="Next inventory page",Callback=function()
-                if page*pageSize<#items then page=page+1;render() end
+            if total>0 then drawPage() end
+            section:AddButton({Text="Load next 24 items", Callback=function()
+                if page*pageSize<total then page+=1; drawPage() end
             end})
-            return {GetSelected=function()
-                local result={}
-                for i,item in ipairs(items) do if selected[i] then result[#result+1]=item end end
-                return result
-            end,SelectAll=function()for i=1,#items do selected[i]=true end;safe(c.OnSelectionChanged)end,
-            Clear=function()table.clear(selected);safe(c.OnSelectionChanged)end}
+            return {
+                GetSelected=function()
+                    local r={}; for i,item in ipairs(items) do if chosen[i] then table.insert(r,item) end end
+                    return r
+                end,
+                SelectAll=function() for i=1,total do chosen[i]=true end; update() end,
+                Clear=function() table.clear(chosen); update() end
+            }
         end
         function proxy:SetActionBar(c)
-            local sec=self:CreateSection({Name="Actions"})
-            for _,button in ipairs(c.Left or {}) do sec:AddButton(button) end
-            if c.Primary then sec:AddButton(c.Primary) end
+            local section=self:CreateSection({Name="Actions"})
+            for _,b in ipairs(c.Left or {}) do section:AddButton(b) end
+            if c.Primary then section:AddButton(c.Primary) end
         end
         return proxy
     end
-    -- Rayfield manages its own minimize control. This photo badge is an additional visual,
-    -- not a second window or a replacement for Rayfield's built-in minimize button.
-    task.spawn(function()
-        local photo=loadPhoto()
-        if not photo then return end
-        local player=Players.LocalPlayer
-        local pg=player and player:FindFirstChildOfClass("PlayerGui")
-        if not pg then return end
-        local previous=pg:FindFirstChild("Miz0PhotoBadge")
-        if previous then previous:Destroy() end
-        local sg=Instance.new("ScreenGui")
-        sg.Name="Miz0PhotoBadge";sg.ResetOnSpawn=false;sg.DisplayOrder=5;sg.Parent=pg
-        local img=Instance.new("ImageLabel")
-        img.Name="Miz0Photo";img.Size=UDim2.fromOffset(58,58)
-        img.Position=UDim2.new(1,-66,0,14)
-        img.BackgroundColor3=Color3.fromRGB(29,15,35)
-        img.Image=photo;img.ScaleType=Enum.ScaleType.Fit;img.Parent=sg
-        Instance.new("UICorner",img).CornerRadius=UDim.new(0,12)
-        local stroke=Instance.new("UIStroke",img)
-        stroke.Color=Color3.fromRGB(255,122,25);stroke.Thickness=2
-    end)
     return wrapper
 end
-
+local lib = Miz0UI
 local genv = typeof(getgenv) == "function" and getgenv() or _G
 
 if game.GameId ~= 66654135 then
